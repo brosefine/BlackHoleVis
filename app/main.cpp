@@ -4,12 +4,10 @@
 #include <iostream>
 
 #include <rendering/shader.h>
+#include <rendering/quad.h>
+#include <rendering/glBoilerplate.h>
 
 int width = 800, height = 600;
-
-void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-	glViewport(0, 0, width, height);
-}
 
 void processKeyboardInputs(GLFWwindow* window) {
 
@@ -20,31 +18,10 @@ void processKeyboardInputs(GLFWwindow* window) {
 
 int main() {
 
-	// GLFW
-	glfwInit();
-	// checks if correct OpenGL versions are present
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	// core profile includes smaller set of functions, e.g. no backwards-compatibility
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	GLFWwindow* windowPtr = glfwCreateWindow(width, height, "Black Hole Vis", NULL, NULL);
-	if (!windowPtr){
-		std::cout << "Window creation failed" << std::endl; 
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(windowPtr);
-	glfwSetFramebufferSizeCallback(windowPtr, framebufferResizeCallback);
-
-	// GLAD
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
-		std::cout << "Failed to initialize GLAD" << std::endl;
-		return -1;
-	}
+	GLFWwindow *windowPtr = glBoilerplate::init(width, height);
 
 	Shader simpleShader("simple.vs", "simple.fs");
+	Mesh quad(quadPostions, quadUVs, quadIndices);
 
 	while (!glfwWindowShouldClose(windowPtr)) {
 
@@ -52,6 +29,9 @@ int main() {
 
 		glClearColor(1, 0.5, 0.0, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
+		simpleShader.use();
+		quad.draw(GL_TRIANGLES);
+
 		glfwPollEvents();
 		glfwSwapBuffers(windowPtr);
 	}
