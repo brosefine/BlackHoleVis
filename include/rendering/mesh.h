@@ -14,10 +14,10 @@ struct Vertex {
 class Mesh {
 public:
 	std::vector<Vertex> vertices_;
-	std::vector<int>	indices_;
+	std::vector<unsigned int>	indices_;
 
-	Mesh(std::vector<glm::vec3> pos, std::vector<glm::vec2> uv, std::vector<int> indxs);
-	Mesh(std::vector<Vertex> verts, std::vector<int> indxs);
+	Mesh(std::vector<glm::vec3> pos, std::vector<glm::vec2> uv, std::vector<unsigned int> indxs);
+	Mesh(std::vector<Vertex> verts, std::vector<unsigned int> indxs);
 	void draw(int drawMode) const;
 private:
 	// vertex array object, vertex buffer object, element buffer object
