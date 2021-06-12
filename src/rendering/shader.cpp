@@ -1,6 +1,9 @@
 #include <rendering/shader.h>
 
 #include <helpers/RootDir.h>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <vector>
 
 
 Shader::Shader(std::string vsPath, std::string fsPath) {
@@ -70,6 +73,14 @@ void Shader::setUniform(const std::string& name, float value) {
 	glUniform1f(glGetUniformLocation(ID_, name.c_str()), value);
 }
 
+void Shader::setUniform(const std::string& name, glm::vec3 value) {
+	glUniform3fv(glGetUniformLocation(ID_, name.c_str()), 1, glm::value_ptr(value));
+}
+
+void Shader::setUniform(const std::string& name, glm::mat4 value) {
+	glUniformMatrix4fv(glGetUniformLocation(ID_, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+}
+
 void Shader::checkCompileErrors(int shader, const std::string& file) {
 	
 	int compiled;
@@ -78,11 +89,11 @@ void Shader::checkCompileErrors(int shader, const std::string& file) {
 	if (!compiled) {
 		int maxLen = 0;
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
-		std::string log;
+		std::vector<char> log;
 		log.reserve(maxLen);
-		glGetShaderInfoLog(shader, maxLen, NULL, &log.front());
+		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
 
-		std::cout << "[Error][Shader] Compilation error at: " << file << "\n" << log << std::endl;
+		std::cout << "[Error][Shader] Compilation error at: " << file << "\n" << log.data() << std::endl;
 	}
 }
 
@@ -93,10 +104,10 @@ void Shader::checkLinkErrors(int shader) {
 	if (!compiled) {
 		int maxLen = 0;
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
-		std::string log;
+		std::vector<char> log;
 		log.reserve(maxLen);
-		glGetShaderInfoLog(shader, maxLen, NULL, &log.front());
+		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
 
-		std::cout << "[Error][Shader] Linking error: \n" << log << std::endl;
+		std::cout << "[Error][Shader] Linking error: \n" << log.data() << std::endl;
 	}
 }
