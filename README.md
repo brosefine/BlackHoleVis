@@ -18,5 +18,10 @@ Hopefully, all dependencies should be loaded automatically by the CMakeLists.txt
 
 ### Linux (TODO)
 
+## Controls
+- WASD: move camera
+- SHIFT: move faster
+- Mouse move & right mouse click: rotate camera
+
 ## Sources
 - [LearnOpenGL](https://learnopengl.com/)
