@@ -10,7 +10,8 @@
 const float YAW = -90.f;
 const float PITCH = 0.f;
 const float FOV = 45.f;
-
+const float NEAR = 1.f;
+const float FAR = 100.f;
 
 class Camera {
 public:
@@ -18,9 +19,10 @@ public:
 	Camera();
 	Camera(glm::vec3 pos, glm::vec3 up, glm::vec3 front);
 
-	glm::mat4 getViewMatrix() const;
-	glm::mat4 getProjectionMatrix(float aspect, float near = .1f, float far = 100.f) const;
+	glm::mat4 getViewMatrix();
+	glm::mat4 getProjectionMatrix(float aspect, float near = NEAR, float far = FAR);
 
+	bool hasChanged() const { return changed_; }
 	glm::vec3 getPosition() const { return position_; }
 
 	void keyBoardInput(GLFWwindow *window, float dt);
@@ -46,4 +48,7 @@ private:
 	double lastMouseX_;
 	double lastMouseY_;
 	bool mouseInitialized_;
+
+	bool changed_;
+	bool mouseMotion_;
 };
