@@ -81,6 +81,10 @@ void Shader::setUniform(const std::string& name, glm::mat4 value) {
 	glUniformMatrix4fv(glGetUniformLocation(ID_, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
 }
 
+void Shader::setBlockBinding(const std::string& name, unsigned int binding) {
+	glUniformBlockBinding(ID_, glGetUniformBlockIndex(ID_, name.c_str()), binding);
+}
+
 void Shader::checkCompileErrors(int shader, const std::string& file) {
 	
 	int compiled;

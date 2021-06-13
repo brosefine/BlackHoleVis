@@ -3,12 +3,12 @@
 
 #include <iostream>
 
+#include <rendering/glBoilerplate.h>
 #include <rendering/shader.h>
 #include <rendering/quad.h>
 #include <rendering/camera.h>
-#include <rendering/glBoilerplate.h>
+#include <objects/blackHole.h>
 
-int width = 800, height = 600;
 float t0 = 0.f, dt = 0.f;
 
 void processKeyboardInputs(GLFWwindow* window) {
@@ -20,13 +20,18 @@ void processKeyboardInputs(GLFWwindow* window) {
 
 int main() {
 
-	GLFWwindow *windowPtr = glBoilerplate::init(width, height);
+	GLFWwindow *windowPtr = glBoilerplate::init(windowWidth, windowHeight);
 
-	Shader blackHoleShader("blackHole.vs", "blackHole.fs");
+	Shader blackHoleShader("blackHole.vert", "blackHole.frag");
 	Mesh quad(quadPostions, quadUVs, quadIndices);
 
-	Camera cam({ 0.f, 0.f, 3.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, -1.f });
-	glm::vec3 blackHole{0.f, 0.f, -2.f};
+	unsigned int blackHoleBinding = 1;
+	BlackHole blackHole(blackHoleBinding);
+	blackHole.uploadData();
+	blackHoleShader.use();
+	blackHoleShader.setBlockBinding("blackHole", blackHoleBinding);
+
+	Camera cam({ 0.f, 0.f, -3.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f });
 
 	while (!glfwWindowShouldClose(windowPtr)) {
 
@@ -40,11 +45,13 @@ int main() {
 
 		glClearColor(0.5, 0.5, 0.5, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
+
 		blackHoleShader.use();
 		blackHoleShader.setUniform("cameraPos", cam.getPosition());
-		blackHoleShader.setUniform("blackHolePos", blackHole);
-		blackHoleShader.setUniform("projectionViewInverse", glm::inverse(cam.getProjectionMatrix((float)width / height) * cam.getViewMatrix()));
+		blackHoleShader.setUniform("projectionViewInverse", 
+			glm::inverse(cam.getProjectionMatrix((float)windowWidth / windowHeight) * cam.getViewMatrix()));
 		quad.draw(GL_TRIANGLES);
+		
 		glfwPollEvents();
 		glfwSwapBuffers(windowPtr);
 	}

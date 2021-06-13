@@ -3,10 +3,14 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+int windowWidth = 800, windowHeight = 600;
+
 namespace glBoilerplate {
 
 void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
+	windowWidth = width;
+	windowHeight = height;
 }
 
 GLFWwindow* init(int width, int height) {
@@ -18,7 +22,7 @@ GLFWwindow* init(int width, int height) {
 	// core profile includes smaller set of functions, e.g. no backwards-compatibility
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow* windowPtr = glfwCreateWindow(width, height, "Black Hole Vis", NULL, NULL);
+	GLFWwindow* windowPtr = glfwCreateWindow(windowWidth, windowHeight, "Black Hole Vis", NULL, NULL);
 	if (!windowPtr) {
 		std::cout << "Window creation failed" << std::endl;
 		glfwTerminate();

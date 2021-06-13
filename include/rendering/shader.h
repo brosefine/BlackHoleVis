@@ -21,6 +21,8 @@ public:
 	void setUniform(const std::string& name, glm::vec3 value);
 	void setUniform(const std::string& name, glm::mat4 value);
 
+	void setBlockBinding(const std::string& name, unsigned int binding);
+
 	unsigned int getID() const { return ID_; }
 
 private:
