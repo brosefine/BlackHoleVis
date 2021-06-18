@@ -11,9 +11,11 @@
 class Shader {
 public:
 	// read shader file contents and compile shader code
+	Shader() {};
 	Shader(std::string vsPath, std::string fsPath);
 
 	void use();
+	void reload();
 	// set uniforms
 	void setUniform(const std::string& name, bool value);
 	void setUniform(const std::string& name, int value);
@@ -27,6 +29,11 @@ public:
 
 private:
 	unsigned int ID_;
-	void checkCompileErrors(int shader, const std::string& file);
-	void checkLinkErrors(int shader);
+
+	std::string vsPath_;
+	std::string fsPath_;
+
+	void compile();
+	bool checkCompileErrors(int shader, const std::string& file);
+	bool checkLinkErrors(int shader);
 };

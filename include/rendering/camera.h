@@ -25,6 +25,8 @@ public:
 	bool hasChanged() const { return changed_; }
 	glm::vec3 getPosition() const { return position_; }
 
+	void setSpeed(float speed) { translationSpeed_ = speed; }
+
 	void keyBoardInput(GLFWwindow *window, float dt);
 	void mouseInput(GLFWwindow* window);
 
@@ -43,6 +45,7 @@ private:
 	float fov_;
 
 	float translationSpeed_;
+	float translationFactor_;
 	float rotationSpeed_;
 
 	double lastMouseX_;

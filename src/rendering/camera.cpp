@@ -30,8 +30,6 @@ Camera::Camera(glm::vec3 pos, glm::vec3 up, glm::vec3 front)
 	// calculate yaw and pitch from front vector
     yaw_ = glm::degrees(std::atan2(front.z, front.x));
     pitch_ = glm::degrees(std::asin(-front.y));
-    std::cout << "front.x: " << front.x << " front.y: " << front.y << " front.z: " << front.z << std::endl;
-    std::cout << "pitch: " << pitch_ << " yaw: " << yaw_ << std::endl;
     calculateCameraVectors();
 }
 
@@ -48,13 +46,13 @@ glm::mat4 Camera::getProjectionMatrix(float aspect, float near, float far) {
 void Camera::keyBoardInput(GLFWwindow* window, float dt) {
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        translationSpeed_ = 2.f;
+        translationFactor_ = 2.f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-        translationSpeed_ = 1.f;
+        translationFactor_ = 1.f;
     }
 
-    float stepSize = translationSpeed_ * dt;
+    float stepSize = translationSpeed_ * translationFactor_ * dt;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         position_ += front_ * stepSize;
