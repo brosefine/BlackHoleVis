@@ -55,5 +55,45 @@ if(NOT glm_POPULATED)
 	add_subdirectory(${glm_SOURCE_DIR} ${glm_BINARY_DIR})
 endif()
 
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        v1.83
+)
+FetchContent_MakeAvailable(imgui)
+
+list(APPEND IMGUI_PUBLIC_HEADERS
+    "${imgui_SOURCE_DIR}/imgui.h"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.h"
+    )
+
+list(APPEND IMGUI_PRIVATE_HEADERS
+    "${imgui_SOURCE_DIR}/imgui_internal.h"
+    "${imgui_SOURCE_DIR}/imconfig.h"
+    "${imgui_SOURCE_DIR}/imstb_rect_pack.h"
+    "${imgui_SOURCE_DIR}/imstb_textedit.h"
+    "${imgui_SOURCE_DIR}/imstb_truetype.h"
+    )
+
+list(APPEND IMGUI_SOURCES
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    )
+
+list(APPEND IMGUI_PUBLIC_INCLUDE_DIRS
+    ${imgui_SOURCE_DIR}
+    )
+
+add_library(imgui_lib STATIC ${IMGUI_SOURCES})
+target_link_libraries(imgui_lib PUBLIC glfw glad)
+target_include_directories(imgui_lib PUBLIC ${IMGUI_PUBLIC_INCLUDE_DIRS})
+
+
 add_library(${PROJECT_NAME} INTERFACE)
-target_link_libraries(${PROJECT_NAME} INTERFACE glad glm glfw stb_image)
+target_link_libraries(${PROJECT_NAME} INTERFACE glad glm glfw stb_image imgui_lib)

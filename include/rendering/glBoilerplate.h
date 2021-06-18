@@ -29,6 +29,7 @@ GLFWwindow* init(int width, int height) {
 		return nullptr;
 	}
 	glfwMakeContextCurrent(windowPtr);
+	glfwSwapInterval(1); // Enable vsync
 	glfwSetFramebufferSizeCallback(windowPtr, framebufferResizeCallback);
 
 	// GLAD

@@ -1,5 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 
 #include <iostream>
 
@@ -14,6 +17,8 @@ Shader blackHoleShader;
 BlackHole blackHole;
 Camera cam;
 
+bool show_demo_window = true;
+
 void processKeyboardInputs(GLFWwindow* window) {
 
 	// close window with escape
@@ -27,6 +32,22 @@ void processKeyboardInputs(GLFWwindow* window) {
 int main() {
 
 	GLFWwindow *windowPtr = glBoilerplate::init(windowWidth, windowHeight);
+
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsClassic();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(windowPtr, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	//Shader blackHoleShader("blackHole.vert", "blackHoleTest.frag");
 	blackHoleShader = Shader("blackHole.vert", "newton.frag");
@@ -47,6 +68,14 @@ int main() {
 
 	while (!glfwWindowShouldClose(windowPtr)) {
 
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		if(show_demo_window)
+			ImGui::ShowDemoWindow(&show_demo_window);
+		ImGui::Render();
+
 		float now = glfwGetTime();
 		dt = now - t0;
 		t0 = now;
@@ -66,11 +95,18 @@ int main() {
 				glm::inverse(cam.getProjectionMatrix((float)windowWidth / windowHeight) * cam.getViewMatrix()));
 		}
 		quad.draw(GL_TRIANGLES);
+
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		
 		glfwPollEvents();
 		glfwSwapBuffers(windowPtr);
 	}
 
+	// Cleanup
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+	glfwDestroyWindow(windowPtr);
 	glfwTerminate();
 	return 0;
 
