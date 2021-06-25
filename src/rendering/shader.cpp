@@ -19,6 +19,7 @@ void Shader::use() {
 }
 
 void Shader::reload() {
+	glDeleteProgram(ID_);
 	compile();
 }
 

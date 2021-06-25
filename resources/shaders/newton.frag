@@ -1,6 +1,6 @@
 #version 330 core
 
-uniform vec3 cameraPos;
+//uniform vec3 cameraPos;
 
 layout (std140) uniform blackHole
 {
@@ -16,6 +16,7 @@ layout (std140) uniform configuration
     float forceWeight;
 };
 */
+in vec3 cameraPos;
 in vec3 worldPos;
 out vec4 FragColor;
 

@@ -14,6 +14,11 @@ const float NEAR = 1.f;
 const float FAR = 100.f;
 
 class Camera {
+	struct CameraData {
+		glm::mat4 projectionViewInverse_;
+		glm::vec3 camPos_;
+	};
+
 public:
 
 	Camera();
@@ -21,9 +26,10 @@ public:
 
 	glm::mat4 getViewMatrix();
 	glm::mat4 getProjectionMatrix(float aspect, float near = NEAR, float far = FAR);
+	glm::vec3 getPosition() const { return position_; }
 
 	bool hasChanged() const { return changed_; }
-	glm::vec3 getPosition() const { return position_; }
+	void update(int windowWidth, int windowHeight);
 
 	void setSpeed(float speed) { translationSpeed_ = speed; }
 
@@ -31,6 +37,15 @@ public:
 	void mouseInput(GLFWwindow* window);
 
 private:
+
+	// camera ubo
+
+	unsigned int ubo_;
+	CameraData data_;
+	void bind();
+	void uploadData(int windowWidth, int windowHeight);
+
+	// camera
 
 	void calculateCameraVectors();
 

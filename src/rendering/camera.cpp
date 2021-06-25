@@ -1,9 +1,12 @@
-#include <rendering/camera.h>
 #include <cmath>
 #include <iostream>
 
+#include <helpers/uboBindings.h>
+#include <rendering/camera.h>
+
 Camera::Camera() 
-	: position_({0, 0, 0})
+	: ubo_(0)
+    , position_({0, 0, 0})
 	, upDir_({0, 1, 0})
 	, yaw_(YAW)
 	, pitch_(PITCH)
@@ -15,6 +18,7 @@ Camera::Camera()
     , mouseMotion_(false)
 {
 	calculateCameraVectors();
+    bind();
 }
 
 Camera::Camera(glm::vec3 pos, glm::vec3 up, glm::vec3 front)
@@ -31,15 +35,20 @@ Camera::Camera(glm::vec3 pos, glm::vec3 up, glm::vec3 front)
     yaw_ = glm::degrees(std::atan2(front.z, front.x));
     pitch_ = glm::degrees(std::asin(-front.y));
     calculateCameraVectors();
+    bind();
 }
 
 glm::mat4 Camera::getViewMatrix() {
 	return glm::lookAt(position_, position_ + front_, up_);
-    changed_ = false;
 }
 
 glm::mat4 Camera::getProjectionMatrix(float aspect, float near, float far) {
 	return glm::perspective(fov_, aspect, near, far);
+}
+
+void Camera::update(int windowWidth, int windowHeight) {
+    if (changed_)
+        uploadData(windowWidth, windowHeight);
     changed_ = false;
 }
 
@@ -104,6 +113,24 @@ void Camera::mouseInput(GLFWwindow* window){
 
     changed_ = true;
     calculateCameraVectors();
+}
+
+void Camera::uploadData(int windowWidth, int windowHeight) {
+    
+    data_.camPos_ = getPosition();
+    data_.projectionViewInverse_ = glm::inverse(getProjectionMatrix((float)windowWidth / windowHeight) * getViewMatrix());
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data_);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+
+void Camera::bind() {
+    glGenBuffers(1, &ubo_);
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), NULL, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glBindBufferBase(GL_UNIFORM_BUFFER, CAMBINDING, ubo_);
 }
 
 void Camera::calculateCameraVectors() {

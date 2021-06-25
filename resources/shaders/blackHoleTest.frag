@@ -1,6 +1,5 @@
 #version 330 core
 
-uniform vec3 cameraPos;
 
 layout (std140) uniform blackHole
 {
@@ -8,11 +7,21 @@ layout (std140) uniform blackHole
     float blackHoleMass;
     float blackHoleRad;
 };
+/*
+layout (std140) uniform camera
+{
+    vec3 camPos;
+    mat4 projectionViewInverse;
+};
+*/
 
+
+in vec3 cameraPos;
 in vec3 worldPos;
 out vec4 FragColor;
 
 void main() {
+
 
     vec3 viewDir = normalize(worldPos - cameraPos);
     vec3 blackHoleVec = blackHolePos - cameraPos;
