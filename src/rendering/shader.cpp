@@ -20,6 +20,7 @@ void Shader::use() {
 
 void Shader::reload() {
 	glDeleteProgram(ID_);
+	ID_ = 0;
 	compile();
 }
 

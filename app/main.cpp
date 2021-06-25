@@ -15,10 +15,8 @@ int main() {
 
 	BHVWindow window(800, 600, "Black Hole Vis");
 	BHVGui gui(window.getPtr());
-	Mesh quad(quadPostions, quadUVs, quadIndices);
 
 	std::shared_ptr<BlackHole> blackHole = gui.getBlackHole();
-	std::cout << "Radius: " << blackHole->getRadius() << std::endl;
 	// place camera at a distance of 10 black hole (schwarzschild-)radii
 	Camera cam({ 0.f, 0.f, -10*blackHole->getRadius() }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f });
 	// set camera speed to a value appropriate to the scene's scale
@@ -26,6 +24,7 @@ int main() {
 	cam.update(window.getWidth(), window.getHeight());
 
 
+	Mesh quad(quadPostions, quadUVs, quadIndices);
 	while (!window.shouldClose()) {
 
 		gui.renderStart();

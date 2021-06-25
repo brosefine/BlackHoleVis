@@ -19,21 +19,20 @@ void BlackHoleGui::render() {
 	if (ImGui::Button("Apply")) changed_ = true;
 }
 
-NewtonShaderGui::NewtonShaderGui(){
+NewtonShaderGui::NewtonShaderGui(): stepSize_(2.5f), forceWeight_(8.5e-4){
 	name_ = "Newton";
 	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "newton.frag", { "EHSIZE", "TESTDIST" }));
 	shader_->use();
 	bindUBOs();
+	uploadUniforms();
 }
 
-void NewtonShaderGui::bindUBOs() {
-	shader_->setBlockBinding("blackHole", BLHBINDING);
-	shader_->setBlockBinding("camera", CAMBINDING);
-}
 
 void NewtonShaderGui::update() {
 	shader_->reload();
+	shader_->use(),
 	bindUBOs();
+	uploadUniforms();
 	changed_ = false;
 }
 
@@ -42,13 +41,21 @@ void NewtonShaderGui::render() {
 	if (ImGui::Button("Apply")) changed_ = true;
 }
 
+void NewtonShaderGui::bindUBOs() {
+	shader_->setBlockBinding("blackHole", BLHBINDING);
+	shader_->setBlockBinding("camera", CAMBINDING);
+}
+
+void NewtonShaderGui::uploadUniforms() {
+	shader_->setUniform("stepSize", stepSize_);
+	shader_->setUniform("forceWeight", forceWeight_);
+}
 
 TestShaderGui::TestShaderGui() {
 	name_ = "Test";
 	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "blackHoleTest.frag"));
 	shader_->use();
 	shader_->setBlockBinding("camera", CAMBINDING);
-
 }
 
 void TestShaderGui::render() {

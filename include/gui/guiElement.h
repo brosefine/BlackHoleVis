@@ -56,9 +56,14 @@ public:
 	NewtonShaderGui();
 
 private:
-	void bindUBOs();
 	void update() override;
 	void render() override;
+
+	void bindUBOs();
+	void uploadUniforms();
+
+	float stepSize_;
+	float forceWeight_;
 };
 
 class TestShaderGui : public ShaderGui {

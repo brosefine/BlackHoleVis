@@ -9,13 +9,9 @@ layout (std140) uniform blackHole
     float blackHoleRad;
 };
 
-/*
-layout (std140) uniform configuration
-{
-    float stepSize;
-    float forceWeight;
-};
-*/
+uniform float stepSize;
+uniform float forceWeight;
+
 in vec3 cameraPos;
 in vec3 worldPos;
 out vec4 FragColor;
@@ -25,7 +21,7 @@ out vec4 FragColor;
 float c = 3.0;
 
 vec3 newton(vec3 lightPos, vec3 lightVel, vec3 dist){
-    vec3 force = normalize(dist) * blackHoleMass * 8.5e-4 / dot(dist, dist); 
+    vec3 force = forceWeight * normalize(dist) * blackHoleMass / dot(dist, dist); 
     return c * normalize(lightVel + force);
 }
 
@@ -74,7 +70,7 @@ void main() {
         }
         #endif
         
-        lightPos += lightVel * 2.5;
+        lightPos += lightVel * stepSize;
         lightVel = newton(lightPos, lightVel, blackHoleVec);
     }
 
