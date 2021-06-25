@@ -6,8 +6,11 @@
 #include <vector>
 
 
-Shader::Shader(std::string vsPath, std::string fsPath)
+Shader::Shader(std::string vsPath, std::string fsPath, std::vector<std::string> flags)
 	: vsPath_(vsPath), fsPath_(fsPath){
+	for (auto const& flag : flags) {
+		preprocessorFlags_.insert({ flag, false });
+	}
 	compile();
 }
 
@@ -43,6 +46,10 @@ void Shader::setBlockBinding(const std::string& name, unsigned int binding) {
 	glUniformBlockBinding(ID_, glGetUniformBlockIndex(ID_, name.c_str()), binding);
 }
 
+void Shader::setFlag(std::string flag, bool value) {
+	preprocessorFlags_.at(flag) = value;
+}
+
 void Shader::compile() {
 	// vs = vertex shader, fs = fragment shader
 	std::string vsCode, fsCode;
@@ -72,7 +79,11 @@ void Shader::compile() {
 	}
 
 	unsigned int vsID, fsID, ID;
-	const char* vsCodeChar = vsCode.c_str(), * fsCodeChar = fsCode.c_str();
+	std::string ppflags = createPreprocessorFlags();
+	// add preprocessor definitions to shader code
+	vsCode = ppflags + vsCode;
+	fsCode = ppflags + fsCode;
+	const char *vsCodeChar = vsCode.c_str(), *fsCodeChar = fsCode.c_str();
 	// compile vertex shader
 	vsID = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vsID, 1, &vsCodeChar, NULL);
@@ -94,6 +105,17 @@ void Shader::compile() {
 		ID_ = ID;
 	glDeleteShader(vsID);
 	glDeleteShader(fsID);
+}
+
+std::string Shader::createPreprocessorFlags() const {
+	std::string flags;
+	for (auto const& flag : preprocessorFlags_) {
+		if (flag.second) {
+			flags += "#define " + flag.first + "\n";
+		}
+	}
+
+	return flags;
 }
 
 bool Shader::checkCompileErrors(int shader, const std::string& file) {

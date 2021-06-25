@@ -9,6 +9,13 @@ layout (std140) uniform blackHole
     float blackHoleRad;
 };
 
+/*
+layout (std140) uniform configuration
+{
+    float stepSize;
+    float forceWeight;
+};
+*/
 in vec3 worldPos;
 out vec4 FragColor;
 
@@ -23,7 +30,6 @@ vec3 newton(vec3 lightPos, vec3 lightVel, vec3 dist){
 
 void main() {
     
-    //FragColor = vec4(1,1,1,1);
     FragColor = vec4(0,0,0,1);
 
     vec3 viewDir = normalize(worldPos - cameraPos);
@@ -38,18 +44,17 @@ void main() {
     float dotP = dot(normalize(blackHoleVec), viewDir);
     float dist = length(dotP * length(blackHoleVec) * viewDir - blackHoleVec);
     if(dotP >= 0 && abs(dist) <= blackHoleRad) {
-        //FragColor = vec4(0,0,0,1);
         return;
     }
+
+    #ifdef EHSIZE
     // theoretical apparent EH size
-    /*
+    
     if(dotP >= 0 && abs(dist) <= 2.6 * blackHoleRad) {
         FragColor = vec4(0.5,0.5,0.5,1);
         return;
     }
-    */
-    
-    //FragColor = vec4(abs(normalize(viewDir)), 1.0); return;
+    #endif // EHSIZE
     
 
     // simple loop for now
@@ -58,13 +63,15 @@ void main() {
     for(int i = 0; i < 100; ++i) {
         
         blackHoleVec = blackHolePos - lightPos;
+        #ifdef TESTDIST
         if(length(blackHoleVec) <= blackHoleRad) return;
-        /*
+        #else
         float dotP = dot(normalize(blackHoleVec), normalize(lightVel));
         float dist = length(dotP * length(blackHoleVec) * normalize(lightVel) - blackHoleVec);
         if(dotP >= 0 && abs(dist) <= blackHoleRad) {
             return;
-        }*/
+        }
+        #endif
         
         lightPos += lightVel * 2.5;
         lightVel = newton(lightPos, lightVel, blackHoleVec);

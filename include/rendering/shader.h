@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 
 #include <string>
+#include <map>
+#include <vector>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -12,7 +14,7 @@ class Shader {
 public:
 	// read shader file contents and compile shader code
 	Shader() {};
-	Shader(std::string vsPath, std::string fsPath);
+	Shader(std::string vsPath, std::string fsPath, std::vector<std::string> flags = {});
 
 	void use();
 	void reload();
@@ -25,6 +27,11 @@ public:
 
 	void setBlockBinding(const std::string& name, unsigned int binding);
 
+	void setFlag(std::string flag, bool value);
+	std::map<std::string, bool> getFlags() const {
+		return preprocessorFlags_;
+	}
+
 	unsigned int getID() const { return ID_; }
 
 private:
@@ -32,6 +39,9 @@ private:
 
 	std::string vsPath_;
 	std::string fsPath_;
+
+	std::map<std::string, bool> preprocessorFlags_;
+	std::string createPreprocessorFlags() const;
 
 	void compile();
 	bool checkCompileErrors(int shader, const std::string& file);
