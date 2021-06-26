@@ -47,8 +47,7 @@ glm::mat4 Camera::getProjectionMatrix(float aspect, float near, float far) {
 }
 
 void Camera::update(int windowWidth, int windowHeight) {
-    if (changed_)
-        uploadData(windowWidth, windowHeight);
+    uploadData(windowWidth, windowHeight);
     changed_ = false;
 }
 

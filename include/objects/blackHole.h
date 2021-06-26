@@ -25,6 +25,12 @@ public:
 	unsigned int getUbo() const { return ubo_; }
 	unsigned int getBinding() const { return binding_; }
 	float getRadius() const { return data_.radius_; }
+	float getMass() const { return data_.mass_; }
+
+	void setMass(float mass) { 
+		data_.mass_ = mass;
+		calcRadius();
+	}
 
 private:
 

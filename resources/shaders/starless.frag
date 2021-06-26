@@ -10,7 +10,12 @@ layout (std140) uniform blackHole
 };
 
 uniform float stepSize;
-uniform float forceWeight;
+uniform float potentialCoefficient;
+/* Note on potentialCoefficient
+* in starless: 0 >= potentialCoefficient >= -1.5
+* here, value is 0 <= potentialCoefficient <= 1.5
+* because using distance (blackHole - lightPos)
+*/
 
 in vec3 cameraPos;
 in vec3 worldPos;
@@ -20,8 +25,8 @@ out vec4 FragColor;
 // (see Blackhole.h)
 float c = 3.0;
 
-vec3 newton(vec3 lightPos, vec3 lightVel, vec3 dist){
-    return forceWeight * normalize(dist) * blackHoleMass / dot(dist, dist); 
+vec3 starless(vec3 lightPos, vec3 lightVel, vec3 dist){
+    return blackHoleMass * potentialCoefficient * dist / pow(dot(dist, dist), 2.5);
 }
 
 void main() {
@@ -56,6 +61,8 @@ void main() {
     // simple loop for now
     vec3 lightPos = cameraPos;
     vec3 lightVel = c * viewDir;
+    vec3 lightup = cross(blackHoleVec, lightVel);
+    float h2 = dot(lightup, lightup);
     for(int i = 0; i < 100; ++i) {
         
         blackHoleVec = blackHolePos - lightPos;
@@ -71,7 +78,7 @@ void main() {
         #endif
         
         lightPos += lightVel * stepSize;
-        lightVel = c * normalize(lightVel + stepSize * newton(lightPos, lightVel, blackHoleVec));
+        lightVel += starless(lightPos, lightVel, blackHoleVec) * stepSize;
     }
 
     FragColor = vec4(abs(normalize(lightVel)), 1.0);

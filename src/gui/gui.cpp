@@ -21,8 +21,6 @@ void BHVGui::renderStart() {
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-	renderDemo();
-
 	// Show Shader window
 	renderShaderWindow();
 
@@ -57,18 +55,14 @@ void BHVGui::initImGui(GLFWwindow* win) {
 
 void BHVGui::initElements() {
 	shaderElements_.push_back(std::make_shared<NewtonShaderGui>());
+	shaderElements_.push_back(std::make_shared<StarlessShaderGui>());
 	shaderElements_.push_back(std::make_shared<TestShaderGui>());
-}
-
-void BHVGui::renderDemo() {
-	if (showDemoWin_)
-		ImGui::ShowDemoWindow(&showDemoWin_);
 }
 
 void BHVGui::renderShaderWindow() {
 	ImGui::Begin("Shader Settigns");
-
-	if (ImGui::BeginListBox("Shader Selection")) {
+	ImGui::Text("Shader Selection");
+	if (ImGui::BeginListBox("")) {
 
 		for (int i = 0; i < shaderElements_.size(); ++i) {
 			auto shader = shaderElements_.at(i);
@@ -77,7 +71,7 @@ void BHVGui::renderShaderWindow() {
 		}
 		ImGui::EndListBox();
 	}
-
+	ImGui::Separator();
 	shaderElements_.at(selectedShader_)->show();
 
 	ImGui::End();

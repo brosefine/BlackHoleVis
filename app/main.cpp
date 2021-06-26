@@ -35,7 +35,8 @@ int main() {
 
 		cam.keyBoardInput(window.getPtr(), dt);
 		cam.mouseInput(window.getPtr());
-		cam.update(window.getWidth(), window.getHeight());
+		if(cam.hasChanged() || window.hasChanged())
+			cam.update(window.getWidth(), window.getHeight());
 
 		glClearColor(0.5, 0.5, 0.5, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);

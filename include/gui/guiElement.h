@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 
 #include <imgui.h>
 
@@ -11,8 +12,8 @@
 class GuiElement {
 public:
 
-	GuiElement(): changed_(false){}
-	GuiElement(std::string name): changed_(false), name_(name){}
+	GuiElement(): changed_(false), alwaysUpdate_(false) {}
+	GuiElement(std::string name): changed_(false), alwaysUpdate_(false), name_(name){}
 
 	std::string getName() const { return name_; }
 	
@@ -23,10 +24,14 @@ public:
 
 protected:
 	bool changed_;
+	bool alwaysUpdate_;
+
 	std::string name_;
 
 	virtual void update() {};
 	virtual void render() = 0;
+
+	void renderRefreshMenu();
 };
 
 class BlackHoleGui : public GuiElement {
@@ -41,6 +46,8 @@ private:
 
 	void update() override;
 	void render() override;
+
+	float mass_;
 };
 
 class ShaderGui : public GuiElement {
@@ -48,6 +55,14 @@ public:
 	auto getShader() { return shader_; }
 protected:
 	std::shared_ptr<Shader> shader_;
+	std::map<std::string, bool> preprocessorFlags_;
+
+	void renderPreprocessorFlags();
+
+	virtual void bindUBOs();
+	virtual void update() override;
+	virtual void uploadUniforms() {};
+
 };
 
 class NewtonShaderGui : public ShaderGui {
@@ -56,11 +71,21 @@ public:
 	NewtonShaderGui();
 
 private:
-	void update() override;
 	void render() override;
+	void uploadUniforms() override;
 
-	void bindUBOs();
-	void uploadUniforms();
+	float stepSize_;
+	float forceWeight_;
+};
+
+class StarlessShaderGui : public ShaderGui {
+public:
+
+	StarlessShaderGui();
+
+private:
+	void render() override;
+	void uploadUniforms() override;
 
 	float stepSize_;
 	float forceWeight_;

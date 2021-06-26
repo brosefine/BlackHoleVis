@@ -33,6 +33,5 @@ private:
 
 	void initImGui(GLFWwindow* win);
 	void initElements();
-	void renderDemo();
 	void renderShaderWindow();
 };
