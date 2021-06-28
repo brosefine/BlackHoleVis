@@ -25,3 +25,5 @@ Hopefully, all dependencies should be loaded automatically by the CMakeLists.txt
 
 ## Sources
 - [LearnOpenGL](https://learnopengl.com/)
+- [Randonels Starless](https://github.com/rantonels/starless)
+- [Coding Train - Visualizing a Black Hole](https://www.youtube.com/watch?v=Iaz9TqYWUmA)
