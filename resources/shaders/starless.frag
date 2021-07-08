@@ -1,14 +1,8 @@
 #version 330 core
 
-//uniform vec3 cameraPos;
-
-layout (std140) uniform blackHole
-{
-    vec3 blackHolePos;
-    float blackHoleMass;
-    float blackHoleRad;
-};
-
+#ifdef SKY
+uniform samplerCube cubeMap;
+#endif //SKY
 uniform float stepSize;
 uniform float potentialCoefficient;
 /* Note on potentialCoefficient
@@ -17,16 +11,17 @@ uniform float potentialCoefficient;
 * because using distance (blackHole - lightPos)
 */
 
+
 in vec3 cameraPos;
 in vec3 worldPos;
 out vec4 FragColor;
 
-// speed of light in our units 
-// (see Blackhole.h)
-float c = 3.0;
+const float rs = 1.0;
+float accretionMin = 4.0;
+float accretionMax = 8.0;
 
-vec3 starless(vec3 lightPos, vec3 lightVel, vec3 dist){
-    return blackHoleMass * potentialCoefficient * dist / pow(dot(dist, dist), 2.5);
+vec3 starless(vec3 pos, float h2){
+    return -potentialCoefficient * h2 * normalize(pos) / pow(dot(pos, pos), 2.5);
 }
 
 void main() {
@@ -34,52 +29,81 @@ void main() {
     FragColor = vec4(0,0,0,1);
 
     vec3 viewDir = normalize(worldPos - cameraPos);
-    vec3 blackHoleVec = blackHolePos - cameraPos;
-    
-    if(length(blackHoleVec) <= blackHoleRad) {
-        return;
-    }
-
+  
+    #ifndef DISK
     // stop if lightray is pointing directly to black hole
-    
-    float dotP = dot(normalize(blackHoleVec), viewDir);
-    float dist = length(dotP * length(blackHoleVec) * viewDir - blackHoleVec);
-    if(dotP >= 0 && abs(dist) <= blackHoleRad) {
+    float dotP = dot(normalize(-cameraPos), viewDir);
+    float dist = length(dotP * length(cameraPos) * viewDir + cameraPos);
+    if(dotP >= 0 && abs(dist) <= rs) {
         return;
     }
 
     #ifdef EHSIZE
     // theoretical apparent EH size
-    
-    if(dotP >= 0 && abs(dist) <= 2.6 * blackHoleRad) {
+    if(dotP >= 0 && abs(dist) <= 2.6 * rs) {
         FragColor = vec4(0.5,0.5,0.5,1);
         return;
     }
     #endif // EHSIZE
+    #endif
     
+    vec3 lightPos = cameraPos;
+    vec3 lightVel = viewDir;
+    vec3 lightup = cross(-cameraPos, lightVel);
+    float h2 = dot(lightup, lightup);
+
+    #ifdef FIRSTRK4
+    if(length(lightPos) > rs) {
+        #ifdef DISK
+        float stp = min(abs(lightPos.y), min(abs(length(lightPos)-rs), abs(length(lightPos)-accretionMax)));
+        #else
+        float stp = length(lightPos) - rs;
+        #endif
+        vec3 k1 = starless(lightPos, h2);
+        vec3 k2 = starless(lightPos + 0.5 * stp * k1, h2);
+        vec3 k3 = starless(lightPos + 0.5 * stp * k2, h2);
+        vec3 k4 = starless(lightPos + stp * k3, h2);
+
+        lightVel = normalize(lightVel + stp/6.0 * (k1 + 2*k2 + 2*k3 + k4));
+        lightPos += stp * lightVel;
+
+    }
+    #endif //FIRSTRK4
+
 
     // simple loop for now
-    vec3 lightPos = cameraPos;
-    vec3 lightVel = c * viewDir;
-    vec3 lightup = cross(blackHoleVec, lightVel);
-    float h2 = dot(lightup, lightup);
     for(int i = 0; i < 100; ++i) {
         
-        blackHoleVec = blackHolePos - lightPos;
-        #ifndef RAYDIRTEST
-        if(length(blackHoleVec) <= blackHoleRad) return;
-        #else
-        float dotP = dot(normalize(blackHoleVec), normalize(lightVel));
-        float dist = length(dotP * length(blackHoleVec) * normalize(lightVel) - blackHoleVec);
-        if(dotP >= 0 && abs(dist) <= blackHoleRad) {
-            FragColor = vec4(0,1,0,1);
+        if(length(lightPos) <= rs) return;
+        #ifdef RAYDIRTEST
+        float dotP = dot(normalize(-lightPos), normalize(lightVel));
+        float dist = length(dotP * length(lightPos) * normalize(lightVel) + lightPos);
+        if(dotP >= 0 && abs(dist) <= rs) {
             return;
         }
         #endif
         
+        lightVel = normalize(lightVel + starless(lightPos, h2));
         lightPos += lightVel * stepSize;
-        lightVel += starless(lightPos, lightVel, blackHoleVec) * stepSize;
+
+        #ifdef DISK
+        vec3 prevPos = lightPos - lightVel * stepSize;
+        if((prevPos.y < 0 && lightPos.y > 0) ||(prevPos.y > 0 && lightPos.y < 0)){
+            if(lightVel.y == 0.0) { FragColor = vec4(1,1,1,1); return; }
+            vec3 diskHit = lightPos - lightPos.y * lightVel / lightVel.y;
+            if(length(diskHit) < accretionMax && length(diskHit) > accretionMin) {
+                float heat = (length(diskHit) - accretionMin)/(accretionMax-accretionMin);
+                FragColor = vec4(1, 1.0 - heat, 0.7 - heat, 1);                
+                //FragColor = vec4(1,1,1,1);
+                return;
+            }
+        }
+        #endif //DISK
     }
 
+    #ifdef SKY
+    FragColor = texture(cubeMap, lightVel);
+    #else
     FragColor = vec4(abs(normalize(lightVel)), 1.0);
+    #endif //SKY
 }

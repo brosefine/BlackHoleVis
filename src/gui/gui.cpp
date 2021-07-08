@@ -25,9 +25,11 @@ void BHVGui::renderStart() {
 	renderShaderWindow();
 
 	// Show BlackHole Window
+	/*
 	ImGui::Begin("Black Hole Settings");
 	blackHoleElement_.show();
 	ImGui::End();
+	*/
 
 	ImGui::Render();
 }
@@ -41,8 +43,6 @@ void BHVGui::initImGui(GLFWwindow* win) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();

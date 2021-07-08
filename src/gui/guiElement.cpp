@@ -62,9 +62,10 @@ void BlackHoleGui::render() {
 
 //------------ Newton Shader GUI ------------ //
 
-NewtonShaderGui::NewtonShaderGui(): stepSize_(2.5f), forceWeight_(3.5e-4){
+NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f){
 	name_ = "Newton";
-	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "newton.frag", { "EHSIZE", "RAYDIRTEST" }));
+	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "newton.frag", 
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" }));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();
@@ -74,8 +75,8 @@ NewtonShaderGui::NewtonShaderGui(): stepSize_(2.5f), forceWeight_(3.5e-4){
 
 void NewtonShaderGui::render() {
 	ImGui::Text("Newton Shader Properties");
-	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
-	ImGui::InputFloat("Force Weight", &forceWeight_, .00001, .0001, "%.6e");
+	ImGui::InputFloat("Step Size", &stepSize_, 0.01, 0.1);
+	ImGui::InputFloat("Force Weight", &forceWeight_, .001, .01, "%.3e");
 
 	renderPreprocessorFlags();
 	ImGui::Separator();
@@ -92,20 +93,26 @@ void NewtonShaderGui::uploadUniforms() {
 
 TestShaderGui::TestShaderGui() {
 	name_ = "Test";
-	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "blackHoleTest.frag"));
+	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY" }));
+	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	shader_->setBlockBinding("camera", CAMBINDING);
 }
 
 void TestShaderGui::render() {
 	ImGui::Text("I'm the Test Shader");
+	renderPreprocessorFlags();
+	ImGui::Separator();
+
+	renderRefreshMenu();
 }
 
 //------------ Stalress Shader GUI ------------ //
 
-StarlessShaderGui::StarlessShaderGui(): stepSize_(1.f), forceWeight_(5.f) {
+StarlessShaderGui::StarlessShaderGui(): stepSize_(1.f), forceWeight_(1.f) {
 	name_ = "Starless";
-	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "starless.frag", { "EHSIZE", "RAYDIRTEST" }));
+	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "starless.frag",
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" }));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();
@@ -114,7 +121,7 @@ StarlessShaderGui::StarlessShaderGui(): stepSize_(1.f), forceWeight_(5.f) {
 
 
 void StarlessShaderGui::render() {
-	ImGui::Text("Newton Shader Properties");
+	ImGui::Text("Starless Shader Properties");
 	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
 	ImGui::InputFloat("Force Weight", &forceWeight_, .01f, .1f);
 	renderPreprocessorFlags();

@@ -7,11 +7,19 @@
 
 
 Shader::Shader(std::string vsPath, std::string fsPath, std::vector<std::string> flags)
-	: vsPath_(vsPath), fsPath_(fsPath){
+	: vsPaths_({ vsPath }), fsPaths_({ fsPath }) {
 	for (auto const& flag : flags) {
 		preprocessorFlags_.insert({ flag, false });
 	}
 	compile();
+}
+
+Shader::Shader(std::vector<std::string> vsPaths, std::vector<std::string> fsPaths, std::vector<std::string> flags)
+: vsPaths_(vsPaths), fsPaths_(fsPaths) {
+		for (auto const& flag : flags) {
+			preprocessorFlags_.insert({ flag, false });
+		}
+		compile();
 }
 
 void Shader::use() {
@@ -54,48 +62,23 @@ void Shader::setFlag(std::string flag, bool value) {
 
 void Shader::compile() {
 	// vs = vertex shader, fs = fragment shader
-	std::string vsCode, fsCode;
-	std::ifstream vsFile, fsFile;
-
-	vsFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	fsFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-	// open files and read contents
-	try {
-		vsFile.open(ROOT_DIR "resources/shaders/" + vsPath_);
-		fsFile.open(ROOT_DIR "resources/shaders/" + fsPath_);
-		// won't need these stream objects after file was read
-		std::stringstream vsStream, fsStream;
-		// read
-		vsStream << vsFile.rdbuf();
-		fsStream << fsFile.rdbuf();
-		// close
-		vsFile.close();
-		fsFile.close();
-		// to string
-		vsCode = vsStream.str();
-		fsCode = fsStream.str();
-	}
-	catch (std::ifstream::failure& error) {
-		std::cout << "[Error][Shader] File not read" << std::endl;
-	}
+	std::string ppflags = createPreprocessorFlags();
+	std::string vsCode = ppflags + readShaderFiles(vsPaths_);
+	std::string fsCode = ppflags + readShaderFiles(fsPaths_);
 
 	unsigned int vsID, fsID, ID;
-	std::string ppflags = createPreprocessorFlags();
 	// add preprocessor definitions to shader code
-	vsCode = ppflags + vsCode;
-	fsCode = ppflags + fsCode;
 	const char *vsCodeChar = vsCode.c_str(), *fsCodeChar = fsCode.c_str();
 	// compile vertex shader
 	vsID = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vsID, 1, &vsCodeChar, NULL);
 	glCompileShader(vsID);
-	bool vsCompiled = checkCompileErrors(vsID, vsPath_);
+	bool vsCompiled = checkCompileErrors(vsID, "vertexShader");
 	// compile fragment shader
 	fsID = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fsID, 1, &fsCodeChar, NULL);
 	glCompileShader(fsID);
-	bool fsCompiled = checkCompileErrors(fsID, fsPath_);
+	bool fsCompiled = checkCompileErrors(fsID, "fragmentShader");
 	// compile combined shader
 	ID = glCreateProgram();
 	glAttachShader(ID, vsID);
@@ -109,6 +92,35 @@ void Shader::compile() {
 	glDeleteShader(fsID);
 }
 
+std::string Shader::readShaderFiles(std::vector<std::string> paths) const {
+
+	std::string shaderCode;
+	std::ifstream file;
+	file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+	for (auto const& path : paths) {
+
+		try {
+
+			file.open(ROOT_DIR "resources/shaders/" + path);
+			// won't need these stream objects after file was read
+			std::stringstream stream;
+			// read
+			stream << file.rdbuf();
+			// close
+			file.close();
+			// to string
+			shaderCode += stream.str();
+
+		} catch (std::ifstream::failure& error) {
+			std::cout << "[Error][Shader] File " << path << " not read" << std::endl;
+			return "";
+		}
+	}
+
+	return shaderCode;
+}
+
 std::string Shader::createPreprocessorFlags() const {
 	std::string flags;
 	for (auto const& flag : preprocessorFlags_) {
@@ -120,7 +132,7 @@ std::string Shader::createPreprocessorFlags() const {
 	return flags;
 }
 
-bool Shader::checkCompileErrors(int shader, const std::string& file) {
+bool Shader::checkCompileErrors(int shader, std::string name) {
 	
 	int compiled;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
@@ -132,7 +144,7 @@ bool Shader::checkCompileErrors(int shader, const std::string& file) {
 		log.reserve(maxLen);
 		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
 
-		std::cout << "[Error][Shader] Compilation error at: " << file << "\n" << log.data() << std::endl;
+		std::cout << "[Error][Shader] Compilation error at: " << name << "\n" << log.data() << std::endl;
 
 		return false;
 	}

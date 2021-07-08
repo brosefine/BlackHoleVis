@@ -97,6 +97,6 @@ public:
 	TestShaderGui();
 
 private:
-
 	void render() override;
+
 };

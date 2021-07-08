@@ -15,6 +15,7 @@ public:
 	// read shader file contents and compile shader code
 	Shader() {};
 	Shader(std::string vsPath, std::string fsPath, std::vector<std::string> flags = {});
+	Shader(std::vector<std::string> vsPaths, std::vector<std::string> fsPaths, std::vector<std::string> flags = {});
 
 	void use();
 	void reload();
@@ -37,13 +38,14 @@ public:
 private:
 	unsigned int ID_;
 
-	std::string vsPath_;
-	std::string fsPath_;
+	std::vector<std::string> vsPaths_;
+	std::vector<std::string> fsPaths_;
 
 	std::map<std::string, bool> preprocessorFlags_;
 	std::string createPreprocessorFlags() const;
 
 	void compile();
-	bool checkCompileErrors(int shader, const std::string& file);
+	std::string readShaderFiles(std::vector<std::string> paths) const;
+	bool checkCompileErrors(int shader, std::string name);
 	bool checkLinkErrors(int shader);
 };

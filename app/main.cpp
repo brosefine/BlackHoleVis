@@ -5,6 +5,7 @@
 #include <rendering/quad.h>
 #include <rendering/camera.h>
 #include <rendering/window.h>
+#include <rendering/texture.h>
 #include <objects/blackHole.h>
 #include <gui/gui.h>
 
@@ -16,15 +17,15 @@ int main() {
 	BHVWindow window(800, 600, "Black Hole Vis");
 	BHVGui gui(window.getPtr());
 
-	std::shared_ptr<BlackHole> blackHole = gui.getBlackHole();
 	// place camera at a distance of 10 black hole (schwarzschild-)radii
-	Camera cam({ 0.f, 0.f, -10*blackHole->getRadius() }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f });
+	Camera cam({ 0.f, 0.f, -10 }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f });
 	// set camera speed to a value appropriate to the scene's scale
-	cam.setSpeed(5*blackHole->getRadius());
 	cam.update(window.getWidth(), window.getHeight());
 
-
 	Mesh quad(quadPostions, quadUVs, quadIndices);
+	CubeMap sky({ "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" });
+	sky.bind();
+
 	while (!window.shouldClose()) {
 
 		gui.renderStart();

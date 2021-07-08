@@ -1,20 +1,8 @@
 #version 330 core
 
-
-layout (std140) uniform blackHole
-{
-    vec3 blackHolePos;
-    float blackHoleMass;
-    float blackHoleRad;
-};
-/*
-layout (std140) uniform camera
-{
-    vec3 camPos;
-    mat4 projectionViewInverse;
-};
-*/
-
+#ifdef SKY
+uniform samplerCube cubeMap;
+#endif //SKY
 
 in vec3 cameraPos;
 in vec3 worldPos;
@@ -24,9 +12,9 @@ void main() {
 
 
     vec3 viewDir = normalize(worldPos - cameraPos);
-    vec3 blackHoleVec = blackHolePos - cameraPos;
+    vec3 blackHoleVec = -cameraPos;
     
-    if(length(blackHoleVec) <= blackHoleRad) {
+    if(length(blackHoleVec) <= 1) {
         FragColor = vec4(1,1,1,1);
         return;
     }
@@ -34,8 +22,12 @@ void main() {
     float dotP = dot(normalize(blackHoleVec), viewDir);
     float dist = length(dotP * length(blackHoleVec) * viewDir - blackHoleVec);
 
-    if(dotP < 0 || abs(dist) > blackHoleRad) {
+    if(dotP < 0 || abs(dist) > 1) {
+        #ifdef SKY
+        FragColor = texture(cubeMap, viewDir);
+        #else
         FragColor = vec4(abs(viewDir),1);
+        #endif //SKY
     } else {
         FragColor = vec4(0,0,0,1);
     }

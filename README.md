@@ -8,7 +8,8 @@ Hopefully, all dependencies should be loaded automatically by the CMakeLists.txt
 - glm
 - glad
 - glfw
-- stb_image
+- imgui
+- stb_image (included in thirdparty/)
 
 ### Windows
 - open directory in CMake GUI
@@ -24,6 +25,9 @@ Hopefully, all dependencies should be loaded automatically by the CMakeLists.txt
 - Mouse move & right mouse click: rotate camera
 
 ## Sources
+### Images and Textures
+- Skybox generated with [space-3d](https://wwwtyro.github.io/space-3d/#animationSpeed=1&fov=80&nebulae=true&pointStars=true&resolution=1024&seed=3wq0xhr2fwu8&stars=true&sun=false) by Rye Terrell
+### Black Hole Visualization
 - [LearnOpenGL](https://learnopengl.com/)
 - [Randonels Starless](https://github.com/rantonels/starless)
 - [Coding Train - Visualizing a Black Hole](https://www.youtube.com/watch?v=Iaz9TqYWUmA)
