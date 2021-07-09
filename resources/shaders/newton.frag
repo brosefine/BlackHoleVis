@@ -44,11 +44,7 @@ void main() {
 
     #ifdef FIRSTRK4
     if(length(lightPos) > rs) {
-        #ifdef DISK
-        float stp = min(abs(lightPos.y), min(abs(length(lightPos)-rs), abs(length(lightPos)-accretionMax)));
-        #else
         float stp = length(lightPos) - rs;
-        #endif        
         vec3 k1 = newton(lightPos);
         vec3 k2 = newton(lightPos + 0.5 * stp * k1);
         vec3 k3 = newton(lightPos + 0.5 * stp * k2);
@@ -56,6 +52,20 @@ void main() {
 
         lightVel = normalize(lightVel + stp/6.0 * (k1 + 2*k2 + 2*k3 + k4));
         lightPos += stp * lightVel;
+
+        #ifdef DISK
+        vec3 prevPos = lightPos - lightVel * stp;
+        if((prevPos.y < 0 && lightPos.y > 0) ||(prevPos.y > 0 && lightPos.y < 0)){
+            if(lightVel.y == 0.0) { FragColor = vec4(1,1,1,1); return; }
+            vec3 diskHit = lightPos - lightPos.y * lightVel / lightVel.y;
+            if(length(diskHit) < accretionMax && length(diskHit) > accretionMin) {
+                float heat = (length(diskHit) - accretionMin)/(accretionMax-accretionMin);
+                FragColor = vec4(1, 1.0 - heat, 0.7 - heat, 1);                
+                //FragColor = vec4(1,1,1,1);
+                return;
+            }
+        }
+        #endif //DISK
     }
 
     #endif //FIRSTRK4
