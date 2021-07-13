@@ -93,7 +93,7 @@ void NewtonShaderGui::uploadUniforms() {
 
 TestShaderGui::TestShaderGui() {
 	name_ = "Test";
-	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY" }));
+	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY", "DISK" }));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	shader_->setBlockBinding("camera", CAMBINDING);
@@ -107,7 +107,7 @@ void TestShaderGui::render() {
 	renderRefreshMenu();
 }
 
-//------------ Stalress Shader GUI ------------ //
+//------------ Starless Shader GUI ------------ //
 
 StarlessShaderGui::StarlessShaderGui(): stepSize_(1.f), forceWeight_(1.f) {
 	name_ = "Starless";

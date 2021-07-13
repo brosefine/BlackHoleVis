@@ -40,6 +40,7 @@ private:
 
 	std::vector<std::string> vsPaths_;
 	std::vector<std::string> fsPaths_;
+	std::string versionDirective_;
 
 	std::map<std::string, bool> preprocessorFlags_;
 	std::string createPreprocessorFlags() const;

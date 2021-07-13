@@ -7,7 +7,7 @@
 
 
 Shader::Shader(std::string vsPath, std::string fsPath, std::vector<std::string> flags)
-	: vsPaths_({ vsPath }), fsPaths_({ fsPath }) {
+	: vsPaths_({ vsPath }), fsPaths_({ fsPath }), versionDirective_("#version 330 core\n") {
 	for (auto const& flag : flags) {
 		preprocessorFlags_.insert({ flag, false });
 	}
@@ -15,7 +15,7 @@ Shader::Shader(std::string vsPath, std::string fsPath, std::vector<std::string> 
 }
 
 Shader::Shader(std::vector<std::string> vsPaths, std::vector<std::string> fsPaths, std::vector<std::string> flags)
-: vsPaths_(vsPaths), fsPaths_(fsPaths) {
+: vsPaths_(vsPaths), fsPaths_(fsPaths), versionDirective_("#version 330 core\n") {
 		for (auto const& flag : flags) {
 			preprocessorFlags_.insert({ flag, false });
 		}
@@ -27,8 +27,8 @@ void Shader::use() {
 }
 
 void Shader::reload() {
-	glDeleteProgram(ID_);
-	ID_ = 0;
+	//glDeleteProgram(ID_);
+	//ID_ = 0;
 	compile();
 }
 
@@ -63,8 +63,8 @@ void Shader::setFlag(std::string flag, bool value) {
 void Shader::compile() {
 	// vs = vertex shader, fs = fragment shader
 	std::string ppflags = createPreprocessorFlags();
-	std::string vsCode = ppflags + readShaderFiles(vsPaths_);
-	std::string fsCode = ppflags + readShaderFiles(fsPaths_);
+	std::string vsCode = versionDirective_ + ppflags + readShaderFiles(vsPaths_);
+	std::string fsCode = versionDirective_ + ppflags + readShaderFiles(fsPaths_);
 
 	unsigned int vsID, fsID, ID;
 	// add preprocessor definitions to shader code
@@ -84,7 +84,7 @@ void Shader::compile() {
 	glAttachShader(ID, vsID);
 	glAttachShader(ID, fsID);
 	glLinkProgram(ID);
-	bool linked = checkCompileErrors(ID, "program");
+	bool linked = checkLinkErrors(ID);
 
 	if(vsCompiled && fsCompiled && linked)
 		ID_ = ID;
@@ -134,7 +134,7 @@ std::string Shader::createPreprocessorFlags() const {
 
 bool Shader::checkCompileErrors(int shader, std::string name) {
 	
-	int compiled;
+	int compiled = 0;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
 	if (!compiled) {
@@ -153,12 +153,12 @@ bool Shader::checkCompileErrors(int shader, std::string name) {
 }
 
 bool Shader::checkLinkErrors(int shader) {
-	int compiled;
-	glGetShaderiv(shader, GL_LINK_STATUS, &compiled);
+	int linked = 0;
+	glGetProgramiv(shader, GL_LINK_STATUS, &linked);
 
-	if (!compiled) {
+	if (!linked) {
 		int maxLen = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
+		glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
 		std::vector<char> log;
 		log.reserve(maxLen);
 		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
