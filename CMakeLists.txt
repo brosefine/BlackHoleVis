@@ -20,12 +20,17 @@ file(GLOB_RECURSE HEADER_FILES
         ${CMAKE_SOURCE_DIR}/include/*.hpp
         ${CMAKE_SOURCE_DIR}/include/*.h)
 
-
 add_library(SOURCE ${SRC_FILES} ${HEADER_FILES})
 target_include_directories(SOURCE PUBLIC ${CMAKE_SOURCE_DIR}/include/ ${CMAKE_BINARY_DIR}/include/)
 target_link_libraries(SOURCE bhv_dependencies)
 
-add_executable(${PROJECT_NAME}_main ${CMAKE_SOURCE_DIR}/app/main.cpp)
+file(GLOB BHV_FILES
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/bhv_main.cpp
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/bhv_app.h
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/bhv_app.cpp)
+
+add_executable(${PROJECT_NAME}_main ${BHV_FILES})
+target_include_directories(${PROJECT_NAME}_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/)
 target_link_libraries(${PROJECT_NAME}_main SOURCE bhv_dependencies)
 
 
@@ -50,6 +55,7 @@ if(MSVC_IDE)
         # Run macro
         GroupSources(include)
         GroupSources(src)
+        GroupSources(app)
         # Create a symlink to .sln file to make switching between folder and solution view in MSVC easier
         # Note: not working because MSVC fails to open .sln file via symlink from folder view -__-
         #execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}.sln)

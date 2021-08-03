@@ -60,7 +60,7 @@ void BHVGui::initElements() {
 }
 
 void BHVGui::renderShaderWindow() {
-	ImGui::Begin("Shader Settigns");
+	ImGui::Begin("Shader Settings");
 	ImGui::Text("Shader Selection");
 	if (ImGui::BeginListBox("")) {
 
