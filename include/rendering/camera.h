@@ -27,11 +27,16 @@ public:
 	glm::mat4 getViewMatrix();
 	glm::mat4 getProjectionMatrix(float aspect, float near = NEAR, float far = FAR);
 	glm::vec3 getPosition() const { return position_; }
+	glm::vec3 getFront() const { return front_; }
+	glm::vec3 getUp() const { return up_; }
 
 	bool hasChanged() const { return changed_; }
 	void update(int windowWidth, int windowHeight);
 
 	void setSpeed(float speed) { translationSpeed_ = speed; }
+	void setFront(glm::vec3 front);
+	void setPos(glm::vec3 pos);
+	void setUp(glm::vec3 up);
 
 	void keyBoardInput(GLFWwindow *window, float dt);
 	void mouseInput(GLFWwindow* window);

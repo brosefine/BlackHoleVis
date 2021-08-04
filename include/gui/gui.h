@@ -7,31 +7,17 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
-#include <gui/guiElement.h>
-
-class BHVGui {
+class Gui {
 public:
-	BHVGui(GLFWwindow *win);
+	Gui(GLFWwindow *win);
 
-	void renderStart();
+	void newFrame();
+	void render();
 	void renderEnd();
 
-	auto getCurrentShader() { return shaderElements_.at(selectedShader_)->getShader(); }
-	auto getBlackHole() { return blackHoleElement_.getBlackHole(); }
-
-	~BHVGui();
+	~Gui();
 
 private:
 
-	bool showDemoWin_;
-
-	BlackHoleGui blackHoleElement_;
-
-	int selectedShader_;
-	std::vector<std::shared_ptr<ShaderGui>> shaderElements_;
-	std::vector<const char*> shaderNames_;
-
 	void initImGui(GLFWwindow* win);
-	void initElements();
-	void renderShaderWindow();
 };

@@ -31,10 +31,11 @@ void ShaderGui::update() {
 	// update preprocessor flags
 	for (auto& flag : preprocessorFlags_) {
 		shader_->setFlag(flag.first, flag.second);
+		std::cout << flag.first << " " << flag.second << std::endl;
 	}
 	shader_->reload();
-	shader_->use(),
-		bindUBOs();
+	shader_->use();
+	bindUBOs();
 	uploadUniforms();
 	changed_ = false;
 }
@@ -70,6 +71,38 @@ NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f){
 	shader_->use();
 	bindUBOs();
 	uploadUniforms();
+}
+
+void NewtonShaderGui::dumpState(std::ofstream& outFile) {
+	outFile << "Flags\n";
+	for (auto const& flag : preprocessorFlags_) {
+		outFile << flag.first << " " << flag.second << "\n";
+	}
+	outFile << "Uniforms\n";
+	outFile << stepSize_ << " " << forceWeight_ << "\n";
+}
+
+void NewtonShaderGui::readState(std::ifstream& inFile) {
+	std::string word;
+	while (word != "EndShader" && inFile >> word) {
+		if (word == "Flags") {
+			while (true) {
+				inFile >> word;
+				if (word == "Uniforms") break;
+				std::string val;
+				inFile >> val;
+				preprocessorFlags_.at(word) = val == "1" ? true : false;
+			}
+		}
+		
+		if (word == "Uniforms") {
+			inFile >> word;
+			stepSize_ = std::stof(word);
+			inFile >> word;
+			forceWeight_ = std::stof(word);
+		}
+	}
+	update();
 }
 
 
@@ -133,4 +166,36 @@ void StarlessShaderGui::render() {
 void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("potentialCoefficient", forceWeight_);
+}
+
+void StarlessShaderGui::dumpState(std::ofstream& outFile) {
+	outFile << "Flags\n";
+	for (auto const& flag : preprocessorFlags_) {
+		outFile << flag.first << " " << (flag.second ? 1 : 0) << "\n";
+	}
+	outFile << "Uniforms\n";
+	outFile << stepSize_ << " " << forceWeight_ << "\n";
+}
+
+void StarlessShaderGui::readState(std::ifstream& inFile) {
+	std::string word;
+	while (word != "EndShader" && inFile >> word) {
+		if (word == "Flags") {
+			while (true) {
+				inFile >> word;
+				if (word == "Uniforms") break;
+				std::string val;
+				inFile >> val;
+				preprocessorFlags_.at(word) = val == "1" ? true : false;
+			}
+		}
+
+		if (word == "Uniforms") {
+			inFile >> word;
+			stepSize_ = std::stof(word);
+			inFile >> word;
+			forceWeight_ = std::stof(word);
+		}
+	}
+	update();
 }

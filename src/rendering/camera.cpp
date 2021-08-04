@@ -31,10 +31,7 @@ Camera::Camera(glm::vec3 pos, glm::vec3 up, glm::vec3 front)
     , changed_(true)
     , mouseMotion_(false) 
 {
-	// calculate yaw and pitch from front vector
-    yaw_ = glm::degrees(std::atan2(front.z, front.x));
-    pitch_ = glm::degrees(std::asin(-front.y));
-    calculateCameraVectors();
+    setFront(front);
     bind();
 }
 
@@ -49,6 +46,27 @@ glm::mat4 Camera::getProjectionMatrix(float aspect, float near, float far) {
 void Camera::update(int windowWidth, int windowHeight) {
     uploadData(windowWidth, windowHeight);
     changed_ = false;
+}
+
+void Camera::setFront(glm::vec3 front) {
+    // calculate yaw and pitch from front vector
+    front_ = glm::normalize(front);
+    yaw_ = glm::degrees(std::atan2(front_.z, front_.x));
+    pitch_ = glm::degrees(std::atan2(front_.y, std::sqrt(front_.x * front_.x + front_.z * front_.z)));
+    pitch_ = std::max(std::min(pitch_, 89.f), -89.f);
+    calculateCameraVectors();
+    changed_ = true;
+}
+
+void Camera::setPos(glm::vec3 pos) {
+    position_ = pos;
+    changed_ = true;
+}
+
+void Camera::setUp(glm::vec3 up) {
+    up_ = up;
+    changed_ = true;
+    calculateCameraVectors();
 }
 
 void Camera::keyBoardInput(GLFWwindow* window, float dt) {
@@ -102,6 +120,7 @@ void Camera::mouseInput(GLFWwindow* window){
     // stop if mouse position barely changed
     if (abs(lastMouseX_ - x) < 0.000001f && abs(lastMouseY_ - y) < 0.000001f)
         return;
+
     // update camera orientation
     yaw_ += (x - lastMouseX_) * rotationSpeed_;
     pitch_ += -(y - lastMouseY_) * rotationSpeed_;
@@ -145,4 +164,5 @@ void Camera::calculateCameraVectors() {
     front_ = glm::normalize(front_);
     right_ = glm::normalize(glm::cross(front_, upDir_));
     up_ = glm::normalize(glm::cross(right_, front_));
+
 }

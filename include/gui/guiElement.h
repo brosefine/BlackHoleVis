@@ -16,6 +16,8 @@ public:
 	GuiElement(std::string name): changed_(false), alwaysUpdate_(false), name_(name){}
 
 	std::string getName() const { return name_; }
+	virtual void dumpState(std::ofstream& outFile) {};
+	virtual void readState(std::ifstream& inFile) {};
 	
 	void show() {
 		if (changed_) update();
@@ -69,6 +71,8 @@ class NewtonShaderGui : public ShaderGui {
 public:
 
 	NewtonShaderGui();
+	void dumpState(std::ofstream& outFile) override;
+	void readState(std::ifstream& inFile) override;
 
 private:
 	void render() override;
@@ -86,6 +90,8 @@ public:
 private:
 	void render() override;
 	void uploadUniforms() override;
+	void dumpState(std::ofstream& outFile) override;
+	void readState(std::ifstream& inFile) override;
 
 	float stepSize_;
 	float forceWeight_;
