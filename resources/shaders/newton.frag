@@ -10,8 +10,6 @@ in vec3 worldPos;
 out vec4 FragColor;
 
 const float rs = 1.0;
-float accretionMin = 4.0;
-float accretionMax = 8.0;
 
 vec3 newton(vec3 pos) {
     return -forceWeight * normalize(pos)/dot(pos, pos);
@@ -24,10 +22,12 @@ void main() {
     vec3 viewDir = normalize(worldPos - cameraPos);
 
     #ifndef DISK
-    // stop if lightray is pointing directly to black hole
     float dotP = dot(normalize(-cameraPos), viewDir);
     float dist = length(dotP * length(cameraPos) * viewDir + cameraPos);
+    #ifdef RAYDIRTEST
+    // stop if lightray is pointing directly to black hole
     if(dotP >= 0 && abs(dist) <= rs) return;
+    #endif //RAYDIRTEST
 
     #ifdef EHSIZE
     // theoretical apparent EH size
@@ -53,17 +53,7 @@ void main() {
         lightPos += stp * lightVel;
 
         #ifdef DISK
-        vec3 prevPos = lightPos - lightVel * stp;
-        if((prevPos.y < 0 && lightPos.y > 0) ||(prevPos.y > 0 && lightPos.y < 0)){
-            if(lightVel.y == 0.0) { FragColor = vec4(1,1,1,1); return; }
-            vec3 diskHit = lightPos - lightPos.y * lightVel / lightVel.y;
-            if(length(diskHit) < accretionMax && length(diskHit) > accretionMin) {
-                float heat = (length(diskHit) - accretionMin)/(accretionMax-accretionMin);
-                FragColor = vec4(1, 1.0 - heat, 0.7 - heat, 1);                
-                //FragColor = vec4(1,1,1,1);
-                return;
-            }
-        }
+        if(diskIntersect(lightPos, -stp*lightVel, FragColor)) return;
         #endif //DISK
     }
 
@@ -72,28 +62,18 @@ void main() {
     // simple loop for now
     for(int i = 0; i < 100; ++i) {
         
-        if(length(lightPos) <= rs) return;
-        #ifdef RAYDIRTEST
-        float dotP = dot(normalize(-lightPos), normalize(lightVel));
-        float dist = length(dotP * length(lightPos) * normalize(lightVel) + lightPos);
-        if(dotP >= 0 && abs(dist) <= rs) return;
+        if(length(lightPos) <= rs){
+        #ifdef CHECKEREDHOR
+            horizonIntersect (lightPos, -lightVel*stepSize, rs, FragColor);
         #endif
+            return;
+        }
         
         lightVel = normalize(lightVel + newton(lightPos));
         lightPos += lightVel * stepSize;
 
         #ifdef DISK
-        vec3 prevPos = lightPos - lightVel * stepSize;
-        if((prevPos.y < 0 && lightPos.y > 0) ||(prevPos.y > 0 && lightPos.y < 0)){
-            if(lightVel.y == 0.0) { FragColor = vec4(1,1,1,1); return; }
-            vec3 diskHit = lightPos - lightPos.y * lightVel / lightVel.y;
-            if(length(diskHit) < accretionMax && length(diskHit) > accretionMin) {
-                float heat = (length(diskHit) - accretionMin)/(accretionMax-accretionMin);
-                FragColor = vec4(1, 1.0 - heat, 0.7 - heat, 1);
-                //FragColor = vec4(1,1,1,1);
-                return;
-            }
-        }
+        if(diskIntersect(lightPos, -stepSize*lightVel, FragColor)) return;
         #endif //DISK
     }
 
