@@ -28,13 +28,13 @@ BHVApp::BHVApp(int width, int height)
 	, cam_({ 0.f, 0.f, -10 }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f })
 	, quad_(quadPositions, quadUVs, quadIndices)
 	, sky_({ "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" })
-	, t0_(0.f), dt_(0.f)
+	, accretionTex_("accretion1_transparent.jpg")
+	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, selectedShader_(0)
 	, showShaders_(false)
 	, showCamera_(false)
 {
 	cam_.update(window_.getWidth(), window_.getHeight());
-	sky_.bind();
 	initGuiElements();
 }
 
@@ -51,6 +51,8 @@ void BHVApp::renderLoop() {
 		float now = glfwGetTime();
 		dt_ = now - t0_;
 		t0_ = now;
+		tPassed_ += dt_;
+		tPassed_ -= (tPassed_ > 10.f) * 10.f;
 
 		cam_.keyBoardInput(window_.getPtr(), dt_);
 		cam_.mouseInput(window_.getPtr());
@@ -60,12 +62,20 @@ void BHVApp::renderLoop() {
 		glClearColor(0.5, 0.5, 0.5, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		glActiveTexture(GL_TEXTURE0);
+		sky_.bind();
+
+		glActiveTexture(GL_TEXTURE1);
+		accretionTex_.bind();
+
 		getCurrentShader()->use();
+		getCurrentShader()->setUniform("dt", tPassed_/10.f);
 
 		quad_.draw(GL_TRIANGLES);
-
+		
 		gui_.renderEnd();
 		window_.endFrame();
+		std::cout << dt_ << std::endl;
 	}
 }
 

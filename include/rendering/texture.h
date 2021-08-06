@@ -3,6 +3,17 @@
 #include <vector>
 #include <string>
 
+class Texture {
+public:
+	Texture(std::string filename);
+
+	void bind() const;
+	unsigned int getId() const { return ID_; }
+
+private:
+	unsigned int ID_;
+};
+
 class CubeMap {
 public:
 

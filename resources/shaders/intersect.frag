@@ -4,6 +4,10 @@
 #ifdef DISK
 
 uniform vec2 accretionDim;
+uniform float dt;
+uniform sampler2D accretionTex;
+
+#define DISKTEX
 
 bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
     if(abs(pos.y) > abs(vel.y) || sign(pos.y) == sign(vel.y)) return false;
@@ -12,12 +16,21 @@ bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
     vec3 diskHit = pos - pos.y * vel / vel.y;
     if(length(diskHit) > accretionDim.x && length(diskHit) < accretionDim.y) {
     #ifdef CHECKEREDDISK
-        float checker = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI));
+        float checker = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + dt;
+        if(checker > 1.0) checker -= 1.0;
         float weight = mod(int(36*checker),2);
         col = weight * vec4(1) + (1-weight) * vec4(1, checker, 0, 1);
     #else
         float heat = (length(diskHit) - accretionDim.x)/(accretionDim.y-accretionDim.x);
+        #ifdef DISKTEX
+        float angle = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + dt;
+        if(angle > 1.0) angle -= 1.0;
+        float alpha = texture(accretionTex, vec2(angle, heat)).r;
+        col.rgb = (1.0-col.a) * vec3(1.0, 1.0 - heat, 0.7 - heat) * alpha + col.rgb;
+        col.a += alpha;
+        #else
         col = vec4(1, 1.0 - heat, 0.7 - heat, 1);  
+        #endif
     #endif // CHECKERBOARD
         return true;
     }

@@ -17,7 +17,7 @@ vec3 newton(vec3 pos) {
 
 void main() {
     
-    FragColor = vec4(0,0,0,1);
+    FragColor = vec4(0,0,0,0);
 
     vec3 viewDir = normalize(worldPos - cameraPos);
 
@@ -53,7 +53,8 @@ void main() {
         lightPos += stp * lightVel;
 
         #ifdef DISK
-        if(diskIntersect(lightPos, -stp*lightVel, FragColor)) return;
+        diskIntersect(lightPos, -stp*lightVel, FragColor);
+        if(FragColor.a > 0.8) return;
         #endif //DISK
     }
 
@@ -73,13 +74,14 @@ void main() {
         lightPos += lightVel * stepSize;
 
         #ifdef DISK
-        if(diskIntersect(lightPos, -stepSize*lightVel, FragColor)) return;
+        diskIntersect(lightPos, -stepSize*lightVel, FragColor);
+        if(FragColor.a > 0.8) return;
         #endif //DISK
     }
 
     #ifdef SKY
-    FragColor = texture(cubeMap, lightVel);
+    FragColor = FragColor.a * FragColor + (1.0-FragColor.a) * texture(cubeMap, lightVel);
     #else
-    FragColor = vec4(abs(normalize(lightVel)), 1.0);
+    FragColor = FragColor.a * FragColor + (1.0-FragColor.a) * vec4(abs(normalize(lightVel)), 1.0);
     #endif //SKY
 }

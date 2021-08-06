@@ -124,6 +124,8 @@ void NewtonShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("forceWeight", forceWeight_);
 	shader_->setUniform("accretionDim", accretionDim_);
+	shader_->setUniform("accretionTex", 1);
+
 }
 
 //------------ Test Shader GUI ------------ //
@@ -175,6 +177,7 @@ void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("potentialCoefficient", forceWeight_);
 	shader_->setUniform("accretionDim", accretionDim_);
+	shader_->setUniform("accretionTex", 1);
 }
 
 void StarlessShaderGui::dumpState(std::ofstream& outFile) {

@@ -27,12 +27,13 @@ private:
 
 	Mesh quad_;
 	CubeMap sky_;
+	Texture accretionTex_;
 
 	int selectedShader_;
 	std::vector<std::shared_ptr<ShaderGui>> shaderElements_;
 
 	// timing variables for render loop
-	float t0_, dt_;
+	float t0_, dt_, tPassed_;
 
 	bool showShaders_;
 	bool showCamera_;
