@@ -67,7 +67,7 @@ NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f), accretion
 	name_ = "Newton";
 	shader_ = std::shared_ptr<Shader>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","newton.frag" },
-		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" , "CHECKEREDDISK", "CHECKEREDHOR"}));
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" , "CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX"}));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();
@@ -152,7 +152,7 @@ StarlessShaderGui::StarlessShaderGui() : stepSize_(1.f), forceWeight_(1.5f), acc
 	name_ = "Starless";
 	shader_ = std::shared_ptr<Shader>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","starless.frag" },
-		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK", "CHECKEREDDISK", "CHECKEREDHOR" }));
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK", "CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX" }));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();

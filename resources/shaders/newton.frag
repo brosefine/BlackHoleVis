@@ -18,6 +18,8 @@ vec3 newton(vec3 pos) {
 void main() {
     
     FragColor = vec4(0,0,0,0);
+    vec4 diskColor;
+    float transparency = 1.0;
 
     vec3 viewDir = normalize(worldPos - cameraPos);
 
@@ -53,8 +55,12 @@ void main() {
         lightPos += stp * lightVel;
 
         #ifdef DISK
-        diskIntersect(lightPos, -stp*lightVel, FragColor);
-        if(FragColor.a > 0.8) return;
+        if(diskIntersect(lightPos, -stp*lightVel, diskColor)){
+            FragColor.rgb += transparency * diskColor.rgb * diskColor.a;
+            transparency *= (1.0 - diskColor.a);
+            FragColor.a = 1.0 - transparency;
+            if(FragColor.a > 0.99) return;
+        }
         #endif //DISK
     }
 
@@ -65,7 +71,9 @@ void main() {
         
         if(length(lightPos) <= rs){
         #ifdef CHECKEREDHOR
-            horizonIntersect (lightPos, -lightVel*stepSize, rs, FragColor);
+            vec4 horizonColor;
+            horizonIntersect (lightPos, -lightVel*stepSize, rs, horizonColor);
+            FragColor.rgb += transparency * horizonColor.rgb;
         #endif
             return;
         }
@@ -74,14 +82,19 @@ void main() {
         lightPos += lightVel * stepSize;
 
         #ifdef DISK
-        diskIntersect(lightPos, -stepSize*lightVel, FragColor);
-        if(FragColor.a > 0.8) return;
+        if (diskIntersect(lightPos, -stepSize*lightVel, diskColor)) {
+            FragColor.rgb += transparency * diskColor.rgb * diskColor.a;
+            transparency *= (1.0 - diskColor.a);
+            FragColor.a = 1.0 - transparency;
+            if(FragColor.a > 0.99) return;
+        }
         #endif //DISK
     }
 
     #ifdef SKY
-    FragColor = FragColor.a * FragColor + (1.0-FragColor.a) * texture(cubeMap, lightVel);
+    FragColor.rgb += transparency * texture(cubeMap, lightVel).rgb;
     #else
-    FragColor = FragColor.a * FragColor + (1.0-FragColor.a) * vec4(abs(normalize(lightVel)), 1.0);
+    FragColor.rgb += transparency * abs(normalize(lightVel));
     #endif //SKY
+    FragColor.a = 1.0;
 }

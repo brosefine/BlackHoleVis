@@ -7,8 +7,6 @@ uniform vec2 accretionDim;
 uniform float dt;
 uniform sampler2D accretionTex;
 
-#define DISKTEX
-
 bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
     if(abs(pos.y) > abs(vel.y) || sign(pos.y) == sign(vel.y)) return false;
     if(vel.y == 0.0) return false;
@@ -21,15 +19,12 @@ bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
         float weight = mod(int(36*checker),2);
         col = weight * vec4(1) + (1-weight) * vec4(1, checker, 0, 1);
     #else
-        float heat = (length(diskHit) - accretionDim.x)/(accretionDim.y-accretionDim.x);
+        float heat = 1.0 - (length(diskHit) - accretionDim.x)/(accretionDim.y-accretionDim.x);
+        col = vec4(2 * vec3(1, heat, pow(heat,2)), 1);
         #ifdef DISKTEX
         float angle = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + dt;
         if(angle > 1.0) angle -= 1.0;
-        float alpha = texture(accretionTex, vec2(angle, heat)).r;
-        col.rgb = (1.0-col.a) * vec3(1.0, 1.0 - heat, 0.7 - heat) * alpha + col.rgb;
-        col.a += alpha;
-        #else
-        col = vec4(1, 1.0 - heat, 0.7 - heat, 1);  
+        col.a = texture(accretionTex, vec2(angle, 1.0 - heat)).r;  
         #endif
     #endif // CHECKERBOARD
         return true;

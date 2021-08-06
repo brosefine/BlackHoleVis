@@ -28,7 +28,7 @@ BHVApp::BHVApp(int width, int height)
 	, cam_({ 0.f, 0.f, -10 }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f })
 	, quad_(quadPositions, quadUVs, quadIndices)
 	, sky_({ "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" })
-	, accretionTex_("accretion1_transparent.jpg")
+	, accretionTex_("accretion.jpg")
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, selectedShader_(0)
 	, showShaders_(false)
@@ -75,7 +75,6 @@ void BHVApp::renderLoop() {
 		
 		gui_.renderEnd();
 		window_.endFrame();
-		std::cout << dt_ << std::endl;
 	}
 }
 
