@@ -1,6 +1,8 @@
 # BlackHoleVis
 Computer Science Master's Project at the FSU Jena 
 
+![](screenshots/Screenshot_starless.png)
+
 ## Setup
 
 ### Dependencies
