@@ -19,7 +19,6 @@ void main() {
     
     FragColor = vec4(0,0,0,0);
     vec4 diskColor;
-    float transparency = 1.0;
 
     vec3 viewDir = normalize(worldPos - cameraPos);
 
@@ -56,9 +55,8 @@ void main() {
 
         #ifdef DISK
         if(diskIntersect(lightPos, -stp*lightVel, diskColor)){
-            FragColor.rgb += transparency * diskColor.rgb * diskColor.a;
-            transparency *= (1.0 - diskColor.a);
-            FragColor.a = 1.0 - transparency;
+            FragColor.rgb += (1.0 - FragColor.a) * diskColor.rgb * diskColor.a;
+            FragColor.a += diskColor.a;
             if(FragColor.a > 0.99) return;
         }
         #endif //DISK
@@ -73,7 +71,7 @@ void main() {
         #ifdef CHECKEREDHOR
             vec4 horizonColor;
             horizonIntersect (lightPos, -lightVel*stepSize, rs, horizonColor);
-            FragColor.rgb += transparency * horizonColor.rgb;
+            FragColor.rgb += (1.0 - FragColor.a) * horizonColor.rgb;
         #endif
             return;
         }
@@ -83,18 +81,17 @@ void main() {
 
         #ifdef DISK
         if (diskIntersect(lightPos, -stepSize*lightVel, diskColor)) {
-            FragColor.rgb += transparency * diskColor.rgb * diskColor.a;
-            transparency *= (1.0 - diskColor.a);
-            FragColor.a = 1.0 - transparency;
+            FragColor.rgb += (1.0 - FragColor.a) * diskColor.rgb * diskColor.a;
+            FragColor.a += diskColor.a;
             if(FragColor.a > 0.99) return;
         }
         #endif //DISK
     }
 
     #ifdef SKY
-    FragColor.rgb += transparency * texture(cubeMap, lightVel).rgb;
+    FragColor.rgb += (1.0 - FragColor.a) * texture(cubeMap, lightVel).rgb;
     #else
-    FragColor.rgb += transparency * abs(normalize(lightVel));
+    FragColor.rgb += (1.0 - FragColor.a) * abs(normalize(lightVel));
     #endif //SKY
     FragColor.a = 1.0;
 }

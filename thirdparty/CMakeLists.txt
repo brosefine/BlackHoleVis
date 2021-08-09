@@ -62,20 +62,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-list(APPEND IMGUI_PUBLIC_HEADERS
-    "${imgui_SOURCE_DIR}/imgui.h"
-    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h"
-    "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.h"
-    )
-
-list(APPEND IMGUI_PRIVATE_HEADERS
-    "${imgui_SOURCE_DIR}/imgui_internal.h"
-    "${imgui_SOURCE_DIR}/imconfig.h"
-    "${imgui_SOURCE_DIR}/imstb_rect_pack.h"
-    "${imgui_SOURCE_DIR}/imstb_textedit.h"
-    "${imgui_SOURCE_DIR}/imstb_truetype.h"
-    )
-
 list(APPEND IMGUI_SOURCES
     "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
@@ -94,6 +80,26 @@ add_library(imgui_lib STATIC ${IMGUI_SOURCES})
 target_link_libraries(imgui_lib PUBLIC glfw glad)
 target_include_directories(imgui_lib PUBLIC ${IMGUI_PUBLIC_INCLUDE_DIRS})
 
+FetchContent_Declare(
+    implot
+    GIT_REPOSITORY https://github.com/epezent/implot.git
+    GIT_TAG        v0.11
+)
+FetchContent_MakeAvailable(implot)
+
+list(APPEND IMPLOT_PUBLIC_INCLUDE_DIRS
+    ${implot_SOURCE_DIR}
+    )
+
+list(APPEND IMPLOT_SOURCES
+    "${implot_SOURCE_DIR}/implot.cpp"
+    "${implot_SOURCE_DIR}/implot_items.cpp"
+    "${implot_SOURCE_DIR}/implot_demo.cpp"
+    )
+
+add_library(implot_lib STATIC ${IMPLOT_SOURCES})
+target_link_libraries(implot_lib PUBLIC glfw glad imgui_lib)
+target_include_directories(implot_lib PUBLIC ${IMPLOT_PUBLIC_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} INTERFACE)
-target_link_libraries(${PROJECT_NAME} INTERFACE glad glm glfw stb_image imgui_lib)
+target_link_libraries(${PROJECT_NAME} INTERFACE glad glm glfw stb_image imgui_lib implot_lib)

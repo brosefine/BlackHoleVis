@@ -80,7 +80,6 @@ private:
 
 	float stepSize_;
 	float forceWeight_;
-	glm::vec2 accretionDim_;
 };
 
 class StarlessShaderGui : public ShaderGui {
@@ -96,7 +95,6 @@ private:
 
 	float stepSize_;
 	float forceWeight_;
-	glm::vec2 accretionDim_;
 
 };
 

@@ -4,10 +4,8 @@
 
 #include <vector>
 
-#include <rendering/mesh.h>
-
 // positions
-std::vector<glm::vec3> quadPostions {
+std::vector<glm::vec3> quadPositions {
     {-1.0f, -1.0f, 0.0f},
     {-1.0f, 1.0f, 0.0f},
     {1.0f, -1.0f, 0.0f},

@@ -18,6 +18,7 @@ void GuiElement::renderRefreshMenu() {
 void ShaderGui::bindUBOs() {
 	shader_->setBlockBinding("blackHole", BLHBINDING);
 	shader_->setBlockBinding("camera", CAMBINDING);
+	shader_->setBlockBinding("accDisk", DISKBINDING);
 }
 
 void ShaderGui::renderPreprocessorFlags() {
@@ -63,7 +64,7 @@ void BlackHoleGui::render() {
 
 //------------ Newton Shader GUI ------------ //
 
-NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f), accretionDim_({ 4.0f, 8.0f }) {
+NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f) {
 	name_ = "Newton";
 	shader_ = std::shared_ptr<Shader>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","newton.frag" },
@@ -112,8 +113,6 @@ void NewtonShaderGui::render() {
 	ImGui::InputFloat("Step Size", &stepSize_, 0.01, 0.1);
 	ImGui::InputFloat("Force Weight", &forceWeight_, .001, .01, "%.3e");
 
-	ImGui::SliderFloat2("accretionDim", glm::value_ptr(accretionDim_), 1.f, 20.f);
-
 	renderPreprocessorFlags();
 	ImGui::Separator();
 
@@ -123,7 +122,6 @@ void NewtonShaderGui::render() {
 void NewtonShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("forceWeight", forceWeight_);
-	shader_->setUniform("accretionDim", accretionDim_);
 	shader_->setUniform("accretionTex", 1);
 
 }
@@ -148,7 +146,7 @@ void TestShaderGui::render() {
 
 //------------ Starless Shader GUI ------------ //
 
-StarlessShaderGui::StarlessShaderGui() : stepSize_(1.f), forceWeight_(1.5f), accretionDim_({4.0f, 8.0f}) {
+StarlessShaderGui::StarlessShaderGui() : stepSize_(1.f), forceWeight_(1.5f) {
 	name_ = "Starless";
 	shader_ = std::shared_ptr<Shader>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","starless.frag" },
@@ -164,8 +162,6 @@ void StarlessShaderGui::render() {
 	ImGui::Text("Starless Shader Properties");
 	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
 	ImGui::InputFloat("Force Weight", &forceWeight_, .01f, .1f);
-	ImGui::SliderFloat2("accretionDim", glm::value_ptr(accretionDim_), 1.f, 20.f);
-
 
 	renderPreprocessorFlags();
 	ImGui::Separator();
@@ -176,7 +172,6 @@ void StarlessShaderGui::render() {
 void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("potentialCoefficient", forceWeight_);
-	shader_->setUniform("accretionDim", accretionDim_);
 	shader_->setUniform("accretionTex", 1);
 }
 

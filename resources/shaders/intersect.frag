@@ -3,8 +3,13 @@
 
 #ifdef DISK
 
-uniform vec2 accretionDim;
-uniform float dt;
+layout (std140) uniform accDisk
+{
+    float minRad;
+    float maxRad;
+    float rot;
+};
+
 uniform sampler2D accretionTex;
 
 bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
@@ -12,17 +17,17 @@ bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
     if(vel.y == 0.0) return false;
 
     vec3 diskHit = pos - pos.y * vel / vel.y;
-    if(length(diskHit) > accretionDim.x && length(diskHit) < accretionDim.y) {
+    if(length(diskHit) > minRad && length(diskHit) < maxRad) {
     #ifdef CHECKEREDDISK
-        float checker = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + dt;
+        float checker = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + rot;
         if(checker > 1.0) checker -= 1.0;
         float weight = mod(int(36*checker),2);
         col = weight * vec4(1) + (1-weight) * vec4(1, checker, 0, 1);
     #else
-        float heat = 1.0 - (length(diskHit) - accretionDim.x)/(accretionDim.y-accretionDim.x);
+        float heat = 1.0 - (length(diskHit) - minRad)/(maxRad-minRad);
         col = vec4(2 * vec3(1, heat, pow(heat,2)), 1);
         #ifdef DISKTEX
-        float angle = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + dt;
+        float angle = max(0,(atan(diskHit.x, diskHit.z) + M_PI) / (2*M_PI)) + rot;
         if(angle > 1.0) angle -= 1.0;
         col.a = texture(accretionTex, vec2(angle, 1.0 - heat)).r;  
         #endif

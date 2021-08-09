@@ -9,6 +9,7 @@
 #include <rendering/window.h>
 #include <rendering/texture.h>
 #include <objects/blackHole.h>
+#include <objects/accretionDisk.h>
 #include <gui/gui.h>
 #include <gui/guiElement.h>
 
@@ -23,11 +24,21 @@ private:
 
 	BHVWindow window_;
 	Gui gui_;
+
 	Camera cam_;
+	bool camOrbit_;
+	float camOrbitTilt_;
+	float camOrbitRad_;
+	float camOrbitSpeed_;
+	float camOrbitAngle_;
 
 	Mesh quad_;
 	CubeMap sky_;
-	Texture accretionTex_;
+
+	AccDisk disk_;
+	float diskRotationSpeed_;
+	std::map<std::string, std::shared_ptr<Texture>> diskTextures_;
+	std::string selectedTexture_;
 
 	int selectedShader_;
 	std::vector<std::shared_ptr<ShaderGui>> shaderElements_;
@@ -35,13 +46,23 @@ private:
 	// timing variables for render loop
 	float t0_, dt_, tPassed_;
 
+	// GUI flags
 	bool showShaders_;
 	bool showCamera_;
+	bool showDisk_;
+	bool showFps_;
+
 	std::shared_ptr<Shader> getCurrentShader();
 	void initGuiElements();
+	void initDiskTextures();
+
+	void calculateCameraOrbit();
+
 	void renderOptionsWindow();
 	void renderShaderWindow();
 	void renderCameraWindow();
+	void renderDiskWindow();
+	void renderFPSPlot();
 
 	void dumpState();
 	void readState();
