@@ -41,6 +41,8 @@ bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
 
 #ifdef CHECKEREDHOR
 bool horizonIntersect (vec3 pos, vec3 vel, float r, inout vec4 col) {
+    // ray-sphere intersection from scratch-a-pixel
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
     float x0, x1;
     float a = dot(vel, vel);
     float b = 2.0 * dot(pos, vel);
