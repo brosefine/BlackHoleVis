@@ -27,6 +27,7 @@ BHVApp::BHVApp(int width, int height)
 	, selectedTexture_("")
 	, selectedShader_(0)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
+	, showGui_ (true)
 	, showShaders_(false)
 	, showCamera_(false)
 	, showDisk_(false)
@@ -41,9 +42,13 @@ void BHVApp::renderLoop() {
 
 	while (!window_.shouldClose()) {
 
-		gui_.newFrame();
-		renderOptionsWindow();
-		gui_.render();
+		processKeyboardInput();
+		if (showGui_) {
+
+			gui_.newFrame();
+			renderOptionsWindow();
+			gui_.render();
+		}
 
 		float now = glfwGetTime();
 		dt_ = now - t0_;
@@ -77,7 +82,8 @@ void BHVApp::renderLoop() {
 		disk_.uploadData();
 		quad_.draw(GL_TRIANGLES);
 		
-		gui_.renderEnd();
+		if(showGui_)
+			gui_.renderEnd();
 		window_.endFrame();
 	}
 }
@@ -112,7 +118,11 @@ void BHVApp::calculateCameraOrbit() {
 	cam_.setFront(glm::vec3(pos) * -camOrbitRad_);
 
 	camOrbitAngle_ += camOrbitSpeed_ * dt_;
-	camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
+	//camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
+	if (camOrbitAngle_ > 360) {
+		camOrbitAngle_ -= 360;
+		std::cout << "full orbit" << std::endl;
+	}
 
 }
 
@@ -157,8 +167,11 @@ void BHVApp::renderShaderWindow() {
 
 		for (int i = 0; i < shaderElements_.size(); ++i) {
 			auto shader = shaderElements_.at(i);
-			if (ImGui::Selectable(shader->getName().c_str(), false))
+			if (ImGui::Selectable(shader->getName().c_str(), false)) {
+
 				selectedShader_ = i;
+				shaderElements_.at(i)->updateShader();
+			}
 		}
 		ImGui::EndListBox();
 	}
@@ -321,4 +334,107 @@ void BHVApp::readState() {
 	}
 
 	inFile.close();
+}
+
+void BHVApp::processKeyboardInput() {
+
+	auto win = window_.getPtr();
+	if (glfwGetKey(win, GLFW_KEY_G) == GLFW_PRESS) {
+		showGui_ = true;
+	} else if (glfwGetKey(win, GLFW_KEY_H) == GLFW_PRESS) {
+		showGui_ = false;
+	}
+
+	static bool step = false;
+	static float weight = 0.f;
+	if (glfwGetKey(win, GLFW_KEY_Q) == GLFW_PRESS) {
+		step = true;
+	}
+	if (step && glfwGetKey(win, GLFW_KEY_E) == GLFW_PRESS) {
+		step = false;
+		static int animationCount = 0;
+		switch (animationCount++) {
+		case 0:
+			camOrbit_ = true;
+			break;
+		case 1:
+			getCurrentShader()->setFlag("CHECKEREDHOR", true);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 2:
+			getCurrentShader()->setFlag("SKY", true);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 3:
+			getCurrentShader()->setFlag("DISK", true);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 4:
+			getCurrentShader()->setFlag("CHECKEREDDISK", false);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 5:
+			getCurrentShader()->setFlag("CHECKEREDHOR", false);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 6:
+			camOrbit_ = false;
+			break;
+		case 7:
+			camOrbit_ = true;
+			break;
+		case 8:
+			getCurrentShader()->setFlag("CHECKEREDDISK", true);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 9:
+			getCurrentShader()->setFlag("CHECKEREDHOR", true);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 10:
+			getCurrentShader()->setFlag("SKY", false);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 11:
+			getCurrentShader()->setFlag("DISK", false);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		case 12:
+			getCurrentShader()->setFlag("CHECKEREDHOR", false);
+			shaderElements_.at(selectedShader_)->updateShader();
+			getCurrentShader()->setUniform("forceWeight", weight);
+
+			break;
+		default:
+			animationCount = 0;
+			break;
+		}
+		std::cout << "step: " << animationCount << std::endl;
+	}
+
+	if (glfwGetKey(win, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		weight = std::max(0.f, weight - 0.005f);
+		getCurrentShader()->setUniform("forceWeight", weight);
+	} else if (glfwGetKey(win, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		weight = std::min(1.5f, weight + 0.005f);
+		getCurrentShader()->setUniform("forceWeight", weight);
+	}
 }

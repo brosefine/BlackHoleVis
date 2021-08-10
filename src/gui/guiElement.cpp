@@ -23,17 +23,17 @@ void ShaderGui::bindUBOs() {
 
 void ShaderGui::renderPreprocessorFlags() {
 	ImGui::Text("Preprocessor Flags");
-	bool tmpFlag;
 	for (auto& flag : preprocessorFlags_) {
 		ImGui::Checkbox(flag.first.c_str(), &flag.second);
 	}
-}
-
-void ShaderGui::update() {
 	// update preprocessor flags
 	for (auto& flag : preprocessorFlags_) {
 		shader_->setFlag(flag.first, flag.second);
 	}
+}
+
+void ShaderGui::update() {
+	
 	shader_->reload();
 	shader_->use();
 	bindUBOs();
@@ -171,7 +171,7 @@ void StarlessShaderGui::render() {
 
 void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
-	shader_->setUniform("potentialCoefficient", forceWeight_);
+	shader_->setUniform("forceWeight", forceWeight_);
 	shader_->setUniform("accretionTex", 1);
 }
 

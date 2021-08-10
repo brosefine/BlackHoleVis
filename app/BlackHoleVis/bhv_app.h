@@ -47,6 +47,7 @@ private:
 	float t0_, dt_, tPassed_;
 
 	// GUI flags
+	bool showGui_;
 	bool showShaders_;
 	bool showCamera_;
 	bool showDisk_;
@@ -66,4 +67,6 @@ private:
 
 	void dumpState();
 	void readState();
+	void processKeyboardInput();
+
 };

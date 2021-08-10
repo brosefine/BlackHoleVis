@@ -3,10 +3,10 @@
 uniform samplerCube cubeMap;
 #endif //SKY
 uniform float stepSize;
-uniform float potentialCoefficient;
-/* Note on potentialCoefficient
-* in starless: 0 >= potentialCoefficient >= -1.5
-* here, value is 0 <= potentialCoefficient <= 1.5
+uniform float forceWeight;
+/* Note on forceWeight
+* in starless: 0 >= forceWeight >= -1.5
+* here, value is 0 <= forceWeight <= 1.5
 * because using distance (blackHole - lightPos)
 */
 
@@ -18,7 +18,7 @@ out vec4 FragColor;
 const float rs = 1.0;
 
 vec3 starless(vec3 pos, float h2){
-    return -potentialCoefficient * h2 * pos / pow(dot(pos, pos), 2.5);
+    return -forceWeight * h2 * pos / pow(dot(pos, pos), 2.5);
 }
 
 void main() {

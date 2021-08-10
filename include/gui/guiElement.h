@@ -55,6 +55,7 @@ private:
 class ShaderGui : public GuiElement {
 public:
 	auto getShader() { return shader_; }
+	void updateShader() { update(); }
 protected:
 	std::shared_ptr<Shader> shader_;
 	std::map<std::string, bool> preprocessorFlags_;
@@ -86,6 +87,9 @@ class StarlessShaderGui : public ShaderGui {
 public:
 
 	StarlessShaderGui();
+
+	void increaseWeight(float inc) { forceWeight_ = std::min(1.5f, forceWeight_ + inc); changed_ = true; }
+	void decreaseWeight(float dec) { forceWeight_ = std::max(0.f, forceWeight_ - dec); changed_ = true; }
 
 private:
 	void render() override;
