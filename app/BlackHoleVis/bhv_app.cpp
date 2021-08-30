@@ -1,4 +1,7 @@
 #include <fstream>
+#include <algorithm>
+#include <numeric>
+#include <functional>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp >
@@ -30,6 +33,9 @@ BHVApp::BHVApp(int width, int height)
 	, selectedTexture_("")
 	, selectedShader_(0)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
+	, measureTime_(1.f), measureStart_(0.f)
+	, measureFrameWindow_(1)
+	, measureFrameTime_(false)
 	, vSync_(true)
 	, showGui_ (true)
 	, showShaders_(false)
@@ -52,6 +58,12 @@ void BHVApp::renderLoop() {
 		t0_ = now;
 		tPassed_ += dt_;
 		tPassed_ -= (tPassed_ > diskRotationSpeed_) * diskRotationSpeed_;
+
+		if (measureFrameTime_) {
+			frameTimes_.push_back(dt_);
+			if (now - measureStart_ >= measureTime_)
+				finalizeFrameTimeMeasure();
+		}
 		
 		processKeyboardInput();
 		if (showGui_) {
@@ -147,6 +159,7 @@ void BHVApp::renderOptionsWindow() {
 	if (ImGui::BeginTabBar("Options")) {
 		if (ImGui::BeginTabItem("General")) {
 
+			// Saving, Loading State
 			ImGui::Text("Save / Load current state");
 			ImGui::PushItemWidth(ImGui::GetFontSize() * 7);
 			if (ImGui::Button("Save")) dumpState();
@@ -161,12 +174,20 @@ void BHVApp::renderOptionsWindow() {
 				window_.setHeight(dim.at(1));
 			}
 
+			// FBO and window size
 			ImGui::Text("Set Offscreen Resolution");
 			if (ImGui::SliderInt("* window size", &fboScale_, 1, 5))
 				fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
 
 			if (ImGui::Checkbox("VSYNC", &vSync_))
 				glfwSwapInterval((int)vSync_);
+
+			// FPS plots and measurement
+			ImGui::Text("Frame Time Measuring");
+			ImGui::InputFloat("Duration", &measureTime_);
+			ImGui::InputInt("Summarize x Frames", &measureFrameWindow_);
+			if (ImGui::Button("Start Measuring"))
+				initFrameTimeMeasure();
 
 			ImGui::Checkbox("Show FPS", &showFps_);
 			ImGui::Spacing();
@@ -471,4 +492,60 @@ void BHVApp::processKeyboardInput() {
 		getCurrentShader()->setUniform("forceWeight", weight);
 	}
 #endif //PRESENTATION_HELPER
+}
+
+void BHVApp::initFrameTimeMeasure() {
+	// prepare vector containing frame times
+	frameTimes_.clear();
+	// assume 100 frames per second
+	frameTimes_.reserve(100 * (measureTime_ + 1));
+
+	measureFrameTime_ = true;
+	showGui_ = false;
+	measureStart_ = glfwGetTime();
+}
+
+void BHVApp::finalizeFrameTimeMeasure() {
+	static int id = 0;
+	measureFrameTime_ = false;
+
+	std::ofstream outFile("measure.txt");
+	outFile << "# " << frameTimes_.size() << " frames" << std::endl;
+	outFile << "id,frames,nbframes,min,max,med,avg,avgFPS\n";
+	int frameCount = 0;
+	for (auto i = frameTimes_.begin(); i < frameTimes_.end(); i += measureFrameWindow_) {
+		auto last = (frameCount + measureFrameWindow_) > frameTimes_.size() ?
+			frameTimes_.end() : i + measureFrameWindow_;
+
+		int nbFrames = last - i;
+		
+		// compute median
+		float med;
+		std::sort(i, last);
+		if (nbFrames % 2) {
+			med = 0.5f * (*(i + nbFrames / 2) + *(i + nbFrames / 2 - 1));
+		} else {
+			med = *(i + nbFrames / 2);
+		}
+		
+		// compute average
+		float avg = std::accumulate(i, last, 0.f) / nbFrames;
+
+		outFile << id
+			<< "," << frameCount
+			<< "-" << std::min(frameCount + measureFrameWindow_, (int)frameTimes_.size()) - 1
+			<< "," << nbFrames
+			<< "," << *std::min_element(i, last)
+			<< "," << *std::max_element(i, last)
+			<< "," << med
+			<< "," << avg
+			<< "," << 1.f / avg
+			<< "\n";
+
+		frameCount += measureFrameWindow_;
+	}
+
+	outFile.close();
+	showGui_ = true;
+	id++;
 }

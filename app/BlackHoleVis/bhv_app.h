@@ -51,6 +51,13 @@ private:
 	double t0_, dt_;
 	float tPassed_;
 
+	// performance measurement
+	std::vector<float> frameTimes_;
+	float measureTime_;
+	double measureStart_;
+	int measureFrameWindow_;
+	bool measureFrameTime_;
+
 	bool vSync_;
 
 	// GUI flags
@@ -75,5 +82,8 @@ private:
 	void dumpState();
 	void readState();
 	void processKeyboardInput();
+
+	void initFrameTimeMeasure();
+	void finalizeFrameTimeMeasure();
 
 };
