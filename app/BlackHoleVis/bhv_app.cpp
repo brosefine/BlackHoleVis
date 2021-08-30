@@ -7,7 +7,7 @@
 #include <rendering/quad.h>
 #include <helpers/uboBindings.h>
 
-
+// #define PRESENTATION_HELPER
 
 
 
@@ -27,6 +27,7 @@ BHVApp::BHVApp(int width, int height)
 	, selectedTexture_("")
 	, selectedShader_(0)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
+	, vSync_(true)
 	, showGui_ (true)
 	, showShaders_(false)
 	, showCamera_(false)
@@ -42,6 +43,12 @@ void BHVApp::renderLoop() {
 
 	while (!window_.shouldClose()) {
 
+		double now = glfwGetTime();
+		dt_ = now - t0_;
+		t0_ = now;
+		tPassed_ += dt_;
+		tPassed_ -= (tPassed_ > diskRotationSpeed_) * diskRotationSpeed_;
+		
 		processKeyboardInput();
 		if (showGui_) {
 
@@ -50,18 +57,11 @@ void BHVApp::renderLoop() {
 			gui_.render();
 		}
 
-		float now = glfwGetTime();
-		dt_ = now - t0_;
-		t0_ = now;
-		tPassed_ += dt_;
-		tPassed_ -= (tPassed_ > diskRotationSpeed_) * diskRotationSpeed_;
-
 		if (camOrbit_) {
 			calculateCameraOrbit();
 		} else {
 			cam_.keyBoardInput(window_.getPtr(), dt_);
 			cam_.mouseInput(window_.getPtr());
-
 		}
 
 		if (cam_.hasChanged() || window_.hasChanged())
@@ -82,8 +82,8 @@ void BHVApp::renderLoop() {
 		disk_.uploadData();
 		quad_.draw(GL_TRIANGLES);
 		
-		if(showGui_)
-			gui_.renderEnd();
+		if(showGui_) gui_.renderEnd();
+
 		window_.endFrame();
 	}
 }
@@ -118,11 +118,7 @@ void BHVApp::calculateCameraOrbit() {
 	cam_.setFront(glm::vec3(pos) * -camOrbitRad_);
 
 	camOrbitAngle_ += camOrbitSpeed_ * dt_;
-	//camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
-	if (camOrbitAngle_ > 360) {
-		camOrbitAngle_ -= 360;
-		std::cout << "full orbit" << std::endl;
-	}
+	camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
 
 }
 
@@ -130,12 +126,17 @@ void BHVApp::renderOptionsWindow() {
 	ImGui::Begin("Application Options");
 	if (ImGui::BeginTabBar("Options")) {
 		if (ImGui::BeginTabItem("General")) {
+
 			ImGui::Text("Save / Load current state");
 			ImGui::PushItemWidth(ImGui::GetFontSize() * 7);
 			if (ImGui::Button("Save")) dumpState();
 			ImGui::SameLine();
 			if (ImGui::Button("Load")) readState();
 			ImGui::PopItemWidth();
+
+			if (ImGui::Checkbox("VSYNC", &vSync_))
+				glfwSwapInterval((int)vSync_);
+
 			ImGui::Checkbox("Show FPS", &showFps_);
 			ImGui::Spacing();
 			if(showFps_)
@@ -344,7 +345,7 @@ void BHVApp::processKeyboardInput() {
 	} else if (glfwGetKey(win, GLFW_KEY_H) == GLFW_PRESS) {
 		showGui_ = false;
 	}
-
+#ifdef PRESENTATION_HELPER
 	static bool step = false;
 	static float weight = 0.f;
 	if (glfwGetKey(win, GLFW_KEY_Q) == GLFW_PRESS) {
@@ -437,4 +438,5 @@ void BHVApp::processKeyboardInput() {
 		weight = std::min(1.5f, weight + 0.005f);
 		getCurrentShader()->setUniform("forceWeight", weight);
 	}
+#endif //PRESENTATION_HELPER
 }

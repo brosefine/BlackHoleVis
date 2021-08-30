@@ -44,7 +44,10 @@ private:
 	std::vector<std::shared_ptr<ShaderGui>> shaderElements_;
 
 	// timing variables for render loop
-	float t0_, dt_, tPassed_;
+	double t0_, dt_;
+	float tPassed_;
+
+	bool vSync_;
 
 	// GUI flags
 	bool showGui_;
