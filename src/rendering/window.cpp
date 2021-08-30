@@ -12,6 +12,18 @@ BHVWindow::~BHVWindow() {
 	glfwTerminate();
 }
 
+void BHVWindow::setHeight(int h) {
+	height_ = h;
+	glfwSetWindowSize(windowPtr_, width_, h);
+	changed_ = true;
+}
+
+void BHVWindow::setWidth(int w) {
+	width_ = w;
+	glfwSetWindowSize(windowPtr_, w, height_);
+	changed_ = true;
+}
+
 bool BHVWindow::shouldClose() {
 	return glfwWindowShouldClose(windowPtr_);
 }

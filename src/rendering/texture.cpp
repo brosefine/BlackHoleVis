@@ -7,9 +7,9 @@
 #include <iostream>
 #include <glad/glad.h>
 
-Texture::Texture(std::string filename): ID_(0) {
-    glGenTextures(1, &ID_);
-    glBindTexture(GL_TEXTURE_2D, ID_);
+Texture::Texture(std::string filename): texId_(0) {
+    glGenTextures(1, &texId_);
+    glBindTexture(GL_TEXTURE_2D, texId_);
 
     int width, height, nrComponents;
 
@@ -39,8 +39,72 @@ Texture::Texture(std::string filename): ID_(0) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+
+
+Texture::~Texture() {
+    glDeleteTextures(1, &texId_);
+}
+
 void Texture::bind() const {
-    glBindTexture(GL_TEXTURE_2D, ID_);
+    glBindTexture(GL_TEXTURE_2D, texId_);
+}
+
+FBOTexture::FBOTexture(int width, int height)
+    : width_(width)
+    , height_(height)
+    , texId_(0)
+    , fboId_(0) {
+
+    // framebuffer
+    glGenFramebuffers(1, &fboId_);
+    glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
+
+    // texture
+    glGenTextures(1, &texId_);
+    glBindTexture(GL_TEXTURE_2D, texId_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+        GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+        texId_, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fboId_ = -1; texId_ = -1;
+        std::cerr << "[Texture]: Framebuffer object not initialized" << std::endl;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+FBOTexture::~FBOTexture() {
+    glDeleteFramebuffers(1, &fboId_);
+    glDeleteTextures(1, &texId_);
+}
+
+void FBOTexture::resize(int width, int height) {
+    width_ = width;
+    height_ = height;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
+
+    glDeleteTextures(1, &texId_);
+
+    glGenTextures(1, &texId_);
+    glBindTexture(GL_TEXTURE_2D, texId_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+        GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+        texId_, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fboId_ = -1; texId_ = -1;
+        std::cerr << "[Texture]: Framebuffer object not initialized" << std::endl;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void FBOTexture::bind() const {
+    glBindTexture(GL_TEXTURE_2D, texId_);
 }
 
 CubeMap::CubeMap(std::vector<std::string> faces): ID_(0) {

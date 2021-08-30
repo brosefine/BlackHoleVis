@@ -35,6 +35,10 @@ private:
 	Mesh quad_;
 	CubeMap sky_;
 
+	FBOTexture fboTexture_;
+	Shader sQuadShader_;
+	int fboScale_;
+
 	AccDisk disk_;
 	float diskRotationSpeed_;
 	std::map<std::string, std::shared_ptr<Texture>> diskTextures_;

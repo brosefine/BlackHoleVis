@@ -5,13 +5,36 @@
 
 class Texture {
 public:
+	// create texture from image file
 	Texture(std::string filename);
+	~Texture();
 
 	void bind() const;
-	unsigned int getId() const { return ID_; }
+	unsigned int getTexId() const { return texId_; }
 
 private:
-	unsigned int ID_;
+	unsigned int texId_;
+};
+
+class FBOTexture {
+public:
+	// create empty fbo texture
+	FBOTexture(int width, int height);
+	~FBOTexture();
+
+	void resize(int width, int height);
+
+	void bind() const;
+	unsigned int getTexId() const { return texId_; }
+	unsigned int getFboId() const { return fboId_; }
+
+	int getWidth() const { return width_; }
+	int getHeight() const { return height_; }
+
+private:
+	int width_, height_;
+	unsigned int texId_;
+	unsigned int fboId_;
 };
 
 class CubeMap {

@@ -22,6 +22,9 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitAngle_(0.f)
 	, quad_(quadPositions, quadUVs, quadIndices)
 	, sky_({ "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" })
+	, fboTexture_(width, height)
+	, sQuadShader_("squad.vs", "squad.fs")
+	, fboScale_(1)
 	, diskRotationSpeed_(10.f)
 	, disk_(DISKBINDING)
 	, selectedTexture_("")
@@ -40,6 +43,7 @@ BHVApp::BHVApp(int width, int height)
 }
 
 void BHVApp::renderLoop() {
+	glClearColor(0.5, 0.5, 0.5, 1.0);
 
 	while (!window_.shouldClose()) {
 
@@ -64,10 +68,17 @@ void BHVApp::renderLoop() {
 			cam_.mouseInput(window_.getPtr());
 		}
 
-		if (cam_.hasChanged() || window_.hasChanged())
-			cam_.update(window_.getWidth(), window_.getHeight());
+		if (window_.hasChanged()) {
+			std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
+			fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
+			cam_.update(dim.at(0), dim.at(1));
 
-		glClearColor(0.5, 0.5, 0.5, 1.0);
+		} else if (cam_.hasChanged()) {
+			cam_.update(window_.getWidth(), window_.getHeight());
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
+		glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0);
@@ -81,7 +92,16 @@ void BHVApp::renderLoop() {
 		disk_.setRotation(tPassed_ / diskRotationSpeed_);
 		disk_.uploadData();
 		quad_.draw(GL_TRIANGLES);
-		
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, window_.getWidth(), window_.getHeight());
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glActiveTexture(GL_TEXTURE0);
+		fboTexture_.bind();
+		sQuadShader_.use();
+		quad_.draw(GL_TRIANGLES);
+				
 		if(showGui_) gui_.renderEnd();
 
 		window_.endFrame();
@@ -133,6 +153,17 @@ void BHVApp::renderOptionsWindow() {
 			ImGui::SameLine();
 			if (ImGui::Button("Load")) readState();
 			ImGui::PopItemWidth();
+
+			ImGui::Text("Set Window Size");
+			std::vector<int> dim {window_.getWidth(), window_.getHeight()};
+			if (ImGui::InputInt2("window size", dim.data())) {
+				window_.setWidth(dim.at(0));
+				window_.setHeight(dim.at(1));
+			}
+
+			ImGui::Text("Set Offscreen Resolution");
+			if (ImGui::SliderInt("* window size", &fboScale_, 1, 5))
+				fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
 
 			if (ImGui::Checkbox("VSYNC", &vSync_))
 				glfwSwapInterval((int)vSync_);
@@ -258,6 +289,7 @@ void BHVApp::renderFPSPlot() {
 	ImGui::BulletText("Frames per Second");
 
 	ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
+	ImPlot::SetNextPlotLimitsY(0, 200, ImGuiCond_Always);
 	if (ImPlot::BeginPlot("##Rolling2", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
 		ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
 		ImPlot::EndPlot();

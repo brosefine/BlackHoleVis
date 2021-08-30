@@ -11,15 +11,9 @@ public:
 	BHVWindow(int width, int height, std::string name);
 	~BHVWindow();
 
-	void setWidth(int w) {
-		width_ = w;
-		changed_ = true;
-	}
+	void setWidth(int w);
 
-	void setHeight(int h) {
-		height_ = h;
-		changed_ = true;
-	}
+	void setHeight(int h);
 
 	int getWidth() { return width_; }
 	int getHeight() { return height_; }
