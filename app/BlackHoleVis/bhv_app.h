@@ -52,11 +52,12 @@ private:
 	float tPassed_;
 
 	// performance measurement
-	std::vector<float> frameTimes_;
-	float measureTime_;
-	double measureStart_;
-	int measureFrameWindow_;
 	bool measureFrameTime_;
+	float measureTime_;			// duration of measurement
+	double measureStart_;		// start point of measurement
+	std::string measureID_;		// user-defined name of a measurement
+	int measureFrameWindow_;	// number of frames over which to average measured frame times
+	std::vector<float> frameTimes_;
 
 	bool vSync_;
 
@@ -79,8 +80,8 @@ private:
 	void renderDiskWindow();
 	void renderFPSPlot();
 
-	void dumpState();
-	void readState();
+	void dumpState(std::string const& file);
+	void readState(std::string const& file);
 	void processKeyboardInput();
 
 	void initFrameTimeMeasure();

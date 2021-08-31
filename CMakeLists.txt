@@ -33,6 +33,9 @@ add_executable(${PROJECT_NAME}_main ${BHV_FILES})
 target_include_directories(${PROJECT_NAME}_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/)
 target_link_libraries(${PROJECT_NAME}_main SOURCE bhv_dependencies)
 
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/saves)
+
 
 # Create virtual folders to make it look nicer in VS
 if(MSVC_IDE)

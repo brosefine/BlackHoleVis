@@ -70,6 +70,7 @@ list(APPEND IMGUI_SOURCES
     "${imgui_SOURCE_DIR}/imgui_demo.cpp"
     "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
     "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp"
     )
 
 list(APPEND IMGUI_PUBLIC_INCLUDE_DIRS

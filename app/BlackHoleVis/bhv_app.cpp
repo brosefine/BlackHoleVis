@@ -8,11 +8,10 @@
 
 #include <bhv_app.h>
 #include <rendering/quad.h>
+#include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
 
 // #define PRESENTATION_HELPER
-
-
 
 BHVApp::BHVApp(int width, int height)
 	: window_(width, height, "Black Hole Vis")
@@ -33,9 +32,10 @@ BHVApp::BHVApp(int width, int height)
 	, selectedTexture_("")
 	, selectedShader_(0)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
-	, measureTime_(1.f), measureStart_(0.f)
-	, measureFrameWindow_(1)
 	, measureFrameTime_(false)
+	, measureTime_(1.f), measureStart_(0.f)
+	, measureID_("")
+	, measureFrameWindow_(1)
 	, vSync_(true)
 	, showGui_ (true)
 	, showShaders_(false)
@@ -160,11 +160,13 @@ void BHVApp::renderOptionsWindow() {
 		if (ImGui::BeginTabItem("General")) {
 
 			// Saving, Loading State
+			static std::string file;
 			ImGui::Text("Save / Load current state");
 			ImGui::PushItemWidth(ImGui::GetFontSize() * 7);
-			if (ImGui::Button("Save")) dumpState();
+			ImGui::InputText("", &file);
+			if (ImGui::Button("Save")) dumpState(file);
 			ImGui::SameLine();
-			if (ImGui::Button("Load")) readState();
+			if (ImGui::Button("Load")) readState(file);
 			ImGui::PopItemWidth();
 
 			ImGui::Text("Set Window Size");
@@ -184,6 +186,7 @@ void BHVApp::renderOptionsWindow() {
 
 			// FPS plots and measurement
 			ImGui::Text("Frame Time Measuring");
+			ImGui::InputText("Measurement ID", &measureID_);
 			ImGui::InputFloat("Duration", &measureTime_);
 			ImGui::InputInt("Summarize x Frames", &measureFrameWindow_);
 			if (ImGui::Button("Start Measuring"))
@@ -317,10 +320,9 @@ void BHVApp::renderFPSPlot() {
 	}
 }
 
-void BHVApp::dumpState() {
-	std::cout << "Dump" << std::endl;
+void BHVApp::dumpState(std::string const& file) {
 
-	std::ofstream outFile("dump.txt");
+	std::ofstream outFile(ROOT_DIR "saves/" + file);
 	outFile << "Camera\n";
 	glm::vec3 camPos = cam_.getPosition();
 	outFile << camPos.x << " " << camPos.y << " " << camPos.z << "\n";
@@ -343,10 +345,9 @@ void BHVApp::dumpState() {
 	outFile.close();
 }
 
-void BHVApp::readState() {
-	std::cout << "Read" << std::endl;
+void BHVApp::readState(std::string const& file) {
 
-	std::ifstream inFile("dump.txt");
+	std::ifstream inFile(ROOT_DIR "saves/" + file);
 	std::string word;
 	while (inFile >> word) {
 		if (word == "Camera") {
@@ -393,9 +394,9 @@ void BHVApp::readState() {
 void BHVApp::processKeyboardInput() {
 
 	auto win = window_.getPtr();
-	if (glfwGetKey(win, GLFW_KEY_G) == GLFW_PRESS) {
+	if (glfwGetKey(win, GLFW_KEY_G) == GLFW_PRESS && glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 		showGui_ = true;
-	} else if (glfwGetKey(win, GLFW_KEY_H) == GLFW_PRESS) {
+	} else if (glfwGetKey(win, GLFW_KEY_H) == GLFW_PRESS && glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 		showGui_ = false;
 	}
 #ifdef PRESENTATION_HELPER
@@ -506,12 +507,17 @@ void BHVApp::initFrameTimeMeasure() {
 }
 
 void BHVApp::finalizeFrameTimeMeasure() {
-	static int id = 0;
 	measureFrameTime_ = false;
 
-	std::ofstream outFile("measure.txt");
-	outFile << "# " << frameTimes_.size() << " frames" << std::endl;
-	outFile << "id,frames,nbframes,min,max,med,avg,avgFPS\n";
+	std::ofstream outIDFile(ROOT_DIR "data/measure_ids.txt", std::ios_base::app);
+	outIDFile << "\n" << measureID_ << std::endl;
+	outIDFile << "# " << frameTimes_.size() << " frames" << std::endl;
+	outIDFile << "# " << measureTime_ << " seconds" << std::endl;
+	outIDFile << "# avg over " << measureFrameWindow_ << " frames" << std::endl;
+	outIDFile.close();
+
+	std::ofstream outDataFile(ROOT_DIR "data/measure_data.txt", std::ios_base::app);
+
 	int frameCount = 0;
 	for (auto i = frameTimes_.begin(); i < frameTimes_.end(); i += measureFrameWindow_) {
 		auto last = (frameCount + measureFrameWindow_) > frameTimes_.size() ?
@@ -531,7 +537,8 @@ void BHVApp::finalizeFrameTimeMeasure() {
 		// compute average
 		float avg = std::accumulate(i, last, 0.f) / nbFrames;
 
-		outFile << id
+		// output is "id,frames,nbframes,min,max,med,avg,avgFPS\n";
+		outDataFile << measureID_
 			<< "," << frameCount
 			<< "-" << std::min(frameCount + measureFrameWindow_, (int)frameTimes_.size()) - 1
 			<< "," << nbFrames
@@ -545,7 +552,7 @@ void BHVApp::finalizeFrameTimeMeasure() {
 		frameCount += measureFrameWindow_;
 	}
 
-	outFile.close();
+	outDataFile.close();
 	showGui_ = true;
-	id++;
+	measureID_ = "";
 }
