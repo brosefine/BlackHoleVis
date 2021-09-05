@@ -21,19 +21,23 @@ void ShaderGui::bindUBOs() {
 	shader_->setBlockBinding("accDisk", DISKBINDING);
 }
 
-void ShaderGui::renderPreprocessorFlags() {
-	ImGui::Text("Preprocessor Flags");
-	for (auto& flag : preprocessorFlags_) {
-		ImGui::Checkbox(flag.first.c_str(), &flag.second);
-	}
+void ShaderGui::updatePreprocessorFlags() {
 	// update preprocessor flags
 	for (auto& flag : preprocessorFlags_) {
 		shader_->setFlag(flag.first, flag.second);
 	}
 }
 
+void ShaderGui::renderPreprocessorFlags() {
+	ImGui::Text("Preprocessor Flags");
+	for (auto& flag : preprocessorFlags_) {
+		ImGui::Checkbox(flag.first.c_str(), &flag.second);
+	}
+}
+
 void ShaderGui::update() {
 	
+	updatePreprocessorFlags();
 	shader_->reload();
 	shader_->use();
 	bindUBOs();

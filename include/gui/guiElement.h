@@ -60,6 +60,7 @@ protected:
 	std::shared_ptr<Shader> shader_;
 	std::map<std::string, bool> preprocessorFlags_;
 
+	void updatePreprocessorFlags();
 	void renderPreprocessorFlags();
 
 	virtual void bindUBOs();

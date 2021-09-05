@@ -76,7 +76,7 @@ void main() {
             return;
         }
         
-        lightVel = normalize(lightVel + newton(lightPos));
+        lightVel = normalize(lightVel + newton(lightPos) * stepSize);
         lightPos += lightVel * stepSize;
 
         #ifdef DISK

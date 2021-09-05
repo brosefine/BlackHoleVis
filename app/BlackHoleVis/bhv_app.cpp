@@ -164,6 +164,7 @@ void BHVApp::renderOptionsWindow() {
 			ImGui::Text("Save / Load current state");
 			ImGui::PushItemWidth(ImGui::GetFontSize() * 7);
 			ImGui::InputText("", &file);
+			ImGui::SameLine();
 			if (ImGui::Button("Save")) dumpState(file);
 			ImGui::SameLine();
 			if (ImGui::Button("Load")) readState(file);
@@ -342,6 +343,9 @@ void BHVApp::dumpState(std::string const& file) {
 		outFile << "EndShader\n";
 	}
 
+	outFile << "Screen\n";
+	outFile << window_.getWidth() << " " << window_.getHeight() << " " << fboScale_ << "\n";
+
 	outFile.close();
 }
 
@@ -385,6 +389,12 @@ void BHVApp::readState(std::string const& file) {
 				shaderElements_.at(std::stoi(word))->readState(inFile);
 				inFile >> word;
 			}
+		}
+
+		if (word == "Screen") {
+			inFile >> word; window_.setWidth(std::stoi(word));
+			inFile >> word; window_.setHeight(std::stoi(word));
+			inFile >> word; fboScale_ = std::stoi(word);
 		}
 	}
 
