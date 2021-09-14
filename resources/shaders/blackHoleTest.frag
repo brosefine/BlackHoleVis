@@ -12,7 +12,6 @@ float accretionMax = 8.0;
 
 void main() {
 
-
     vec3 viewDir = normalize(worldPos - cameraPos);
     vec3 blackHoleVec = -cameraPos;
     
@@ -44,4 +43,5 @@ void main() {
         }
     }
     #endif //DISK
+
 }

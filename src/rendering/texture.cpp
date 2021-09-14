@@ -62,8 +62,8 @@ FBOTexture::FBOTexture(int width, int height)
     // texture
     glGenTextures(1, &texId_);
     glBindTexture(GL_TEXTURE_2D, texId_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-        GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA,
+        GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -90,8 +90,8 @@ void FBOTexture::resize(int width, int height) {
 
     glGenTextures(1, &texId_);
     glBindTexture(GL_TEXTURE_2D, texId_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-        GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA,
+        GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -103,7 +103,11 @@ void FBOTexture::resize(int width, int height) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FBOTexture::bind() const {
+void FBOTexture::bindImageTex() const {
+    glBindImageTexture(0, texId_, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+}
+
+void FBOTexture::bindTex() const {
     glBindTexture(GL_TEXTURE_2D, texId_);
 }
 

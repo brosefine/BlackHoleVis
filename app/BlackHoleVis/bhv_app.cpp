@@ -4,12 +4,16 @@
 #include <functional>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/transform.hpp >
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/matrix_access.hpp>
 
 #include <bhv_app.h>
 #include <rendering/quad.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 
 // #define PRESENTATION_HELPER
 
@@ -30,7 +34,9 @@ BHVApp::BHVApp(int width, int height)
 	, diskRotationSpeed_(10.f)
 	, disk_(DISKBINDING)
 	, selectedTexture_("")
+	, selectedComputeShader_(0)
 	, selectedShader_(0)
+	, compute_(false)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, measureFrameTime_(false)
 	, measureTime_(1.f), measureStart_(0.f)
@@ -84,33 +90,43 @@ void BHVApp::renderLoop() {
 			std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
 			fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
 			cam_.update(dim.at(0), dim.at(1));
+			updateComputeUniforms();
 
 		} else if (cam_.hasChanged()) {
 			cam_.update(window_.getWidth(), window_.getHeight());
+			updateComputeUniforms();
 		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
-		glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		glActiveTexture(GL_TEXTURE0);
-		sky_.bind();
-
-		glActiveTexture(GL_TEXTURE1);
-		diskTextures_.at(selectedTexture_)->bind();
 
 		getCurrentShader()->use();
 		
-		disk_.setRotation(tPassed_ / diskRotationSpeed_);
-		disk_.uploadData();
-		quad_.draw(GL_TRIANGLES);
+		if (compute_) {
+			glActiveTexture(GL_TEXTURE0);
+			fboTexture_.bindImageTex();
+			glDispatchCompute(fboTexture_.getWidth(), fboTexture_.getHeight(), 1);
+			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+		} else {
 
+			glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
+			glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glActiveTexture(GL_TEXTURE0);
+			sky_.bind();
+
+			glActiveTexture(GL_TEXTURE1);
+			diskTextures_.at(selectedTexture_)->bind();
+		
+			disk_.setRotation(tPassed_ / diskRotationSpeed_);
+			disk_.uploadData();
+			quad_.draw(GL_TRIANGLES);
+
+		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, window_.getWidth(), window_.getHeight());
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0);
-		fboTexture_.bind();
+		fboTexture_.bindTex();
 		sQuadShader_.use();
 		quad_.draw(GL_TRIANGLES);
 				
@@ -120,7 +136,9 @@ void BHVApp::renderLoop() {
 	}
 }
 
-std::shared_ptr<Shader> BHVApp::getCurrentShader() {
+std::shared_ptr<ShaderBase> BHVApp::getCurrentShader() {
+	if(compute_)
+		return computeShaderElements_.at(selectedComputeShader_)->getShader();
 	return shaderElements_.at(selectedShader_)->getShader();
 }
 
@@ -128,6 +146,8 @@ void BHVApp::initGuiElements() {
 	shaderElements_.push_back(std::make_shared<NewtonShaderGui>());
 	shaderElements_.push_back(std::make_shared<StarlessShaderGui>());
 	shaderElements_.push_back(std::make_shared<TestShaderGui>());
+
+	computeShaderElements_.push_back(std::make_shared<NewtonComputeShaderGui>());
 }
 
 void BHVApp::initDiskTextures() {
@@ -212,29 +232,53 @@ void BHVApp::renderOptionsWindow() {
 			renderDiskWindow();
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Compute Shader Settings")) {
+			renderComputeWindow();
+			ImGui::EndTabItem();
+		}
 	}
-
+	ImGui::EndTabBar();
 	ImGui::End();
 }
 
 void BHVApp::renderShaderWindow() {
 	ImGui::Text("Shader Settings");
+	ImGui::Checkbox("Use compute shader", &compute_);
 	ImGui::Text("Shader Selection");
-	if (ImGui::BeginListBox("")) {
+	if (compute_) {
+		if (ImGui::BeginListBox("")) {
 
-		for (int i = 0; i < shaderElements_.size(); ++i) {
-			auto shader = shaderElements_.at(i);
-			if (ImGui::Selectable(shader->getName().c_str(), false)) {
+			for (int i = 0; i < computeShaderElements_.size(); ++i) {
+				auto shader = computeShaderElements_.at(i);
+				if (ImGui::Selectable(shader->getName().c_str(), false)) {
 
-				selectedShader_ = i;
-				shaderElements_.at(i)->updateShader();
+					selectedComputeShader_ = i;
+					computeShaderElements_.at(i)->updateShader();
+				}
 			}
+			ImGui::EndListBox();
 		}
-		ImGui::EndListBox();
-	}
-	ImGui::Separator();
-	shaderElements_.at(selectedShader_)->show();
+		ImGui::Separator();
+		computeShaderElements_.at(selectedComputeShader_)->show();
 
+	} else {
+
+		if (ImGui::BeginListBox("")) {
+
+			for (int i = 0; i < shaderElements_.size(); ++i) {
+				auto shader = shaderElements_.at(i);
+				if (ImGui::Selectable(shader->getName().c_str(), false)) {
+
+					selectedShader_ = i;
+					shaderElements_.at(i)->updateShader();
+				}
+			}
+			ImGui::EndListBox();
+		}
+		ImGui::Separator();
+		shaderElements_.at(selectedShader_)->show();
+
+	}
 }
 
 void BHVApp::renderCameraWindow() {
@@ -265,10 +309,7 @@ void BHVApp::renderCameraWindow() {
 	
 		if (xChange || yChange || zChange)
 			cam_.setPos(camPos);
-
 	}
-
-
 }
 
 void BHVApp::renderDiskWindow() {
@@ -319,6 +360,10 @@ void BHVApp::renderFPSPlot() {
 		ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
 		ImPlot::EndPlot();
 	}
+}
+
+void BHVApp::renderComputeWindow() {
+	if (ImGui::Button("Print Info")) printComputeInfo();
 }
 
 void BHVApp::dumpState(std::string const& file) {
@@ -565,4 +610,53 @@ void BHVApp::finalizeFrameTimeMeasure() {
 	outDataFile.close();
 	showGui_ = true;
 	measureID_ = "";
+}
+
+void BHVApp::printComputeInfo() {
+// determining work group size and number as in
+// https://antongerdelan.net/opengl/compute.html
+
+	int info[3];
+
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &info[0]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &info[1]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &info[2]);
+
+	printf("max global (total) work group counts x:%i y:%i z:%i\n",
+		info[0], info[1], info[2]);
+
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &info[0]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &info[1]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &info[2]);
+
+	printf("max local (in one shader) work group sizes x:%i y:%i z:%i\n",
+		info[0], info[1], info[2]);
+
+	int work_grp_inv;
+	glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
+	printf("max local work group invocations %i\n", work_grp_inv);
+}
+
+void BHVApp::updateComputeUniforms() {
+
+	// transform quad positions into world space
+	std::vector<glm::vec4> positions;
+	auto projViewInvMat = cam_.getData().projectionViewInverse_;
+	for (auto const& v : quad_.vertices_) {
+		positions.push_back((projViewInvMat * glm::vec4(v.position, 1.0f)));
+	}
+
+	// assemble matrix for shader
+	glm::mat4 dataMat{ 0.0f };
+	for (int i = 0; i < 4; ++i) {
+		dataMat[i] = positions.at(i) / positions.at(i).w;
+	}
+	glm::vec3 camPos = cam_.getPosition();
+	dataMat[0][3] = camPos.x;
+	dataMat[1][3] = camPos.y;
+	dataMat[2][3] = camPos.z;
+
+	for (auto const& shader : computeShaderElements_) {
+		shader->getShader()->setUniform("quadCamInfo", dataMat);
+	}
 }

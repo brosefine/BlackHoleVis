@@ -26,6 +26,7 @@ public:
 
 	glm::mat4 getViewMatrix();
 	glm::mat4 getProjectionMatrix(float aspect, float near = NEAR, float far = FAR);
+	CameraData getData() const { return data_; }
 	glm::vec3 getPosition() const { return position_; }
 	glm::vec3 getFront() const { return front_; }
 	glm::vec3 getUp() const { return up_; }

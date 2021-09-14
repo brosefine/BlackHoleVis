@@ -70,7 +70,7 @@ void BlackHoleGui::render() {
 
 NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f) {
 	name_ = "Newton";
-	shader_ = std::shared_ptr<Shader>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
+	shader_ = std::shared_ptr<ShaderBase>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","newton.frag" },
 		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" , "CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX"}));
 	preprocessorFlags_ = shader_->getFlags();
@@ -130,11 +130,70 @@ void NewtonShaderGui::uploadUniforms() {
 
 }
 
+//------------ Newton Compute Shader GUI ------------ //
+
+NewtonComputeShaderGui::NewtonComputeShaderGui() : baseColor_(0.f) {
+	name_ = "Newton";
+	shader_ = std::shared_ptr<ShaderBase>(new ComputeShader(std::vector<std::string>{ "intersect.frag", "starless.comp" },
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" , "CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX" }));
+	preprocessorFlags_ = shader_->getFlags();
+	shader_->use();
+	bindUBOs();
+	uploadUniforms();
+}
+
+void NewtonComputeShaderGui::dumpState(std::ofstream& outFile) {
+	outFile << "Flags\n";
+	for (auto const& flag : preprocessorFlags_) {
+		outFile << flag.first << " " << flag.second << "\n";
+	}
+	outFile << "Uniforms\n";
+	//outFile << stepSize_ << " " << forceWeight_ << "\n";
+}
+
+void NewtonComputeShaderGui::readState(std::ifstream& inFile) {
+	std::string word;
+	while (word != "EndShader" && inFile >> word) {
+		if (word == "Flags") {
+			while (true) {
+				inFile >> word;
+				if (word == "Uniforms") break;
+				std::string val;
+				inFile >> val;
+				preprocessorFlags_.at(word) = val == "1" ? true : false;
+			}
+		}
+
+		if (word == "Uniforms") {
+			inFile >> word;
+			//stepSize_ = std::stof(word);
+			inFile >> word;
+			//forceWeight_ = std::stof(word);
+		}
+	}
+	update();
+}
+
+
+void NewtonComputeShaderGui::render() {
+	ImGui::Text("Newton Shader Properties");
+	ImGui::InputFloat3("Color", glm::value_ptr(baseColor_));
+	renderPreprocessorFlags();
+	ImGui::Separator();
+
+	renderRefreshMenu();
+}
+
+void NewtonComputeShaderGui::uploadUniforms() {
+	shader_->setUniform("baseColor", baseColor_);
+	//shader_->setUniform("accretionTex", 1);
+}
+
 //------------ Test Shader GUI ------------ //
 
 TestShaderGui::TestShaderGui() {
 	name_ = "Test";
-	shader_ = std::shared_ptr<Shader>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY", "DISK" }));
+	shader_ = std::shared_ptr<ShaderBase>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY", "DISK" }));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	shader_->setBlockBinding("camera", CAMBINDING);
@@ -150,11 +209,13 @@ void TestShaderGui::render() {
 
 //------------ Starless Shader GUI ------------ //
 
-StarlessShaderGui::StarlessShaderGui() : stepSize_(1.f), forceWeight_(1.5f) {
+StarlessShaderGui::StarlessShaderGui() : stepSize_(0.2f), mass_(0.5f) {
 	name_ = "Starless";
-	shader_ = std::shared_ptr<Shader>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
+	shader_ = std::shared_ptr<ShaderBase>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","starless.frag" },
-		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK", "CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX" }));
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK", 
+		"CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX",
+		"ADPTSTEP", "ERLYTERM"}));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();
@@ -165,7 +226,7 @@ StarlessShaderGui::StarlessShaderGui() : stepSize_(1.f), forceWeight_(1.5f) {
 void StarlessShaderGui::render() {
 	ImGui::Text("Starless Shader Properties");
 	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
-	ImGui::InputFloat("Force Weight", &forceWeight_, .01f, .1f);
+	ImGui::InputFloat("Mass", &mass_, .01f, .1f);
 
 	renderPreprocessorFlags();
 	ImGui::Separator();
@@ -175,7 +236,7 @@ void StarlessShaderGui::render() {
 
 void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
-	shader_->setUniform("forceWeight", forceWeight_);
+	shader_->setUniform("M", mass_);
 	shader_->setUniform("accretionTex", 1);
 }
 
@@ -185,7 +246,7 @@ void StarlessShaderGui::dumpState(std::ofstream& outFile) {
 		outFile << flag.first << " " << (flag.second ? 1 : 0) << "\n";
 	}
 	outFile << "Uniforms\n";
-	outFile << stepSize_ << " " << forceWeight_ << "\n";
+	outFile << stepSize_ << " " << mass_ << "\n";
 }
 
 void StarlessShaderGui::readState(std::ifstream& inFile) {
@@ -205,7 +266,7 @@ void StarlessShaderGui::readState(std::ifstream& inFile) {
 			inFile >> word;
 			stepSize_ = std::stof(word);
 			inFile >> word;
-			forceWeight_ = std::stof(word);
+			mass_ = std::stof(word);
 		}
 	}
 	update();

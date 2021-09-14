@@ -44,8 +44,11 @@ private:
 	std::map<std::string, std::shared_ptr<Texture>> diskTextures_;
 	std::string selectedTexture_;
 
+	bool compute_;
 	int selectedShader_;
+	int selectedComputeShader_;
 	std::vector<std::shared_ptr<ShaderGui>> shaderElements_;
+	std::vector<std::shared_ptr<ShaderGui>> computeShaderElements_;
 
 	// timing variables for render loop
 	double t0_, dt_;
@@ -68,7 +71,7 @@ private:
 	bool showDisk_;
 	bool showFps_;
 
-	std::shared_ptr<Shader> getCurrentShader();
+	std::shared_ptr<ShaderBase> getCurrentShader();
 	void initGuiElements();
 	void initDiskTextures();
 
@@ -79,6 +82,7 @@ private:
 	void renderCameraWindow();
 	void renderDiskWindow();
 	void renderFPSPlot();
+	void renderComputeWindow();
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);
@@ -87,4 +91,6 @@ private:
 	void initFrameTimeMeasure();
 	void finalizeFrameTimeMeasure();
 
+	void printComputeInfo();
+	void updateComputeUniforms();
 };

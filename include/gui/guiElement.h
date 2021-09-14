@@ -57,7 +57,7 @@ public:
 	auto getShader() { return shader_; }
 	void updateShader() { update(); }
 protected:
-	std::shared_ptr<Shader> shader_;
+	std::shared_ptr<ShaderBase> shader_;
 	std::map<std::string, bool> preprocessorFlags_;
 
 	void updatePreprocessorFlags();
@@ -84,13 +84,28 @@ private:
 	float forceWeight_;
 };
 
+class NewtonComputeShaderGui : public ShaderGui {
+public:
+
+	NewtonComputeShaderGui();
+	void dumpState(std::ofstream& outFile) override;
+	void readState(std::ifstream& inFile) override;
+
+private:
+	void render() override;
+	void uploadUniforms() override;
+
+	glm::vec3 baseColor_;
+};
+
+
 class StarlessShaderGui : public ShaderGui {
 public:
 
 	StarlessShaderGui();
 
-	void increaseWeight(float inc) { forceWeight_ = std::min(1.5f, forceWeight_ + inc); changed_ = true; }
-	void decreaseWeight(float dec) { forceWeight_ = std::max(0.f, forceWeight_ - dec); changed_ = true; }
+	void increaseWeight(float inc) { mass_ = std::min(1.5f, mass_ + inc); changed_ = true; }
+	void decreaseWeight(float dec) { mass_ = std::max(0.f, mass_ - dec); changed_ = true; }
 
 private:
 	void render() override;
@@ -99,7 +114,7 @@ private:
 	void readState(std::ifstream& inFile) override;
 
 	float stepSize_;
-	float forceWeight_;
+	float mass_;
 
 };
 

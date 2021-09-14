@@ -10,7 +10,7 @@ layout (std140) uniform accDisk
     float rot;
 };
 
-uniform sampler2D accretionTex;
+layout(binding = 1) uniform sampler2D accretionTex;
 
 bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
     if(abs(pos.y) > abs(vel.y) || sign(pos.y) == sign(vel.y)) return false;
@@ -31,13 +31,13 @@ bool diskIntersect (vec3 pos, vec3 vel, inout vec4 col) {
         if(angle > 1.0) angle -= 1.0;
         col.a = texture(accretionTex, vec2(angle, 1.0 - heat)).r;  
         #endif
-    #endif // CHECKERBOARD
+    #endif // CHECKEREDDISK
         return true;
     }
 
     return false;
 }
-#endif //CHECKEREDDISK
+#endif //DISK
 
 #ifdef CHECKEREDHOR
 bool horizonIntersect (vec3 pos, vec3 vel, float r, inout vec4 col) {

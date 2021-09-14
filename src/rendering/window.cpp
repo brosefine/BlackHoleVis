@@ -37,7 +37,7 @@ void BHVWindow::init() {
 	// GLFW
 	glfwInit();
 	// checks if correct OpenGL versions are present
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	// core profile includes smaller set of functions, e.g. no backwards-compatibility
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

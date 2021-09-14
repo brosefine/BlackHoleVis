@@ -1,0 +1,24 @@
+layout(local_size_x = 1, local_size_y = 1) in;
+layout(rgba32f, binding = 0) uniform image2D img_output;
+
+uniform vec3 baseColor;
+uniform mat4 quadCamInfo;
+
+void main() {
+  // compute ray direction
+  vec2 coords = vec2(gl_GlobalInvocationID.xy)/vec2(gl_NumWorkGroups.xy);
+  vec3 posX1 = vec3((1.0 - coords.x) * quadCamInfo[0] + coords.x * quadCamInfo[2]);
+  vec3 posX2 = vec3((1.0 - coords.x) * quadCamInfo[1] + coords.x * quadCamInfo[3]);
+  vec3 pixel_pos = (1.0 - coords.y) * posX1 + coords.y * posX2;
+
+  vec3 camPos = vec3(quadCamInfo[0][3], quadCamInfo[1][3], quadCamInfo[2][3]);
+  
+  vec3 rayDir = normalize(pixel_pos - camPos);
+  
+
+  // base pixel colour for image
+  vec4 pixel = vec4(abs(rayDir) + baseColor, 1.0);
+  
+  // output to a specific pixel in the image
+  imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
+}

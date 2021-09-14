@@ -6,62 +6,154 @@
 #include <vector>
 
 
-Shader::Shader(std::string vsPath, std::string fsPath, std::vector<std::string> flags)
-	: vsPaths_({ vsPath }), fsPaths_({ fsPath }), versionDirective_("#version 330 core\n") {
-	for (auto const& flag : flags) {
-		preprocessorFlags_.insert({ flag, false });
-	}
-	compile();
-}
+std::string ShaderBase::readShaderFiles(std::vector<std::string> paths) const {
 
-Shader::Shader(std::vector<std::string> vsPaths, std::vector<std::string> fsPaths, std::vector<std::string> flags)
-: vsPaths_(vsPaths), fsPaths_(fsPaths), versionDirective_("#version 330 core\n") {
-		for (auto const& flag : flags) {
-			preprocessorFlags_.insert({ flag, false });
+	std::string shaderCode;
+	std::ifstream file;
+	file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+	for (auto const& path : paths) {
+
+		try {
+
+			file.open(ROOT_DIR "resources/shaders/" + path);
+			// won't need these stream objects after file was read
+			std::stringstream stream;
+			// read
+			stream << file.rdbuf();
+			// close
+			file.close();
+			// to string
+			shaderCode += stream.str();
+
+		} catch (std::ifstream::failure& error) {
+			std::cout << "[Error][Shader] File " << path << " not read" << std::endl;
+			return "";
 		}
-		compile();
+	}
+
+	return shaderCode;
 }
 
-void Shader::use() {
+bool ShaderBase::checkCompileErrors(int shader, std::string name) {
+
+	int compiled = 0;
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+
+	if (!compiled) {
+		int maxLen = 0;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
+		std::vector<char> log;
+		log.reserve(maxLen);
+		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
+
+		std::cout << "[Error][Shader] Compilation error at: " << name << "\n" << log.data() << std::endl;
+
+		return false;
+	}
+
+	return true;
+}
+
+bool ShaderBase::checkLinkErrors(int shader) {
+	int linked = 0;
+	glGetProgramiv(shader, GL_LINK_STATUS, &linked);
+
+	if (!linked) {
+		int maxLen = 0;
+		glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
+		std::vector<char> log;
+		log.reserve(maxLen);
+		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
+
+		std::cout << "[Error][Shader] Linking error: \n" << log.data() << std::endl;
+
+		return false;
+	}
+
+	return true;
+}
+
+void ShaderBase::setUniform(const std::string& name, bool value) {
 	glUseProgram(ID_);
-}
-
-void Shader::reload() {
-	//glDeleteProgram(ID_);
-	//ID_ = 0;
-	compile();
-}
-
-void Shader::setUniform(const std::string& name, bool value) {
 	glUniform1i(glGetUniformLocation(ID_, name.c_str()), (int)value);
 }
 
-void Shader::setUniform(const std::string& name, int value) {
+void ShaderBase::setUniform(const std::string& name, int value) {
+	glUseProgram(ID_);
 	glUniform1i(glGetUniformLocation(ID_, name.c_str()), value);
 }
 
-void Shader::setUniform(const std::string& name, float value) {
+void ShaderBase::setUniform(const std::string& name, float value) {
+	glUseProgram(ID_);
 	glUniform1f(glGetUniformLocation(ID_, name.c_str()), value);
 }
 
-void Shader::setUniform(const std::string& name, glm::vec2 value) {
+void ShaderBase::setUniform(const std::string& name, glm::vec2 value) {
+	glUseProgram(ID_);
 	glUniform2fv(glGetUniformLocation(ID_, name.c_str()), 1, glm::value_ptr(value));
 }
 
-void Shader::setUniform(const std::string& name, glm::vec3 value) {
+void ShaderBase::setUniform(const std::string& name, glm::vec3 value) {
+	glUseProgram(ID_);
 	glUniform3fv(glGetUniformLocation(ID_, name.c_str()), 1, glm::value_ptr(value));
 }
 
-void Shader::setUniform(const std::string& name, glm::mat4 value) {
+void ShaderBase::setUniform(const std::string& name, glm::vec4 value) {
+	glUseProgram(ID_);
+	glUniform4fv(glGetUniformLocation(ID_, name.c_str()), 1, glm::value_ptr(value));
+}
+
+void ShaderBase::setUniform(const std::string& name, glm::mat4 value) {
+	glUseProgram(ID_);
 	glUniformMatrix4fv(glGetUniformLocation(ID_, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
 }
 
-void Shader::setBlockBinding(const std::string& name, unsigned int binding) {
+void ShaderBase::reload() {
+	glDeleteProgram(ID_);
+	ID_ = 0;
+	compile();
+}
+
+std::string ShaderBase::createPreprocessorFlags() const {
+	std::string flags;
+	for (auto const& flag : preprocessorFlags_) {
+		if (flag.second) {
+			flags += "#define " + flag.first + "\n";
+		}
+	}
+
+	return flags;
+}
+
+void ShaderBase::setBlockBinding(const std::string& name, unsigned int binding) {
 	glUniformBlockBinding(ID_, glGetUniformBlockIndex(ID_, name.c_str()), binding);
 }
 
-void Shader::setFlag(std::string flag, bool value) {
+void ShaderBase::setFlag(std::string flag, bool value) {
 	preprocessorFlags_.at(flag) = value;
+}
+
+void ShaderBase::use() {
+	glUseProgram(ID_);
+}
+
+Shader::Shader(const std::string& vsPath, const std::string& fsPath, std::vector<std::string> flags)
+	: vsPaths_({ vsPath }), fsPaths_({ fsPath }) {
+	for (auto const& flag : flags) {
+		preprocessorFlags_.insert({ flag, false });
+	}
+	versionDirective_ = "#version 430\n";
+	compile();
+}
+
+Shader::Shader(const std::vector<std::string>& vsPaths, const std::vector<std::string>& fsPaths, std::vector<std::string> flags)
+	: vsPaths_(vsPaths), fsPaths_(fsPaths) {
+		for (auto const& flag : flags) {
+			preprocessorFlags_.insert({ flag, false });
+		}
+		versionDirective_ = "#version 430\n";
+		compile();
 }
 
 void Shader::compile() {
@@ -96,81 +188,37 @@ void Shader::compile() {
 	glDeleteShader(fsID);
 }
 
-std::string Shader::readShaderFiles(std::vector<std::string> paths) const {
-
-	std::string shaderCode;
-	std::ifstream file;
-	file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-	for (auto const& path : paths) {
-
-		try {
-
-			file.open(ROOT_DIR "resources/shaders/" + path);
-			// won't need these stream objects after file was read
-			std::stringstream stream;
-			// read
-			stream << file.rdbuf();
-			// close
-			file.close();
-			// to string
-			shaderCode += stream.str();
-
-		} catch (std::ifstream::failure& error) {
-			std::cout << "[Error][Shader] File " << path << " not read" << std::endl;
-			return "";
-		}
+ComputeShader::ComputeShader(const std::string& path, std::vector<std::string> flags)
+	: paths_({ path }) {
+	for (auto const& flag : flags) {
+		preprocessorFlags_.insert({ flag, false });
 	}
-
-	return shaderCode;
+	versionDirective_ = "#version 430 \n";
+	compile();
 }
 
-std::string Shader::createPreprocessorFlags() const {
-	std::string flags;
-	for (auto const& flag : preprocessorFlags_) {
-		if (flag.second) {
-			flags += "#define " + flag.first + "\n";
-		}
+ComputeShader::ComputeShader(const std::vector<std::string>& paths, std::vector<std::string> flags)
+	: paths_(paths) {
+	for (auto const& flag : flags) {
+		preprocessorFlags_.insert({ flag, false });
 	}
-
-	return flags;
+	versionDirective_ = "#version 430 \n";
+	compile();
 }
 
-bool Shader::checkCompileErrors(int shader, std::string name) {
-	
-	int compiled = 0;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+void ComputeShader::compile() {
+	unsigned int csID = glCreateShader(GL_COMPUTE_SHADER);
+	std::string code = versionDirective_ + createPreprocessorFlags() + readShaderFiles(paths_);
+	const char* csCode = code.c_str();
+	glShaderSource(csID, 1, &csCode, NULL);
+	glCompileShader(csID);
+	bool compiled = checkCompileErrors(csID, "compute");
 
-	if (!compiled) {
-		int maxLen = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
-		std::vector<char> log;
-		log.reserve(maxLen);
-		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
+	ID_ = glCreateProgram();
+	glAttachShader(ID_, csID);
+	glLinkProgram(ID_);
+	bool linked = checkLinkErrors(ID_);
 
-		std::cout << "[Error][Shader] Compilation error at: " << name << "\n" << log.data() << std::endl;
-
-		return false;
-	}
-
-	return true;
-}
-
-bool Shader::checkLinkErrors(int shader) {
-	int linked = 0;
-	glGetProgramiv(shader, GL_LINK_STATUS, &linked);
-
-	if (!linked) {
-		int maxLen = 0;
-		glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
-		std::vector<char> log;
-		log.reserve(maxLen);
-		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
-
-		std::cout << "[Error][Shader] Linking error: \n" << log.data() << std::endl;
-
-		return false;
-	}
-
-	return true;
+	if (!compiled || !linked) ID_ = 0;
+	glDeleteShader(csID);
 }
