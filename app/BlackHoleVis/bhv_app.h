@@ -36,8 +36,11 @@ private:
 	CubeMap sky_;
 
 	FBOTexture fboTexture_;
+	std::vector<std::shared_ptr<FBOTexture>> bloomTextures_;
 	Shader sQuadShader_;
 	int fboScale_;
+
+	bool bloom_;
 
 	AccDisk disk_;
 	float diskRotationSpeed_;
@@ -73,7 +76,8 @@ private:
 
 	std::shared_ptr<ShaderBase> getCurrentShader();
 	void initGuiElements();
-	void initDiskTextures();
+	void initTextures();
+	void resizeTextures();
 
 	void calculateCameraOrbit();
 

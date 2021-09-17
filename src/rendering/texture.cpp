@@ -103,8 +103,8 @@ void FBOTexture::resize(int width, int height) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FBOTexture::bindImageTex() const {
-    glBindImageTexture(0, texId_, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+void FBOTexture::bindImageTex(int binding, unsigned int mode) const {
+    glBindImageTexture(binding, texId_, 0, GL_FALSE, 0, mode, GL_RGBA32F);
 }
 
 void FBOTexture::bindTex() const {

@@ -1,0 +1,37 @@
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(rgba32f, binding = 0) uniform image2D img_input;
+layout(rgba32f, binding = 1) uniform image2D img_output;
+
+// linear sampling blur shader from rastergrid
+// https://rastergrid.com/blog/2010/09/efficient-gaussian-blur-with-linear-sampling/
+ 
+uniform float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
+uniform float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
+uniform bool horizontal = false;
+ 
+void main(void) {
+
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(coords, textureSize(img_input))))
+        return;
+
+    vec4 pixel = imageLoad(image_input, coords) * weight[0];
+
+    if(horizontal) {
+
+        for (int i=1; i<3; i++) {
+
+            pixel += imageLoad(image_input, coords + vec2(0.0, offset[i])) * weight[i];
+            pixel += imageLoad(image_input, coords - vec2(0.0, offset[i])) * weight[i];
+        }
+    } else {
+
+        for (int i=1; i<3; i++) {
+
+            pixel += imageLoad(image_input, coords + vec2(offset[i]), 0.0) * weight[i];
+            pixel += imageLoad(image_input, coords - vec2(offset[i]), 0.0) * weight[i];
+        }
+    }
+
+    imageStore(img_output, coords, pixel);
+}

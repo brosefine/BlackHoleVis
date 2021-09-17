@@ -1,6 +1,6 @@
 
 #ifdef SKY
-uniform samplerCube cubeMap;
+layout(binding = 0) uniform samplerCube cubeMap;
 #endif //SKY
 uniform float stepSize;
 uniform float M;

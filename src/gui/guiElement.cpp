@@ -126,32 +126,33 @@ void NewtonShaderGui::render() {
 void NewtonShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("forceWeight", forceWeight_);
-	shader_->setUniform("accretionTex", 1);
 
 }
 
-//------------ Newton Compute Shader GUI ------------ //
+//------------ Starless Compute Shader GUI ------------ //
 
-NewtonComputeShaderGui::NewtonComputeShaderGui() : baseColor_(0.f) {
-	name_ = "Newton";
+StarlessComputeShaderGui::StarlessComputeShaderGui() : baseColor_(0.f) {
+	name_ = "Starless Compute";
 	shader_ = std::shared_ptr<ShaderBase>(new ComputeShader(std::vector<std::string>{ "intersect.frag", "starless.comp" },
-		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK" , "CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX" }));
+		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK",
+		"CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX",
+		"ADPTSTEP", "ERLYTERM", "BLOOM"}));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();
 	uploadUniforms();
 }
 
-void NewtonComputeShaderGui::dumpState(std::ofstream& outFile) {
+void StarlessComputeShaderGui::dumpState(std::ofstream& outFile) {
 	outFile << "Flags\n";
 	for (auto const& flag : preprocessorFlags_) {
 		outFile << flag.first << " " << flag.second << "\n";
 	}
 	outFile << "Uniforms\n";
-	//outFile << stepSize_ << " " << forceWeight_ << "\n";
+	outFile << stepSize_ << " " << mass_ << "\n";
 }
 
-void NewtonComputeShaderGui::readState(std::ifstream& inFile) {
+void StarlessComputeShaderGui::readState(std::ifstream& inFile) {
 	std::string word;
 	while (word != "EndShader" && inFile >> word) {
 		if (word == "Flags") {
@@ -166,27 +167,30 @@ void NewtonComputeShaderGui::readState(std::ifstream& inFile) {
 
 		if (word == "Uniforms") {
 			inFile >> word;
-			//stepSize_ = std::stof(word);
+			stepSize_ = std::stof(word);
 			inFile >> word;
-			//forceWeight_ = std::stof(word);
+			mass_ = std::stof(word);
 		}
 	}
 	update();
 }
 
 
-void NewtonComputeShaderGui::render() {
+void StarlessComputeShaderGui::render() {
 	ImGui::Text("Newton Shader Properties");
 	ImGui::InputFloat3("Color", glm::value_ptr(baseColor_));
+	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
+	ImGui::InputFloat("Mass", &mass_, .01f, .1f);
 	renderPreprocessorFlags();
 	ImGui::Separator();
 
 	renderRefreshMenu();
 }
 
-void NewtonComputeShaderGui::uploadUniforms() {
+void StarlessComputeShaderGui::uploadUniforms() {
 	shader_->setUniform("baseColor", baseColor_);
-	//shader_->setUniform("accretionTex", 1);
+	shader_->setUniform("stepSize", stepSize_);
+	shader_->setUniform("M", mass_);
 }
 
 //------------ Test Shader GUI ------------ //
@@ -237,7 +241,6 @@ void StarlessShaderGui::render() {
 void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("M", mass_);
-	shader_->setUniform("accretionTex", 1);
 }
 
 void StarlessShaderGui::dumpState(std::ofstream& outFile) {

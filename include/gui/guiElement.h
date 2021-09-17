@@ -84,10 +84,10 @@ private:
 	float forceWeight_;
 };
 
-class NewtonComputeShaderGui : public ShaderGui {
+class StarlessComputeShaderGui : public ShaderGui {
 public:
 
-	NewtonComputeShaderGui();
+	StarlessComputeShaderGui();
 	void dumpState(std::ofstream& outFile) override;
 	void readState(std::ifstream& inFile) override;
 
@@ -96,6 +96,8 @@ private:
 	void uploadUniforms() override;
 
 	glm::vec3 baseColor_;
+	float stepSize_;
+	float mass_;
 };
 
 

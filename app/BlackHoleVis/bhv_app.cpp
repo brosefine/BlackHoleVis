@@ -31,6 +31,7 @@ BHVApp::BHVApp(int width, int height)
 	, fboTexture_(width, height)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, fboScale_(1)
+	, bloom_(false)
 	, diskRotationSpeed_(10.f)
 	, disk_(DISKBINDING)
 	, selectedTexture_("")
@@ -51,7 +52,18 @@ BHVApp::BHVApp(int width, int height)
 {
 	cam_.update(window_.getWidth(), window_.getHeight());
 	initGuiElements();
-	initDiskTextures();
+	initTextures();
+}
+
+static int nextPowerOfTwo(int x) {
+	x--;
+	x |= x >> 1; // handle 2 bit numbers
+	x |= x >> 2; // handle 4 bit numbers
+	x |= x >> 4; // handle 8 bit numbers
+	x |= x >> 8; // handle 16 bit numbers
+	x |= x >> 16; // handle 32 bit numbers
+	x++;
+	return x;
 }
 
 void BHVApp::renderLoop() {
@@ -87,9 +99,8 @@ void BHVApp::renderLoop() {
 		}
 
 		if (window_.hasChanged()) {
-			std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
-			fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
-			cam_.update(dim.at(0), dim.at(1));
+			resizeTextures();
+			cam_.update(window_.getWidth(), window_.getHeight());
 			updateComputeUniforms();
 
 		} else if (cam_.hasChanged()) {
@@ -98,11 +109,26 @@ void BHVApp::renderLoop() {
 		}
 
 		getCurrentShader()->use();
+
+		glActiveTexture(GL_TEXTURE0);
+		sky_.bind();
+
+		glActiveTexture(GL_TEXTURE1);
+		diskTextures_.at(selectedTexture_)->bind();
+
+		disk_.setRotation(tPassed_ / diskRotationSpeed_);
+		disk_.uploadData();
 		
 		if (compute_) {
+			bloom_ = getCurrentShader()->getFlags().at("BLOOM");
 			glActiveTexture(GL_TEXTURE0);
-			fboTexture_.bindImageTex();
-			glDispatchCompute(fboTexture_.getWidth(), fboTexture_.getHeight(), 1);
+			fboTexture_.bindImageTex(0, GL_WRITE_ONLY);
+			bloomTextures_.at(0)->bindImageTex(1, GL_WRITE_ONLY);
+			glm::ivec3 workGroups;
+			glGetProgramiv(getCurrentShader()->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(workGroups));
+			glDispatchCompute(
+				nextPowerOfTwo(std::ceil(fboTexture_.getWidth() / (float)workGroups.x)),
+				nextPowerOfTwo(std::ceil(fboTexture_.getHeight() / (float)workGroups.y)), 1);
 			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 		} else {
 
@@ -110,14 +136,6 @@ void BHVApp::renderLoop() {
 			glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
 			glClear(GL_COLOR_BUFFER_BIT);
 
-			glActiveTexture(GL_TEXTURE0);
-			sky_.bind();
-
-			glActiveTexture(GL_TEXTURE1);
-			diskTextures_.at(selectedTexture_)->bind();
-		
-			disk_.setRotation(tPassed_ / diskRotationSpeed_);
-			disk_.uploadData();
 			quad_.draw(GL_TRIANGLES);
 
 		}
@@ -126,7 +144,11 @@ void BHVApp::renderLoop() {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0);
-		fboTexture_.bindTex();
+		if (bloom_) 
+			bloomTextures_.at(0)->bindTex();
+		else 
+			fboTexture_.bindTex();
+
 		sQuadShader_.use();
 		quad_.draw(GL_TRIANGLES);
 				
@@ -147,13 +169,24 @@ void BHVApp::initGuiElements() {
 	shaderElements_.push_back(std::make_shared<StarlessShaderGui>());
 	shaderElements_.push_back(std::make_shared<TestShaderGui>());
 
-	computeShaderElements_.push_back(std::make_shared<NewtonComputeShaderGui>());
+	computeShaderElements_.push_back(std::make_shared<StarlessComputeShaderGui>());
 }
 
-void BHVApp::initDiskTextures() {
+void BHVApp::initTextures() {
 	selectedTexture_ = "Fine Texture";
 	diskTextures_.insert({ "Fine Texture", std::make_shared<Texture>("accretion.jpg") });
 	diskTextures_.insert({ "Blurred Texture", std::make_shared<Texture>("accretion1.jpg") });
+
+	bloomTextures_.push_back(std::make_shared<FBOTexture>(window_.getWidth(), window_.getHeight()));
+	bloomTextures_.push_back(std::make_shared<FBOTexture>(window_.getWidth(), window_.getHeight()));
+}
+
+void BHVApp::resizeTextures() {
+	std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
+	fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
+	for (auto& tex : bloomTextures_) {
+		tex->resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
+	}
 }
 
 void BHVApp::calculateCameraOrbit() {
@@ -183,7 +216,7 @@ void BHVApp::renderOptionsWindow() {
 			static std::string file;
 			ImGui::Text("Save / Load current state");
 			ImGui::PushItemWidth(ImGui::GetFontSize() * 7);
-			ImGui::InputText("", &file);
+			ImGui::InputText("hi", &file);
 			ImGui::SameLine();
 			if (ImGui::Button("Save")) dumpState(file);
 			ImGui::SameLine();
@@ -200,8 +233,7 @@ void BHVApp::renderOptionsWindow() {
 			// FBO and window size
 			ImGui::Text("Set Offscreen Resolution");
 			if (ImGui::SliderInt("* window size", &fboScale_, 1, 5))
-				fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
-
+				resizeTextures();
 			if (ImGui::Checkbox("VSYNC", &vSync_))
 				glfwSwapInterval((int)vSync_);
 
@@ -388,6 +420,13 @@ void BHVApp::dumpState(std::string const& file) {
 		outFile << "EndShader\n";
 	}
 
+	outFile << "ComputeShaders\n";
+	for (int i = 0; i < computeShaderElements_.size(); ++i) {
+		outFile << "ComputeShader " << i << "\n";
+		computeShaderElements_.at(i)->dumpState(outFile);
+		outFile << "EndShader\n";
+	}
+
 	outFile << "Screen\n";
 	outFile << window_.getWidth() << " " << window_.getHeight() << " " << fboScale_ << "\n";
 
@@ -436,6 +475,15 @@ void BHVApp::readState(std::string const& file) {
 			}
 		}
 
+		if (word == "ComputeShaders") {
+			inFile >> word;
+			while (word == "ComputeShader") {
+				inFile >> word;
+				computeShaderElements_.at(std::stoi(word))->readState(inFile);
+				inFile >> word;
+			}
+		}
+
 		if (word == "Screen") {
 			inFile >> word; window_.setWidth(std::stoi(word));
 			inFile >> word; window_.setHeight(std::stoi(word));
@@ -454,6 +502,11 @@ void BHVApp::processKeyboardInput() {
 	} else if (glfwGetKey(win, GLFW_KEY_H) == GLFW_PRESS && glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 		showGui_ = false;
 	}
+
+	if (glfwGetKey(win, GLFW_KEY_B) == GLFW_PRESS && glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+		bloom_ = !bloom_;
+	}
+
 #ifdef PRESENTATION_HELPER
 	static bool step = false;
 	static float weight = 0.f;

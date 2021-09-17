@@ -25,7 +25,7 @@ public:
 	void resize(int width, int height);
 
 	void bindTex() const;
-	void bindImageTex() const;
+	void bindImageTex(int binding, unsigned int mode) const;
 	unsigned int getTexId() const { return texId_; }
 	unsigned int getFboId() const { return fboId_; }
 
