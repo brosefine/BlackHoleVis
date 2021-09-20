@@ -18,15 +18,21 @@ vec3 starless(vec3 pos, float h2){
     return -3 * h2 * M * pos / pow(dot(pos, pos), 2.5);
 }
 
-void write_to_tex(ivec2 coords, vec4 pixel) {
+void write_to_tex(ivec2 coords, vec4 pixel, bool disk) {
     pixel.a = 1;
     imageStore(img_output, coords, pixel);
     #ifdef BLOOM
-    if(dot(pixel.rgb, vec3(0.2126, 0.7152, 0.0722)) > 1.0)
+    if(disk && dot(pixel.rgb, vec3(0.7, 0.6, 0.07)) > 1.0) {
+        imageStore(bloom_output, coords, pixel);
+    } else {
+        imageStore(bloom_output, coords, vec4(0,0,0,1));
+    }
+
+    /*
+    if(dot(pixel.rgb, vec3(0.1, 0.6, 0.07)) > 1.0)
         imageStore(bloom_output, coords, pixel);
     else
-        imageStore(bloom_output, coords, vec4(0,0,0,1));
-
+    */
     #endif // BLOOM
 }
 
@@ -49,6 +55,8 @@ void main() {
   
     vec4 pixel = vec4(0,0,0,0);
     vec4 diskColor;
+
+    bool disk = false;
 
     float rs = 2.0 * M;
     float dotP = dot(normalize(-cameraPos), viewDir);
@@ -88,6 +96,7 @@ void main() {
         if(diskIntersect(lightPos, -stp*lightVel, diskColor)){
             pixel.rgb += (1.0 - pixel.a) * diskColor.rgb * diskColor.a;
             pixel.a += diskColor.a;
+            disk = true;
         }
         #endif //DISK
 
@@ -109,7 +118,7 @@ void main() {
             horizonIntersect (lightPos, -lightVel*step, rs, horizonColor);
             pixel.rgb += (1.0 - pixel.a) * horizonColor.rgb;
         #endif //CHECKEREDHOR
-            write_to_tex(texCoords, pixel);
+            write_to_tex(texCoords, pixel, disk);
             return;
         }
 
@@ -127,8 +136,9 @@ void main() {
         if (diskIntersect(lightPos, -step*lightVel, diskColor)) {
             pixel.rgb += (1.0 - pixel.a) * diskColor.rgb * diskColor.a;
             pixel.a += diskColor.a;
+            disk = true;
             if(pixel.a > 0.99){
-                write_to_tex(texCoords, pixel);
+                write_to_tex(texCoords, pixel, disk);
                 return;
             }
         }
@@ -141,5 +151,5 @@ void main() {
     pixel.rgb += (1.0-pixel.a) * abs(normalize(lightVel));
     #endif //SKY
     
-    write_to_tex(texCoords, pixel);
+    write_to_tex(texCoords, pixel, disk);
 }

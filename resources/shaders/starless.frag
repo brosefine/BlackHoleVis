@@ -74,14 +74,6 @@ void main() {
         step = max(0.05, min(10.0, stepSize * (length(lightPos)-1.0)));
         #endif //ADPTSTEP
 
-        if(length(lightPos) <= rs){
-        #ifdef CHECKEREDHOR
-            vec4 horizonColor;
-            horizonIntersect (lightPos, -lightVel*step, rs, horizonColor);
-            FragColor.rgb += (1.0 - FragColor.a) * horizonColor.rgb;
-        #endif //CHECKEREDHOR
-            return;
-        }
 
         vec3 acc = starless(lightPos, h2);
         #ifdef ERLYTERM
@@ -93,6 +85,15 @@ void main() {
         lightVel += acc * step;
         lightPos += lightVel * step;
          
+        if(length(lightPos) <= rs){
+        #ifdef CHECKEREDHOR
+            vec4 horizonColor;
+            horizonIntersect (lightPos, -lightVel*step, rs, horizonColor);
+            FragColor.rgb += (1.0 - FragColor.a) * horizonColor.rgb;
+        #endif //CHECKEREDHOR
+            return;
+        }
+
         #ifdef DISK
         if (diskIntersect(lightPos, -step*lightVel, diskColor)) {
             FragColor.rgb += (1.0 - FragColor.a) * diskColor.rgb * diskColor.a;

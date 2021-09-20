@@ -1,5 +1,5 @@
 layout(local_size_x = 32, local_size_y = 32) in;
-layout(rgba32f, binding = 0) uniform image2D img_input;
+layout(binding = 0) uniform sampler2D img_input;
 layout(rgba32f, binding = 1) uniform image2D img_output;
 
 // linear sampling blur shader from rastergrid
@@ -11,27 +11,28 @@ uniform bool horizontal = false;
  
 void main(void) {
 
-    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
-    if(any(greaterThanEqual(coords, textureSize(img_input))))
+    vec2 coords = vec2(gl_GlobalInvocationID.xy);
+    vec2 texSize = textureSize(img_input, 0) - vec2(1,1);
+    if(any(greaterThan(coords, texSize)))
         return;
 
-    vec4 pixel = imageLoad(image_input, coords) * weight[0];
+    vec4 pixel = texture(img_input, coords/texSize) * weight[0];
 
     if(horizontal) {
 
         for (int i=1; i<3; i++) {
 
-            pixel += imageLoad(image_input, coords + vec2(0.0, offset[i])) * weight[i];
-            pixel += imageLoad(image_input, coords - vec2(0.0, offset[i])) * weight[i];
+            pixel += texture(img_input, (coords + vec2(0, offset[i]))/texSize) * weight[i];
+            pixel += texture(img_input, (coords - vec2(0, offset[i]))/texSize) * weight[i];
         }
     } else {
 
         for (int i=1; i<3; i++) {
 
-            pixel += imageLoad(image_input, coords + vec2(offset[i]), 0.0) * weight[i];
-            pixel += imageLoad(image_input, coords - vec2(offset[i]), 0.0) * weight[i];
+            pixel += texture(img_input, (coords + vec2(offset[i], 0))/texSize) * weight[i];
+            pixel += texture(img_input, (coords - vec2(offset[i], 0))/texSize) * weight[i];
         }
     }
 
-    imageStore(img_output, coords, pixel);
+    imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
 }

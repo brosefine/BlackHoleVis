@@ -27,11 +27,12 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitSpeed_(0.5f)
 	, camOrbitAngle_(0.f)
 	, quad_(quadPositions, quadUVs, quadIndices)
-	, sky_({ "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" })
+	, sky_({ "milkyway2048/right.png", "milkyway2048/left.png", "milkyway2048/top.png", "milkyway2048/bottom.png", "milkyway2048/front.png", "milkyway2048/back.png" })
 	, fboTexture_(width, height)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, fboScale_(1)
 	, bloom_(false)
+	, bloomPasses_(2)
 	, diskRotationSpeed_(10.f)
 	, disk_(DISKBINDING)
 	, selectedTexture_("")
@@ -51,19 +52,8 @@ BHVApp::BHVApp(int width, int height)
 	, showFps_(false)
 {
 	cam_.update(window_.getWidth(), window_.getHeight());
-	initGuiElements();
+	initShaders();
 	initTextures();
-}
-
-static int nextPowerOfTwo(int x) {
-	x--;
-	x |= x >> 1; // handle 2 bit numbers
-	x |= x >> 2; // handle 4 bit numbers
-	x |= x >> 4; // handle 8 bit numbers
-	x |= x >> 8; // handle 16 bit numbers
-	x |= x >> 16; // handle 32 bit numbers
-	x++;
-	return x;
 }
 
 void BHVApp::renderLoop() {
@@ -121,17 +111,33 @@ void BHVApp::renderLoop() {
 		
 		if (compute_) {
 			bloom_ = getCurrentShader()->getFlags().at("BLOOM");
-			glActiveTexture(GL_TEXTURE0);
+
 			fboTexture_.bindImageTex(0, GL_WRITE_ONLY);
 			bloomTextures_.at(0)->bindImageTex(1, GL_WRITE_ONLY);
+
 			glm::ivec3 workGroups;
 			glGetProgramiv(getCurrentShader()->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(workGroups));
-			glDispatchCompute(
-				nextPowerOfTwo(std::ceil(fboTexture_.getWidth() / (float)workGroups.x)),
-				nextPowerOfTwo(std::ceil(fboTexture_.getHeight() / (float)workGroups.y)), 1);
-			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-		} else {
+			workGroups.x = std::ceil(fboTexture_.getWidth() / (float)workGroups.x);
+			workGroups.y = std::ceil(fboTexture_.getHeight() / (float)workGroups.y);
 
+			glDispatchCompute(workGroups.x, workGroups.y, 1);
+			//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+			if (bloom_) {
+				bloomShader_->use();
+				for (int i = 0; i < bloomPasses_; ++i) {
+					int index = i % 2;
+					glActiveTexture(GL_TEXTURE0);
+					bloomTextures_.at(index)->bindTex();
+					bloomTextures_.at(!index)->bindImageTex(1, GL_WRITE_ONLY);
+
+					bloomShader_->setUniform("horizontal", index);
+					glDispatchCompute(workGroups.x, workGroups.y, 1);
+					//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+				}
+			}
+		} else {
+			bloom_ = false;
 			glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
 			glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
 			glClear(GL_COLOR_BUFFER_BIT);
@@ -139,17 +145,19 @@ void BHVApp::renderLoop() {
 			quad_.draw(GL_TRIANGLES);
 
 		}
+
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, window_.getWidth(), window_.getHeight());
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glActiveTexture(GL_TEXTURE0);
-		if (bloom_) 
-			bloomTextures_.at(0)->bindTex();
-		else 
-			fboTexture_.bindTex();
-
 		sQuadShader_.use();
+
+		glActiveTexture(GL_TEXTURE0);
+		fboTexture_.bindTex();
+		glActiveTexture(GL_TEXTURE1);
+		bloomTextures_.at(1)->bindTex();
+		sQuadShader_.setUniform("bloom", bloom_);
+
 		quad_.draw(GL_TRIANGLES);
 				
 		if(showGui_) gui_.renderEnd();
@@ -164,12 +172,14 @@ std::shared_ptr<ShaderBase> BHVApp::getCurrentShader() {
 	return shaderElements_.at(selectedShader_)->getShader();
 }
 
-void BHVApp::initGuiElements() {
+void BHVApp::initShaders() {
 	shaderElements_.push_back(std::make_shared<NewtonShaderGui>());
 	shaderElements_.push_back(std::make_shared<StarlessShaderGui>());
 	shaderElements_.push_back(std::make_shared<TestShaderGui>());
 
 	computeShaderElements_.push_back(std::make_shared<StarlessComputeShaderGui>());
+
+	bloomShader_ = std::make_unique<ComputeShader>("blur.comp");
 }
 
 void BHVApp::initTextures() {
@@ -396,6 +406,9 @@ void BHVApp::renderFPSPlot() {
 
 void BHVApp::renderComputeWindow() {
 	if (ImGui::Button("Print Info")) printComputeInfo();
+	ImGui::SliderInt("Bloom Passes", &bloomPasses_, 1, 10);
+	if (ImGui::Button("Reload Bloom Shader")) bloomShader_->reload();
+	if (ImGui::Button("Reload Quad Shader")) sQuadShader_.reload();
 }
 
 void BHVApp::dumpState(std::string const& file) {

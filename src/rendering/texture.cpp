@@ -7,7 +7,7 @@
 #include <iostream>
 #include <glad/glad.h>
 
-Texture::Texture(std::string filename): texId_(0) {
+Texture::Texture(std::string filename, bool srgb): texId_(0) {
     glGenTextures(1, &texId_);
     glBindTexture(GL_TEXTURE_2D, texId_);
 
@@ -18,13 +18,17 @@ Texture::Texture(std::string filename): texId_(0) {
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
     if (data) {
 
-        GLenum format = GL_RED;
-        if (nrComponents == 3)
+        GLenum format = GL_RED, internalFormat = GL_RED;
+        if (nrComponents == 3) {
             format = GL_RGB;
-        else if (nrComponents == 4)
+            internalFormat = srgb ? GL_SRGB : GL_RGB;
+        }
+        else if (nrComponents == 4) {
             format = GL_RGBA;
+            internalFormat = GL_RGBA;
+        }
 
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height,
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height,
             0, format, GL_UNSIGNED_BYTE, data);
     } else {
         std::cerr << "[loadTexture] Texture failed to load: " << path << std::endl;
@@ -94,6 +98,9 @@ void FBOTexture::resize(int width, int height) {
         GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
         texId_, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {

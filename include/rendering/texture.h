@@ -6,7 +6,7 @@
 class Texture {
 public:
 	// create texture from image file
-	Texture(std::string filename);
+	Texture(std::string filename, bool srgb = false);
 	~Texture();
 
 	void bind() const;

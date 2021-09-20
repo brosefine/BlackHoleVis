@@ -41,6 +41,8 @@ private:
 	int fboScale_;
 
 	bool bloom_;
+	int bloomPasses_;
+	std::unique_ptr<ComputeShader> bloomShader_;
 
 	AccDisk disk_;
 	float diskRotationSpeed_;
@@ -75,7 +77,7 @@ private:
 	bool showFps_;
 
 	std::shared_ptr<ShaderBase> getCurrentShader();
-	void initGuiElements();
+	void initShaders();
 	void initTextures();
 	void resizeTextures();
 
