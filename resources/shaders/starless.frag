@@ -71,13 +71,13 @@ void main() {
     for(int i = 0; i < 100; ++i) {
 
         #ifdef ADPTSTEP
-        step = max(0.05, min(10.0, stepSize * (length(lightPos)-1.0)));
+        step = max(0.0001, stepSize * (length(lightPos) - rs));
         #endif //ADPTSTEP
 
 
         vec3 acc = starless(lightPos, h2);
         #ifdef ERLYTERM
-        if (dot(-lightPos, lightVel) < 0 && 
+        if (dot(lightPos, lightVel) > 0 && 
             length(acc*step) <= length(lightVel) * 0.001) {
             break;
         }

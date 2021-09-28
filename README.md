@@ -28,7 +28,8 @@ Hopefully, all dependencies should be loaded automatically by the CMakeLists.txt
 
 ## Sources
 ### Images and Textures
-- Skybox generated with [space-3d](https://wwwtyro.github.io/space-3d/#animationSpeed=1&fov=80&nebulae=true&pointStars=true&resolution=1024&seed=3wq0xhr2fwu8&stars=true&sun=false) by Rye Terrell
+- Alternative Skybox generated with [space-3d](https://wwwtyro.github.io/space-3d/#animationSpeed=1&fov=80&nebulae=true&pointStars=true&resolution=1024&seed=3wq0xhr2fwu8&stars=true&sun=false) by Rye Terrell
+- Skybox panorama by [ESO](https://www.eso.org/public/germany/images/eso0932a/)
 ### Black Hole Visualization
 - [LearnOpenGL](https://learnopengl.com/)
 - [Randonels Starless](https://github.com/rantonels/starless)
