@@ -34,7 +34,7 @@ void Gui::initImGui(GLFWwindow* win) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImPlot::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGuiIO& io = ImGui::GetIO();
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();

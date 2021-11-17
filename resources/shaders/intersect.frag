@@ -61,6 +61,12 @@ bool horizonIntersect (vec3 pos, vec3 vel, float r, inout vec4 col) {
         x1 = c / q; 
     } 
 
+    if(( min(x0,x1) >= 1 || max(x0,x1) <= 0) )
+    {
+        col = vec4(1,1,1,1);
+        return false; 
+    }
+
     vec3 horHit = pos + max(x0, x1) * vel;
 
     float phi = max(0,(atan(horHit.x, horHit.z) + M_PI) / (2*M_PI));

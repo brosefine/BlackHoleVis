@@ -72,7 +72,7 @@ void Camera::setUp(glm::vec3 up) {
 void Camera::keyBoardInput(GLFWwindow* window, float dt) {
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        translationFactor_ = 2.f;
+        translationFactor_ = 10.f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
         translationFactor_ = 1.f;

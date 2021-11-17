@@ -2,38 +2,38 @@
 
 #include <iostream>
 
-BHVWindow::BHVWindow(int width, int height, std::string name)
+GLWindow::GLWindow(int width, int height, std::string name)
 	: width_(width), height_(height), name_(name){
 	init();
 }
 
-BHVWindow::~BHVWindow() {
+GLWindow::~GLWindow() {
 	glfwDestroyWindow(windowPtr_);
 	glfwTerminate();
 }
 
-void BHVWindow::setHeight(int h) {
+void GLWindow::setHeight(int h) {
 	height_ = h;
 	glfwSetWindowSize(windowPtr_, width_, h);
 	changed_ = true;
 }
 
-void BHVWindow::setWidth(int w) {
+void GLWindow::setWidth(int w) {
 	width_ = w;
 	glfwSetWindowSize(windowPtr_, w, height_);
 	changed_ = true;
 }
 
-bool BHVWindow::shouldClose() {
+bool GLWindow::shouldClose() {
 	return glfwWindowShouldClose(windowPtr_);
 }
 
-void BHVWindow::endFrame() {
+void GLWindow::endFrame() {
 	glfwPollEvents();
 	glfwSwapBuffers(windowPtr_);
 }
 
-void BHVWindow::init() {
+void GLWindow::init() {
 	// GLFW
 	glfwInit();
 	// checks if correct OpenGL versions are present
@@ -63,15 +63,15 @@ void BHVWindow::init() {
 	}
 }
 
-void BHVWindow::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+void GLWindow::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 	// get window user pointer to change width and height of window object
-	auto windowObject = (BHVWindow*)glfwGetWindowUserPointer(window);
+	auto windowObject = (GLWindow*)glfwGetWindowUserPointer(window);
 	windowObject->setHeight(height);
 	windowObject->setWidth(width);
 }
 
-void BHVWindow::processKeyboardInputs() {
+void GLWindow::processKeyboardInputs() {
 
 	// close window with escape
 	if (glfwGetKey(windowPtr_, GLFW_KEY_ESCAPE) == GLFW_PRESS)

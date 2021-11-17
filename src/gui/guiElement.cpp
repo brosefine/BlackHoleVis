@@ -131,7 +131,7 @@ void NewtonShaderGui::uploadUniforms() {
 
 //------------ Starless Compute Shader GUI ------------ //
 
-StarlessComputeShaderGui::StarlessComputeShaderGui() : baseColor_(0.f) {
+StarlessComputeShaderGui::StarlessComputeShaderGui() :stepSize_(0.2f), mass_(0.5f) {
 	name_ = "Starless Compute";
 	shader_ = std::shared_ptr<ShaderBase>(new ComputeShader(std::vector<std::string>{ "intersect.frag", "starless.comp" },
 		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK",
@@ -178,7 +178,6 @@ void StarlessComputeShaderGui::readState(std::ifstream& inFile) {
 
 void StarlessComputeShaderGui::render() {
 	ImGui::Text("Newton Shader Properties");
-	ImGui::InputFloat3("Color", glm::value_ptr(baseColor_));
 	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
 	ImGui::InputFloat("Mass", &mass_, .01f, .1f);
 	renderPreprocessorFlags();
@@ -188,7 +187,6 @@ void StarlessComputeShaderGui::render() {
 }
 
 void StarlessComputeShaderGui::uploadUniforms() {
-	shader_->setUniform("baseColor", baseColor_);
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("M", mass_);
 }
@@ -213,13 +211,13 @@ void TestShaderGui::render() {
 
 //------------ Starless Shader GUI ------------ //
 
-StarlessShaderGui::StarlessShaderGui() : stepSize_(0.2f), mass_(0.5f) {
+StarlessShaderGui::StarlessShaderGui() : stepSize_(0.2f), mass_(0.5f), forceWeight_(1.f), sphere_({0.f, 0.f, 4.f, 1.f}) {
 	name_ = "Starless";
 	shader_ = std::shared_ptr<ShaderBase>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
 		std::vector<std::string>{ "intersect.frag","starless.frag" },
 		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK", 
 		"CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX",
-		"ADPTSTEP", "ERLYTERM"}));
+		"ADPTSTEP", "ERLYTERM", "SPHERE"}));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();
@@ -231,6 +229,9 @@ void StarlessShaderGui::render() {
 	ImGui::Text("Starless Shader Properties");
 	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
 	ImGui::InputFloat("Mass", &mass_, .01f, .1f);
+	ImGui::SliderFloat("ForceWeight", &forceWeight_, 0.f, 1.f);
+	ImGui::SliderFloat3("Sphere Pos", glm::value_ptr(sphere_), -30.f, 30.f);
+	ImGui::SliderFloat("Sphere Rad", &sphere_.w, 0.1f, 20.f);
 
 	renderPreprocessorFlags();
 	ImGui::Separator();
@@ -241,6 +242,8 @@ void StarlessShaderGui::render() {
 void StarlessShaderGui::uploadUniforms() {
 	shader_->setUniform("stepSize", stepSize_);
 	shader_->setUniform("M", mass_);
+	shader_->setUniform("forceWeight", forceWeight_);
+	shader_->setUniform("sphere", sphere_);
 }
 
 void StarlessShaderGui::dumpState(std::ofstream& outFile) {

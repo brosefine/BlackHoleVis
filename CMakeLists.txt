@@ -24,14 +24,14 @@ add_library(SOURCE ${SRC_FILES} ${HEADER_FILES})
 target_include_directories(SOURCE PUBLIC ${CMAKE_SOURCE_DIR}/include/ ${CMAKE_BINARY_DIR}/include/)
 target_link_libraries(SOURCE bhv_dependencies)
 
-file(GLOB BHV_FILES
-        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/bhv_main.cpp
-        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/bhv_app.h
-        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/bhv_app.cpp)
+file(GLOB APP1_FILES
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_1/bhv_main.cpp
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_1/bhv_app.h
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_1/bhv_app.cpp)
 
-add_executable(${PROJECT_NAME}_main ${BHV_FILES})
-target_include_directories(${PROJECT_NAME}_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis/)
-target_link_libraries(${PROJECT_NAME}_main SOURCE bhv_dependencies)
+add_executable(BHVis1_main ${APP1_FILES})
+target_include_directories(BHVis1_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_1/)
+target_link_libraries(BHVis1_main SOURCE bhv_dependencies)
 
 file(GLOB SHADERS 
         ${CMAKE_SOURCE_DIR}/resources/shaders/*)

@@ -18,8 +18,7 @@
 // #define PRESENTATION_HELPER
 
 BHVApp::BHVApp(int width, int height)
-	: window_(width, height, "Black Hole Vis")
-	, gui_(window_.getPtr())
+	: GLApp(width, height, "Black Hole Vis")
 	, cam_({ 0.f, 0.f, -10.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f })
 	, camOrbit_(false)
 	, camOrbitTilt_(0.f)
@@ -45,125 +44,110 @@ BHVApp::BHVApp(int width, int height)
 	, measureID_("")
 	, measureFrameWindow_(1)
 	, vSync_(true)
-	, showGui_ (true)
 	, showShaders_(false)
 	, showCamera_(false)
 	, showDisk_(false)
 	, showFps_(false)
 {
+	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
 	initShaders();
 	initTextures();
 }
 
-void BHVApp::renderLoop() {
-	glClearColor(0.5, 0.5, 0.5, 1.0);
+void BHVApp::renderContent() 
+{
+	double now = glfwGetTime();
+	dt_ = now - t0_;
+	t0_ = now;
+	tPassed_ += dt_;
+	tPassed_ -= (tPassed_ > diskRotationSpeed_) * diskRotationSpeed_;
 
-	while (!window_.shouldClose()) {
+	if (measureFrameTime_) {
+		frameTimes_.push_back(dt_);
+		if (now - measureStart_ >= measureTime_)
+			finalizeFrameTimeMeasure();
+	}
 
-		double now = glfwGetTime();
-		dt_ = now - t0_;
-		t0_ = now;
-		tPassed_ += dt_;
-		tPassed_ -= (tPassed_ > diskRotationSpeed_) * diskRotationSpeed_;
+	if (camOrbit_) {
+		calculateCameraOrbit();
+	} else {
+		cam_.keyBoardInput(window_.getPtr(), dt_);
+		cam_.mouseInput(window_.getPtr());
+	}
 
-		if (measureFrameTime_) {
-			frameTimes_.push_back(dt_);
-			if (now - measureStart_ >= measureTime_)
-				finalizeFrameTimeMeasure();
-		}
+	if (window_.hasChanged()) {
+		resizeTextures();
+		cam_.update(window_.getWidth(), window_.getHeight());
+		updateComputeUniforms();
+
+	} else if (cam_.hasChanged()) {
+		cam_.update(window_.getWidth(), window_.getHeight());
+		updateComputeUniforms();
+	}
+
+	getCurrentShader()->use();
+
+	glActiveTexture(GL_TEXTURE0);
+	sky_.bind();
+
+	glActiveTexture(GL_TEXTURE1);
+	diskTextures_.at(selectedTexture_)->bind();
+
+	disk_.setRotation(tPassed_ / diskRotationSpeed_);
+	disk_.uploadData();
 		
-		processKeyboardInput();
-		if (showGui_) {
+	if (compute_) {
+		bloom_ = getCurrentShader()->getFlags().at("BLOOM");
 
-			gui_.newFrame();
-			renderOptionsWindow();
-			gui_.render();
-		}
+		fboTexture_.bindImageTex(0, GL_WRITE_ONLY);
+		bloomTextures_.at(0)->bindImageTex(1, GL_WRITE_ONLY);
 
-		if (camOrbit_) {
-			calculateCameraOrbit();
-		} else {
-			cam_.keyBoardInput(window_.getPtr(), dt_);
-			cam_.mouseInput(window_.getPtr());
-		}
+		glm::ivec3 workGroups;
+		glGetProgramiv(getCurrentShader()->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(workGroups));
+		workGroups.x = std::ceil(fboTexture_.getWidth() / (float)workGroups.x);
+		workGroups.y = std::ceil(fboTexture_.getHeight() / (float)workGroups.y);
 
-		if (window_.hasChanged()) {
-			resizeTextures();
-			cam_.update(window_.getWidth(), window_.getHeight());
-			updateComputeUniforms();
+		glDispatchCompute(workGroups.x, workGroups.y, 1);
+		//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-		} else if (cam_.hasChanged()) {
-			cam_.update(window_.getWidth(), window_.getHeight());
-			updateComputeUniforms();
-		}
+		if (bloom_) {
+			bloomShader_->use();
+			for (int i = 0; i < bloomPasses_; ++i) {
+				int index = i % 2;
+				glActiveTexture(GL_TEXTURE0);
+				bloomTextures_.at(index)->bindTex();
+				bloomTextures_.at(!index)->bindImageTex(1, GL_WRITE_ONLY);
 
-		getCurrentShader()->use();
-
-		glActiveTexture(GL_TEXTURE0);
-		sky_.bind();
-
-		glActiveTexture(GL_TEXTURE1);
-		diskTextures_.at(selectedTexture_)->bind();
-
-		disk_.setRotation(tPassed_ / diskRotationSpeed_);
-		disk_.uploadData();
-		
-		if (compute_) {
-			bloom_ = getCurrentShader()->getFlags().at("BLOOM");
-
-			fboTexture_.bindImageTex(0, GL_WRITE_ONLY);
-			bloomTextures_.at(0)->bindImageTex(1, GL_WRITE_ONLY);
-
-			glm::ivec3 workGroups;
-			glGetProgramiv(getCurrentShader()->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(workGroups));
-			workGroups.x = std::ceil(fboTexture_.getWidth() / (float)workGroups.x);
-			workGroups.y = std::ceil(fboTexture_.getHeight() / (float)workGroups.y);
-
-			glDispatchCompute(workGroups.x, workGroups.y, 1);
-			//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-			if (bloom_) {
-				bloomShader_->use();
-				for (int i = 0; i < bloomPasses_; ++i) {
-					int index = i % 2;
-					glActiveTexture(GL_TEXTURE0);
-					bloomTextures_.at(index)->bindTex();
-					bloomTextures_.at(!index)->bindImageTex(1, GL_WRITE_ONLY);
-
-					bloomShader_->setUniform("horizontal", index);
-					glDispatchCompute(workGroups.x, workGroups.y, 1);
-					//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-				}
+				bloomShader_->setUniform("horizontal", index);
+				glDispatchCompute(workGroups.x, workGroups.y, 1);
+				//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 			}
-		} else {
-			bloom_ = false;
-			glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
-			glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			quad_.draw(GL_TRIANGLES);
-
 		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, window_.getWidth(), window_.getHeight());
+	} else {
+		bloom_ = false;
+		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
+		glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		sQuadShader_.use();
-
-		glActiveTexture(GL_TEXTURE0);
-		fboTexture_.bindTex();
-		glActiveTexture(GL_TEXTURE1);
-		bloomTextures_.at(1)->bindTex();
-		sQuadShader_.setUniform("bloom", bloom_);
-
 		quad_.draw(GL_TRIANGLES);
-				
-		if(showGui_) gui_.renderEnd();
 
-		window_.endFrame();
 	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, window_.getWidth(), window_.getHeight());
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	sQuadShader_.use();
+
+	glActiveTexture(GL_TEXTURE0);
+	fboTexture_.bindTex();
+	glActiveTexture(GL_TEXTURE1);
+	bloomTextures_.at(1)->bindTex();
+	sQuadShader_.setUniform("bloom", bloom_);
+
+	quad_.draw(GL_TRIANGLES);
+
 }
 
 std::shared_ptr<ShaderBase> BHVApp::getCurrentShader() {
@@ -217,7 +201,7 @@ void BHVApp::calculateCameraOrbit() {
 
 }
 
-void BHVApp::renderOptionsWindow() {
+void BHVApp::renderGui() {
 	ImGui::Begin("Application Options");
 	if (ImGui::BeginTabBar("Options")) {
 		if (ImGui::BeginTabItem("General")) {

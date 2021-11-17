@@ -95,7 +95,6 @@ private:
 	void render() override;
 	void uploadUniforms() override;
 
-	glm::vec3 baseColor_;
 	float stepSize_;
 	float mass_;
 };
@@ -117,6 +116,8 @@ private:
 
 	float stepSize_;
 	float mass_;
+	float forceWeight_;
+	glm::vec4 sphere_;
 
 };
 

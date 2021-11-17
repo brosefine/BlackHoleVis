@@ -5,11 +5,11 @@
 
 #include <string>
 
-class BHVWindow {
+class GLWindow {
 public:
-	BHVWindow() {};
-	BHVWindow(int width, int height, std::string name);
-	~BHVWindow();
+	GLWindow() {};
+	GLWindow(int width, int height, std::string name);
+	~GLWindow();
 
 	void setWidth(int w);
 

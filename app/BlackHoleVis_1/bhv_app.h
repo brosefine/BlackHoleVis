@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <app/app.h>
 #include <helpers/uboBindings.h>
 #include <rendering/shader.h>
 #include <rendering/mesh.h>
@@ -13,17 +14,16 @@
 #include <gui/gui.h>
 #include <gui/guiElement.h>
 
-class BHVApp {
+class BHVApp : public GLApp{
 public:
 	
 	BHVApp(int width, int height);
 
-	void renderLoop();
 
 private:
-
-	BHVWindow window_;
-	Gui gui_;
+	void renderContent() override;
+	void renderGui() override;
+	void processKeyboardInput() override;
 
 	Camera cam_;
 	bool camOrbit_;
@@ -70,7 +70,6 @@ private:
 	bool vSync_;
 
 	// GUI flags
-	bool showGui_;
 	bool showShaders_;
 	bool showCamera_;
 	bool showDisk_;
@@ -83,7 +82,6 @@ private:
 
 	void calculateCameraOrbit();
 
-	void renderOptionsWindow();
 	void renderShaderWindow();
 	void renderCameraWindow();
 	void renderDiskWindow();
@@ -92,7 +90,6 @@ private:
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);
-	void processKeyboardInput();
 
 	void initFrameTimeMeasure();
 	void finalizeFrameTimeMeasure();

@@ -18,6 +18,15 @@ vec3 starless(vec3 pos, float h2){
     return -3 * h2 * M * pos / pow(dot(pos, pos), 2.5);
 }
 
+vec3 rk4(vec3 pos, float h2, float step) {
+    vec3 k1 = starless(pos, h2);
+    vec3 k2 = starless(pos + 0.5 * step * k1, h2);
+    vec3 k3 = starless(pos + 0.5 * step * k2, h2);
+    vec3 k4 = starless(pos + step * k3, h2);
+
+    return (k1 + 2*k2 + 2*k3 + k4) / 6.0;
+}
+
 void write_to_tex(ivec2 coords, vec4 pixel, bool disk) {
     pixel.a = 1;
     imageStore(img_output, coords, pixel);
@@ -54,7 +63,12 @@ void main() {
     vec3 viewDir = normalize(pixel_pos - cameraPos);
   
     vec4 pixel = vec4(0,0,0,0);
+    #ifdef CHECKEREDHOR
+    vec4 horizonColor;
+    #endif
+    #ifdef DISK
     vec4 diskColor;
+    #endif
 
     bool disk = false;
 
@@ -81,29 +95,6 @@ void main() {
     vec3 lightup = cross(cameraPos, lightVel);
     float h2 = dot(lightup, lightup);
 
-    #ifdef FIRSTRK4
-    if(length(lightPos) > 100.0) {
-        float stp = length(lightPos) - 100.0;
-        vec3 k1 = starless(lightPos, h2);
-        vec3 k2 = starless(lightPos + 0.5 * stp * k1, h2);
-        vec3 k3 = starless(lightPos + 0.5 * stp * k2, h2);
-        vec3 k4 = starless(lightPos + stp * k3, h2);
-
-        lightVel += stp/6.0 * (k1 + 2*k2 + 2*k3 + k4);
-        lightPos += stp * lightVel;
-
-        #ifdef DISK
-        if(diskIntersect(lightPos, -stp*lightVel, diskColor)){
-            pixel.rgb += (1.0 - pixel.a) * diskColor.rgb * diskColor.a;
-            pixel.a += diskColor.a;
-            disk = true;
-        }
-        #endif //DISK
-
-    }
-    #endif //FIRSTRK4
-
-
     // simple loop for now
     float step = stepSize;
     for(int i = 0; i < 100; ++i) {
@@ -112,26 +103,32 @@ void main() {
         step = max(0.0001, stepSize * (length(lightPos) - rs));
         #endif //ADPTSTEP
 
-        if(length(lightPos) <= rs){
-        #ifdef CHECKEREDHOR
-            vec4 horizonColor;
-            horizonIntersect (lightPos, -lightVel*step, rs, horizonColor);
-            pixel.rgb += (1.0 - pixel.a) * horizonColor.rgb;
-        #endif //CHECKEREDHOR
-            write_to_tex(texCoords, pixel, disk);
-            return;
-        }
-
+        #ifdef FIRSTRK4
+        vec3 acc = rk4(lightPos, h2, step);
+        #else
         vec3 acc = starless(lightPos, h2);
+        #endif
+
         #ifdef ERLYTERM
         if (dot(-lightPos, lightVel) < 0 && 
             length(acc*step) <= length(lightVel) * 0.001) {
             break;
         }
         #endif //ERLYTERM
+
         lightVel += acc * step;
         lightPos += lightVel * step;
          
+        #ifdef CHECKEREDHOR
+        if(horizonIntersect (lightPos, -lightVel*step, rs, horizonColor)){
+            pixel.rgb += (1.0 - pixel.a) * horizonColor.rgb;
+        #else
+        if(length(lightPos) <= rs){
+        #endif //CHECKEREDHOR
+            write_to_tex(texCoords, pixel, disk);
+            return;
+        }
+
         #ifdef DISK
         if (diskIntersect(lightPos, -step*lightVel, diskColor)) {
             pixel.rgb += (1.0 - pixel.a) * diskColor.rgb * diskColor.a;
