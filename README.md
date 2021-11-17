@@ -6,16 +6,24 @@ Computer Science Master's Project at the FSU Jena
 ## Setup
 
 ### Dependencies
-Hopefully, all dependencies should be loaded automatically by the CMakeLists.txt in thirdparty/. If successfull, they will be in [build-folder]/deps_.
+Dependencies were installed using [vcpkg](https://github.com/Microsoft/vcpkg).
 - glm
 - glad
 - glfw
 - imgui
-- stb_image (included in thirdparty/)
+- implot
+- stb_image
 
 ### Windows
+- [setup vcpkg](https://vcpkg.io/en/getting-started.html) (```vcpkg integrate install``` not required)
+- install dependencies with vcpkg: 
+	```vcpkg install glm:x64-windows glfw3:x64-windows stb:x64-windows glad:x64-windows imgui[opengl3-binding,glfw-binding]:x64-windows implot:x64-windows```
 - open directory in CMake GUI
 - select VS 2019
+- add Entry:
+	- name: ```CMAKE_TOOLCHAIN_FILE```
+	- type: ```PATH```
+	- value: ```[path to vcpkg]/scripts/buildsystems/vcpkg.cmake```
 - Configure & Generate
 - Open Project to open solution in VS
 
