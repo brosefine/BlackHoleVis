@@ -17,13 +17,23 @@ vec3 starless(vec3 pos, float h2){
     return -3 * h2 * M * pos / pow(dot(pos, pos), 2.5);
 }
 
-vec3 rk4(vec3 pos, float h2, float step) {
-    vec3 k1 = starless(pos, h2);
-    vec3 k2 = starless(pos + 0.5 * step * k1, h2);
-    vec3 k3 = starless(pos + 0.5 * step * k2, h2);
-    vec3 k4 = starless(pos + step * k3, h2);
+vec3 rk4(inout vec3 pos, inout vec3 k1Vel, float h2, float step) {
+    vec3 k1Acc = starless(pos, h2);
 
-    return (k1 + 2*k2 + 2*k3 + k4) / 6.0;
+    vec3 k2Vel = k1Vel + 0.5 * step * k1Acc;
+    vec3 k2Acc = starless(pos + 0.5 * step * k1Vel, h2);
+
+    vec3 k3Vel = k1Vel + 0.5 * step * k2Acc;
+    vec3 k3Acc = starless(pos + 0.5 * step * k2Vel, h2);
+    
+    vec3 k4Vel = k1Vel + step * k3Acc;
+    vec3 k4Acc = starless(pos + step * k3Vel, h2);
+
+    pos += step * (k1Vel + 2*k2Vel + 2*k3Vel + k4Vel) / 6.0;
+    vec3 acc = (k1Acc + 2*k2Acc + 2*k3Acc + k4Acc) / 6.0;
+    k1Vel += step * acc;
+
+    return acc;
 }
 
 void main() {
@@ -68,11 +78,13 @@ void main() {
         step = max(0.0001, stepSize * (length(lightPos) - rs));
         #endif //ADPTSTEP
 
-        #ifdef FIRSTRK4
-        vec3 acc = rk4(lightPos, h2, step);
-        #else
+        #ifndef FIRSTRK4
         vec3 acc = starless(lightPos, h2);
-        #endif
+        lightVel += forceWeight * acc * step;
+        lightPos += lightVel * step;
+        #else
+        vec3 acc = rk4(lightPos, lightVel, h2, step);
+        #endif //FIRSTRK4
         
         #ifdef ERLYTERM
         if (dot(lightPos, lightVel) > 0 && 
@@ -80,9 +92,6 @@ void main() {
             break;
         }
         #endif //ERLYTERM
-
-        lightVel += forceWeight * acc * step;
-        lightPos += lightVel * step;
          
         #ifdef CHECKEREDHOR
         if(horizonIntersect (lightPos, -lightVel*step, rs, horizonColor)){
