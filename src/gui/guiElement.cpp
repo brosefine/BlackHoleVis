@@ -3,7 +3,7 @@
 #include <gui/guiElement.h>
 #include <glm/gtc/type_ptr.hpp>
 
-
+#pragma region gui element
 //------------ GUI Element ------------ //
 
 
@@ -13,6 +13,9 @@ void GuiElement::renderRefreshMenu() {
 	if (alwaysUpdate_ || ImGui::Button("Apply")) changed_ = true;
 }
 
+#pragma endregion
+
+#pragma region shader gui
 //------------ Shader GUI ------------ //
 
 void ShaderGui::bindUBOs() {
@@ -45,6 +48,9 @@ void ShaderGui::update() {
 	changed_ = false;
 }
 
+#pragma endregion
+
+#pragma region black hole gui
 //------------ Black Hole GUI ------------ //
 
 BlackHoleGui::BlackHoleGui(): GuiElement("Black Hole"), blackHole_(new BlackHole({ 0.f, 0.f, 0.f }, 1.0e6, BLHBINDING)) {
@@ -66,6 +72,9 @@ void BlackHoleGui::render() {
 	renderRefreshMenu();
 }
 
+#pragma endregion
+
+#pragma region newton shader gui
 //------------ Newton Shader GUI ------------ //
 
 NewtonShaderGui::NewtonShaderGui(): stepSize_(1.f), forceWeight_(1.f) {
@@ -111,7 +120,6 @@ void NewtonShaderGui::readState(std::ifstream& inFile) {
 	update();
 }
 
-
 void NewtonShaderGui::render() {
 	ImGui::Text("Newton Shader Properties");
 	ImGui::InputFloat("Step Size", &stepSize_, 0.01, 0.1);
@@ -129,6 +137,9 @@ void NewtonShaderGui::uploadUniforms() {
 
 }
 
+#pragma endregion
+
+#pragma region starless compute shader gui
 //------------ Starless Compute Shader GUI ------------ //
 
 StarlessComputeShaderGui::StarlessComputeShaderGui() :stepSize_(0.2f), mass_(0.5f) {
@@ -175,7 +186,6 @@ void StarlessComputeShaderGui::readState(std::ifstream& inFile) {
 	update();
 }
 
-
 void StarlessComputeShaderGui::render() {
 	ImGui::Text("Newton Shader Properties");
 	ImGui::InputFloat("Step Size", &stepSize_, 1.0e-2, 0.1);
@@ -191,11 +201,14 @@ void StarlessComputeShaderGui::uploadUniforms() {
 	shader_->setUniform("M", mass_);
 }
 
+#pragma endregion
+
+#pragma region test shader gui
 //------------ Test Shader GUI ------------ //
 
 TestShaderGui::TestShaderGui() {
 	name_ = "Test";
-	shader_ = std::shared_ptr<ShaderBase>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY", "DISK" }));
+	shader_ = std::shared_ptr<ShaderBase>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY"}));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	shader_->setBlockBinding("camera", CAMBINDING);
@@ -209,6 +222,9 @@ void TestShaderGui::render() {
 	renderRefreshMenu();
 }
 
+#pragma endregion
+
+#pragma region starless shader gui
 //------------ Starless Shader GUI ------------ //
 
 StarlessShaderGui::StarlessShaderGui() : stepSize_(0.2f), mass_(0.5f), forceWeight_(1.f), sphere_({0.f, 0.f, 4.f, 1.f}) {
@@ -223,7 +239,6 @@ StarlessShaderGui::StarlessShaderGui() : stepSize_(0.2f), mass_(0.5f), forceWeig
 	bindUBOs();
 	uploadUniforms();
 }
-
 
 void StarlessShaderGui::render() {
 	ImGui::Text("Starless Shader Properties");
@@ -277,3 +292,4 @@ void StarlessShaderGui::readState(std::ifstream& inFile) {
 	}
 	update();
 }
+#pragma endregion

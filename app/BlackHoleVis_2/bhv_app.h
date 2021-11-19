@@ -12,7 +12,7 @@
 #include <objects/blackHole.h>
 #include <objects/accretionDisk.h>
 #include <gui/gui.h>
-#include <gui/guiElement.h>
+#include "guiElements.h"
 
 class BHVApp : public GLApp{
 public:
@@ -32,28 +32,17 @@ private:
 	float camOrbitSpeed_;
 	float camOrbitAngle_;
 
-	Mesh quad_;
+	
 	CubeMap sky_;
-
+	Texture deflectionTexture_;
+	Texture invRadiusTexture_;
 	FBOTexture fboTexture_;
-	std::vector<std::shared_ptr<FBOTexture>> bloomTextures_;
-	Shader sQuadShader_;
 	int fboScale_;
-
-	bool bloom_;
-	int bloomPasses_;
-	std::unique_ptr<ComputeShader> bloomShader_;
-
-	AccDisk disk_;
-	float diskRotationSpeed_;
-	std::map<std::string, std::shared_ptr<Texture>> diskTextures_;
-	std::string selectedTexture_;
-
-	bool compute_;
-	int selectedShader_;
-	int selectedComputeShader_;
-	std::vector<std::shared_ptr<ShaderGui>> shaderElements_;
-	std::vector<std::shared_ptr<ShaderGui>> computeShaderElements_;
+	
+	Mesh quad_;
+	Shader sQuadShader_;
+	std::shared_ptr<ShaderGui> shaderElement_;
+	std::shared_ptr<ShaderBase> shader_;
 
 	// timing variables for render loop
 	double t0_, dt_;
@@ -72,10 +61,8 @@ private:
 	// GUI flags
 	bool showShaders_;
 	bool showCamera_;
-	bool showDisk_;
 	bool showFps_;
 
-	std::shared_ptr<ShaderBase> getCurrentShader();
 	void initShaders();
 	void initTextures();
 	void resizeTextures();
@@ -84,9 +71,7 @@ private:
 
 	void renderShaderTab();
 	void renderCameraTab();
-	void renderDiskWindow();
 	void renderFPSWindow();
-	void renderComputeWindow();
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);
@@ -94,6 +79,4 @@ private:
 	void initFrameTimeMeasure();
 	void finalizeFrameTimeMeasure();
 
-	void printComputeInfo();
-	void updateComputeUniforms();
 };

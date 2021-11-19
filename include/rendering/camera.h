@@ -16,6 +16,7 @@ const float FAR = 100.f;
 class Camera {
 	struct CameraData {
 		glm::mat4 projectionViewInverse_;
+		glm::mat4 projectionInverse_;
 		glm::vec3 camPos_;
 	};
 
@@ -30,6 +31,7 @@ public:
 	glm::vec3 getPosition() const { return position_; }
 	glm::vec3 getFront() const { return front_; }
 	glm::vec3 getUp() const { return up_; }
+	glm::vec3 getRight() const { return right_; }
 
 	bool hasChanged() const { return changed_; }
 	void update(int windowWidth, int windowHeight);

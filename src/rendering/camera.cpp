@@ -137,6 +137,7 @@ void Camera::uploadData(int windowWidth, int windowHeight) {
     
     data_.camPos_ = getPosition();
     data_.projectionViewInverse_ = glm::inverse(getProjectionMatrix((float)windowWidth / windowHeight) * getViewMatrix());
+    data_.projectionInverse_ = glm::inverse(getProjectionMatrix((float)windowWidth / windowHeight));
     glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data_);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);

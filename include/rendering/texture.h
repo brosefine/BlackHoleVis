@@ -3,12 +3,16 @@
 #include <vector>
 #include <string>
 
+#include <glad/glad.h>
+
+
 class Texture {
 public:
 	// create texture from image file
 	Texture(std::string filename, bool srgb = false);
 	~Texture();
 
+	void setParam(GLenum param, GLint value);
 	void bind() const;
 	unsigned int getTexId() const { return texId_; }
 

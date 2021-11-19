@@ -13,11 +13,6 @@ find_package(imgui CONFIG REQUIRED)
 find_package(implot CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb.h")
 
-#target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE imgui::imgui)
-#target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw)
-#target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glad::glad)
-#target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glm::glm)
-
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE ${STB_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} INTERFACE glad::glad glm::glm glfw imgui::imgui implot::implot)

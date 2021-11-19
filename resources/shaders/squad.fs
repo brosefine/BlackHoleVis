@@ -20,5 +20,6 @@ void main()
     // also gamma correct while we're at it       
     //color = pow(color, vec3(1.0 / gamma));
     FragColor = vec4(color, 1.0);
+    //FragColor = vec4(TexCoords, 0.0, 1.0);
     
 }

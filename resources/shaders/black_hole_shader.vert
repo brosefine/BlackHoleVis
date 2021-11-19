@@ -8,14 +8,12 @@ layout (std140) uniform camera
     vec3 camPos;
 };
 
-out vec3 worldPos;
+out vec3 viewDir;
 out vec3 cameraPos;
 
 void main()
 {
-    vec4 invPos = projectionViewInverse * vec4(aPos, 1.0);
-    
-    worldPos = invPos.xyz / invPos.w;
+    viewDir = normalize(vec3(projectionInverse * vec4(aPos, 1.0)));
     cameraPos = camPos;
 
     gl_Position = vec4(aPos, 1.0);

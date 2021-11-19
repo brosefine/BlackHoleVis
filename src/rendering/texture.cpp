@@ -15,6 +15,7 @@ Texture::Texture(std::string filename, bool srgb): texId_(0) {
 
     std::string path;
     path = ROOT_DIR "resources/textures/" + filename;
+    //stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
     if (data) {
 
@@ -51,6 +52,12 @@ Texture::~Texture() {
 
 void Texture::bind() const {
     glBindTexture(GL_TEXTURE_2D, texId_);
+}
+
+void Texture::setParam(GLenum param, GLint value) {
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, param, value);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 FBOTexture::FBOTexture(int width, int height)

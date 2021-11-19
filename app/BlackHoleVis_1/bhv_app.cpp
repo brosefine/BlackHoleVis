@@ -242,16 +242,16 @@ void BHVApp::renderGui() {
 			ImGui::Checkbox("Show FPS", &showFps_);
 			ImGui::Spacing();
 			if(showFps_)
-				renderFPSPlot();
+				renderFPSWindow();
 
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Shader Settings")) {
-			renderShaderWindow();
+			renderShaderTab();
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Camera Settings")) {
-			renderCameraWindow();
+			renderCameraTab();
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Accretion Disk Settings")) {
@@ -267,7 +267,7 @@ void BHVApp::renderGui() {
 	ImGui::End();
 }
 
-void BHVApp::renderShaderWindow() {
+void BHVApp::renderShaderTab() {
 	ImGui::Text("Shader Settings");
 	ImGui::Checkbox("Use compute shader", &compute_);
 	ImGui::Text("Shader Selection");
@@ -307,7 +307,7 @@ void BHVApp::renderShaderWindow() {
 	}
 }
 
-void BHVApp::renderCameraWindow() {
+void BHVApp::renderCameraTab() {
 
 	ImGui::Text("Camera Settings");
 	ImGui::Text("Camera Position");
@@ -359,7 +359,7 @@ void BHVApp::renderDiskWindow() {
 	}
 }
 
-void BHVApp::renderFPSPlot() {
+void BHVApp::renderFPSWindow() {
 	static ScrollingBuffer rdata1, rdata2;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;

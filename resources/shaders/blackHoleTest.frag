@@ -1,14 +1,11 @@
 
 #ifdef SKY
-uniform samplerCube cubeMap;
+layout(binding = 0) uniform samplerCube cubeMap;
 #endif //SKY
 
 in vec3 cameraPos;
 in vec3 worldPos;
 out vec4 FragColor;
-
-float accretionMin = 4.0;
-float accretionMax = 8.0;
 
 void main() {
 
@@ -33,15 +30,4 @@ void main() {
     } else {
         FragColor = vec4(0,0,0,1);
     }
-    
-    #ifdef DISK
-    if(sign(cameraPos.y) != sign(viewDir.y)) {
-        vec3 diskHit = cameraPos - cameraPos.y * viewDir / viewDir.y;
-        if(!(blackHoleHit && length(diskHit - cameraPos) > length(cameraPos)) && length(diskHit) < accretionMax && length(diskHit) > accretionMin) {
-            float heat = (length(diskHit) - accretionMin)/(accretionMax-accretionMin);
-            FragColor = vec4(1, 1.0 - heat, 0.7 - heat, 1);                
-        }
-    }
-    #endif //DISK
-
 }
