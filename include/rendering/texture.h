@@ -5,22 +5,62 @@
 
 #include <glad/glad.h>
 
+/* Parameter container for loading texture data
+* Default values are:
+* srgb = false
+* int nrComponents = 1;
+* target = GL_TEXTURE_2D
+* level = 0;
+* internalFormat = GL_RED;
+* width = 0;
+* height = 0;
+* border = 0;
+* format = GL_RED;
+* type = GL_UNSIGNED_BYTE;
+*/
+struct TextureParams {
+	bool srgb = false;
+	int nrComponents = 1;
+	GLenum target = GL_TEXTURE_2D;
+	GLint level = 0;
+	GLint internalFormat = GL_RED;
+	GLsizei width = 0;
+	GLsizei height = 0;
+	GLint border = 0;
+	GLenum format = GL_RED;
+	GLenum type = GL_UNSIGNED_BYTE;
+	void* data = nullptr;
+};
+
 
 class Texture {
 public:
+
 	// create texture from image file
+	Texture():texId_(0),width_(0),height_(0){}
 	Texture(std::string filename, bool srgb = false);
+	Texture(TextureParams const& params);
 	~Texture();
 
-	void setParam(GLenum param, GLint value);
-	void bind() const;
+	virtual void setParam(GLenum param, GLint value);
+	virtual void setParam(std::vector<std::pair<GLenum, GLint>> params);
+
+	virtual void bind() const;
 	unsigned int getTexId() const { return texId_; }
 
-private:
+	int getWidth() const { return width_; }
+	int getHeight() const { return height_; }
+
+protected:
 	unsigned int texId_;
+	int width_, height_;
+
+	void createTexture(TextureParams const& params);
+	void setTextureFormat(TextureParams& params);
+
 };
 
-class FBOTexture {
+class FBOTexture: public Texture{
 public:
 	// create empty fbo texture
 	FBOTexture(int width, int height);
@@ -28,21 +68,15 @@ public:
 
 	void resize(int width, int height);
 
-	void bindTex() const;
 	void bindImageTex(int binding, unsigned int mode) const;
 	unsigned int getTexId() const { return texId_; }
 	unsigned int getFboId() const { return fboId_; }
 
-	int getWidth() const { return width_; }
-	int getHeight() const { return height_; }
-
 private:
-	int width_, height_;
-	unsigned int texId_;
 	unsigned int fboId_;
 };
 
-class CubeMap {
+class CubeMap : public Texture{
 public:
 
 	/*
@@ -52,10 +86,10 @@ public:
 	*/
 	CubeMap(std::vector<std::string> faces);
 
-	void bind() const;
-	unsigned int getId() const { return ID_; }
+	void bind() const override;
+	void setParam(std::vector<std::pair<GLenum, GLint>> params) override;
+
 private:
-	unsigned int ID_;
 
 	void loadImages(std::vector<std::string> faces);
 };

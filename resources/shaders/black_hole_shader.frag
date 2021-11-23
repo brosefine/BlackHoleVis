@@ -5,6 +5,7 @@ out vec4 FragColor;
 
 in vec3 viewDir;
 in vec3 cameraPos;
+in vec2 TexCoords;
 
 layout(binding = 0) uniform sampler2D deflection_texture;
 layout(binding = 1) uniform samplerCube cubeMap;
@@ -80,7 +81,10 @@ float RayTrace(float u, float u_dot, float e_square, float delta){
 
 void main()
 {    
-    
+    //vec3 col = texture(deflection_texture, TexCoords).rgb;
+    //FragColor = vec4(col, 1);
+    //return;
+
     vec3 q = normalize(viewDir);
     vec3 up = cross(cam_right, cam_front);
     vec3 dir = q.x * cam_right + q.y * up - q.z * cam_front;

@@ -33,10 +33,12 @@ private:
 	float camOrbitAngle_;
 
 	
-	CubeMap sky_;
-	Texture deflectionTexture_;
-	Texture invRadiusTexture_;
-	FBOTexture fboTexture_;
+	std::shared_ptr<CubeMap> sky_;
+	std::string deflectionPath_;
+	std::shared_ptr<Texture> deflectionTexture_;
+	//std::string invRadiusPath_;
+	//std::shared_ptr<Texture> invRadiusTexture_;
+	std::shared_ptr<FBOTexture> fboTexture_;
 	int fboScale_;
 	
 	Mesh quad_;
@@ -78,5 +80,7 @@ private:
 
 	void initFrameTimeMeasure();
 	void finalizeFrameTimeMeasure();
+
+	std::vector<float> imageData_;
 
 };

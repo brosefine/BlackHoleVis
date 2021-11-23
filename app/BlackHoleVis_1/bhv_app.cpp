@@ -116,7 +116,7 @@ void BHVApp::renderContent()
 			for (int i = 0; i < bloomPasses_; ++i) {
 				int index = i % 2;
 				glActiveTexture(GL_TEXTURE0);
-				bloomTextures_.at(index)->bindTex();
+				bloomTextures_.at(index)->bind();
 				bloomTextures_.at(!index)->bindImageTex(1, GL_WRITE_ONLY);
 
 				bloomShader_->setUniform("horizontal", index);
@@ -141,9 +141,9 @@ void BHVApp::renderContent()
 	sQuadShader_.use();
 
 	glActiveTexture(GL_TEXTURE0);
-	fboTexture_.bindTex();
+	fboTexture_.bind();
 	glActiveTexture(GL_TEXTURE1);
-	bloomTextures_.at(1)->bindTex();
+	bloomTextures_.at(1)->bind();
 	sQuadShader_.setUniform("bloom", bloom_);
 
 	quad_.draw(GL_TRIANGLES);

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <numeric>
 #include <functional>
+#include <filesystem>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
@@ -11,9 +12,49 @@
 #include <rendering/quad.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
+#include <helpers/Timer.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
+
+std::vector<std::string> skyPaths{ 
+	"milkyway2048/right.png",
+	"milkyway2048/left.png",
+	"milkyway2048/top.png",
+	"milkyway2048/bottom.png",
+	"milkyway2048/front.png",
+	"milkyway2048/back.png" 
+};
+
+template <typename T>
+std::vector<T> readFile(std::string const& path) {
+
+	std::ifstream file(path, std::ios::binary | std::ios::ate);
+
+	if (!file) {
+		std::cerr << "[BHV App] Error reading file " << path << std::endl;
+		return {};
+	}
+
+	auto end = file.tellg();
+	file.seekg(0, std::ios::beg);
+	std::size_t fileSize = end - file.tellg();
+
+	if (fileSize == 0) return {};
+	if (fileSize % sizeof(T) != 0) {
+		std::cerr << "[BHV App] Error reading data from file " << path << ". Invalid file size." << std::endl;
+		return {};
+	}
+
+	std::vector<T> data(fileSize/sizeof(T));
+
+	if (!file.read((char*)data.data(), data.size()*sizeof(T))) {
+		std::cerr << "[BHV App] Error reading data from file " << path << std::endl;
+		return {};
+	}
+
+	return data;
+}
 
 BHVApp::BHVApp(int width, int height)
 	: GLApp(width, height, "Black Hole Vis")
@@ -23,10 +64,12 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitRad_(10.f)
 	, camOrbitSpeed_(0.5f)
 	, camOrbitAngle_(0.f)
-	, sky_({ "milkyway2048/right.png", "milkyway2048/left.png", "milkyway2048/top.png", "milkyway2048/bottom.png", "milkyway2048/front.png", "milkyway2048/back.png" })
-	, deflectionTexture_("ebruneton/deflection.png")
-	, invRadiusTexture_("ebruneton/inverse_radius.png")
-	, fboTexture_(width, height)
+	, sky_(std::make_shared<CubeMap>(skyPaths))
+	, deflectionPath_("ebruneton/deflection.dat")
+	//, deflectionTexture_("ebruneton/deflection.png")
+	//, invRadiusPath_("ebruneton/inverse_radius.dat")
+	//, invRadiusTexture_("ebruneton/inverse_radius.png")
+	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
 	, quad_(quadPositions, quadUVs, quadIndices)
 	, sQuadShader_("squad.vs", "squad.fs")
@@ -43,7 +86,7 @@ BHVApp::BHVApp(int width, int height)
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
 	initShaders();
-	//initTextures();
+	initTextures();
 }
 
 void BHVApp::renderContent() 
@@ -80,12 +123,12 @@ void BHVApp::renderContent()
 	shader_->setUniform("cam_right", glm::normalize(cam_.getRight()));
 
 	glActiveTexture(GL_TEXTURE0);
-	deflectionTexture_.bind();
+	deflectionTexture_->bind();
 	glActiveTexture(GL_TEXTURE1);
-	sky_.bind();
+	sky_->bind();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
-	glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
+	glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
+	glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	quad_.draw(GL_TRIANGLES);
@@ -97,7 +140,7 @@ void BHVApp::renderContent()
 	sQuadShader_.use();
 
 	glActiveTexture(GL_TEXTURE0);
-	fboTexture_.bindTex();
+	fboTexture_->bind();
 
 	quad_.draw(GL_TRIANGLES);
 
@@ -109,15 +152,37 @@ void BHVApp::initShaders() {
 }
 
 void BHVApp::initTextures() {
-	deflectionTexture_.setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	deflectionTexture_.setParam(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	invRadiusTexture_.setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	invRadiusTexture_.setParam(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	std::vector<float> deflectionData = readFile<float>(TEX_DIR"" + deflectionPath_);
+	if (deflectionData.size() != 0) {
+		TextureParams params;
+
+		params.nrComponents = 2;
+		params.width = deflectionData[0];
+		params.height = deflectionData[1];
+		params.internalFormat = GL_RG32F;
+		params.format = GL_RG;
+		params.type = GL_FLOAT;
+		params.data = &deflectionData.data()[2];
+
+		deflectionTexture_ = std::make_shared<Texture>(params);
+
+		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+			{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+		};
+		deflectionTexture_->setParam(texParameters);
+
+		std::cout << "Created deflection texture" << std::endl;
+	}
+	else {
+		std::cerr << "[BHV App] Could not create deflection texture: no data read" << std::endl;
+	}
 }
 
 void BHVApp::resizeTextures() {
 	std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
-	fboTexture_.resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
+	fboTexture_->resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
 }
 
 void BHVApp::calculateCameraOrbit() {
