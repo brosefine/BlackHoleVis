@@ -11,16 +11,16 @@ Texture::Texture(std::string filename, bool srgb)
     : texId_(0)
     , width_(0)
     , height_(0)
+    , target_(GL_TEXTURE_2D)
 {
     glGenTextures(1, &texId_);
-    glBindTexture(GL_TEXTURE_2D, texId_);
+    bind();
 
     TextureParams params;
     params.srgb = srgb;
 
     std::string path;
     path = TEX_DIR"" + filename;
-    //stbi_set_flip_vertically_on_load(true);
     params.data = stbi_load(path.c_str(), &params.width, &params.height, &params.nrComponents, 0);
     width_ = params.width;
     height_ = params.height;
@@ -42,7 +42,7 @@ Texture::Texture(std::string filename, bool srgb)
 
     setParam(texParameters);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    unbind();
 }
 
 // Texture Constructor
@@ -51,14 +51,12 @@ Texture::Texture(std::string filename, bool srgb)
 // image data is not freed in constructor
 Texture::Texture(TextureParams const& params)
     : texId_(0)
-    , width_(0)
-    , height_(0)
+    , width_(params.width)
+    , height_(params.height)
+    , target_(GL_TEXTURE_2D)
 {
     glGenTextures(1, &texId_);
-    glBindTexture(GL_TEXTURE_2D, texId_);
-
-    width_ = params.width;
-    height_ = params.height;
+    bind();
 
     if (params.data) {
         createTexture(params);
@@ -67,17 +65,11 @@ Texture::Texture(TextureParams const& params)
         std::cerr << "[loadTexture] Texture failed to load: manual load" << std::endl;
     }
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    unbind();
 }
-
-
 
 Texture::~Texture() {
     glDeleteTextures(1, &texId_);
-}
-
-void Texture::bind() const {
-    glBindTexture(GL_TEXTURE_2D, texId_);
 }
 
 void Texture::createTexture(TextureParams const& params)
@@ -98,22 +90,44 @@ void Texture::setTextureFormat(TextureParams& params){
 
 }
 
+void Texture::setParam(GLenum param, GLfloat value) {
+    setParam(std::vector<std::pair<GLenum, GLfloat>>{ { param, value } });
+}
+
 void Texture::setParam(GLenum param, GLint value) {
-    setParam({ { param, value } });
+    setParam(std::vector<std::pair<GLenum, GLint>>{ { param, value } });
 }
 
 void Texture::setParam(std::vector<std::pair<GLenum, GLint>> params) {
     bind();
     for (auto const& [pname, param] : params) {
 
-        glTexParameteri(GL_TEXTURE_2D, pname, param);
+        glTexParameteri(target_, pname, param);
     }
-    glBindTexture(GL_TEXTURE_2D, 0);
+    unbind();
 }
 
+void Texture::setParam(std::vector<std::pair<GLenum, GLfloat>> params) {
+    bind();
+    for (auto const& [pname, param] : params) {
+
+        glTexParameterf(target_, pname, param);
+    }
+    unbind();
+}
+
+void Texture::generateMipMap(){
+    bind();
+    glGenerateMipmap(target_);
+    unbind();
+}
 
 FBOTexture::FBOTexture(int width, int height)
-    : fboId_(0) {
+    : Texture(GL_TEXTURE_2D)
+    , fboId_(0) {
+
+    width_ = width;
+    height_ = height;
 
     // framebuffer
     glGenFramebuffers(1, &fboId_);
@@ -121,7 +135,7 @@ FBOTexture::FBOTexture(int width, int height)
 
     // texture
     glGenTextures(1, &texId_);
-    glBindTexture(GL_TEXTURE_2D, texId_);
+    bind();
     TextureParams params;
     params.width = width;
     params.height = height;
@@ -131,9 +145,15 @@ FBOTexture::FBOTexture(int width, int height)
     params.data = NULL;
 
     createTexture(params);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA,GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    std::vector<std::pair<GLenum, GLint>> texParameters{
+        {GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+        {GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+        {GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+        {GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+    };
+    setParam(texParameters);
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
         texId_, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -155,15 +175,19 @@ void FBOTexture::resize(int width, int height) {
     glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
 
     glDeleteTextures(1, &texId_);
-
     glGenTextures(1, &texId_);
-    glBindTexture(GL_TEXTURE_2D, texId_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA,
+    bind();
+
+    glTexImage2D(target_, 0, GL_RGBA32F, width, height, 0, GL_RGBA,
         GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    std::vector<std::pair<GLenum, GLint>> texParameters{
+        {GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+        {GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+        {GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+        {GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+    };
+    setParam(texParameters);
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
         texId_, 0);
@@ -178,21 +202,8 @@ void FBOTexture::bindImageTex(int binding, unsigned int mode) const {
     glBindImageTexture(binding, texId_, 0, GL_FALSE, 0, mode, GL_RGBA32F);
 }
 
-CubeMap::CubeMap(std::vector<std::string> faces) {
+CubeMap::CubeMap(std::vector<std::string> faces) : Texture(GL_TEXTURE_CUBE_MAP){
     loadImages(faces);
-}
-
-void CubeMap::bind() const {
-    glBindTexture(GL_TEXTURE_CUBE_MAP, texId_);
-}
-
-void CubeMap::setParam(std::vector<std::pair<GLenum, GLint>> params){
-    bind();
-    for (auto const& [pname, param] : params) {
-
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, pname, param);
-    }
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 void CubeMap::loadImages(std::vector<std::string> faces) {
@@ -201,7 +212,7 @@ void CubeMap::loadImages(std::vector<std::string> faces) {
     }
 
     glGenTextures(1, &texId_);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, texId_);
+    bind();
 
     TextureParams params;
     std::string path;
@@ -228,6 +239,6 @@ void CubeMap::loadImages(std::vector<std::string> faces) {
 
     setParam(texParameters);
     
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    unbind();
 }
 

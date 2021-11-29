@@ -17,14 +17,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 
-std::vector<std::string> skyPaths{ 
-	"milkyway2048/right.png",
-	"milkyway2048/left.png",
-	"milkyway2048/top.png",
-	"milkyway2048/bottom.png",
-	"milkyway2048/front.png",
-	"milkyway2048/back.png" 
-};
 
 template <typename T>
 std::vector<T> readFile(std::string const& path) {
@@ -64,11 +56,13 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitRad_(10.f)
 	, camOrbitSpeed_(0.5f)
 	, camOrbitAngle_(0.f)
-	, sky_(std::make_shared<CubeMap>(skyPaths))
+	, aberration_(false)
+	, useCustomDirection_(false)
+	, useLocalDirection_(true)
+	, direction_(1,0,0)
+	, speed_(0.1f)
 	, deflectionPath_("ebruneton/deflection.dat")
-	//, deflectionTexture_("ebruneton/deflection.png")
-	//, invRadiusPath_("ebruneton/inverse_radius.dat")
-	//, invRadiusTexture_("ebruneton/inverse_radius.png")
+	, invRadiusPath_("ebruneton/inverse_radius.dat")
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
 	, quad_(quadPositions, quadUVs, quadIndices)
@@ -87,6 +81,7 @@ BHVApp::BHVApp(int width, int height)
 	cam_.update(window_.getWidth(), window_.getHeight());
 	initShaders();
 	initTextures();
+	initCubeMaps();
 }
 
 void BHVApp::renderContent() 
@@ -105,8 +100,7 @@ void BHVApp::renderContent()
 	if (camOrbit_) {
 		calculateCameraOrbit();
 	} else {
-		cam_.keyBoardInput(window_.getPtr(), dt_);
-		cam_.mouseInput(window_.getPtr());
+		cam_.processInput(window_.getPtr(), dt_);
 	}
 
 	if (window_.hasChanged()) {
@@ -115,17 +109,20 @@ void BHVApp::renderContent()
 
 	} else if (cam_.hasChanged()) {
 		cam_.update(window_.getWidth(), window_.getHeight());
+		uploadBaseVectors();
+	}
+	else if (aberration_) {
+		uploadBaseVectors();
 	}
 
 	shader_->use();
-	shader_->setUniform("cam_up", glm::normalize(cam_.getUp()));
-	shader_->setUniform("cam_front", glm::normalize(cam_.getFront()));
-	shader_->setUniform("cam_right", glm::normalize(cam_.getRight()));
 
 	glActiveTexture(GL_TEXTURE0);
-	deflectionTexture_->bind();
+	currentCubeMap_->bind();
 	glActiveTexture(GL_TEXTURE1);
-	sky_->bind();
+	deflectionTexture_->bind();
+	glActiveTexture(GL_TEXTURE2);
+	invRadiusTexture_->bind();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
 	glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
@@ -139,6 +136,7 @@ void BHVApp::renderContent()
 
 	sQuadShader_.use();
 
+	//fboTexture_->generateMipMap();
 	glActiveTexture(GL_TEXTURE0);
 	fboTexture_->bind();
 
@@ -153,10 +151,11 @@ void BHVApp::initShaders() {
 
 void BHVApp::initTextures() {
 
+	// create deflection texture
 	std::vector<float> deflectionData = readFile<float>(TEX_DIR"" + deflectionPath_);
 	if (deflectionData.size() != 0) {
-		TextureParams params;
 
+		TextureParams params;
 		params.nrComponents = 2;
 		params.width = deflectionData[0];
 		params.height = deflectionData[1];
@@ -168,6 +167,8 @@ void BHVApp::initTextures() {
 		deflectionTexture_ = std::make_shared<Texture>(params);
 
 		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
 			{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
 			{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
 		};
@@ -178,11 +179,80 @@ void BHVApp::initTextures() {
 	else {
 		std::cerr << "[BHV App] Could not create deflection texture: no data read" << std::endl;
 	}
+
+	// create inverse radius texture
+	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"" + invRadiusPath_);
+	if (invRadiusData.size() != 0) {
+
+		TextureParams params;
+		params.nrComponents = 2;
+		params.width = invRadiusData[0];
+		params.height = invRadiusData[1];
+		params.internalFormat = GL_RG32F;
+		params.format = GL_RG;
+		params.type = GL_FLOAT;
+		params.data = &invRadiusData.data()[2];
+
+		invRadiusTexture_ = std::make_shared<Texture>(params);
+
+		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+			{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+		};
+		invRadiusTexture_->setParam(texParameters);
+
+		std::cout << "Created inverse radius texture" << std::endl;
+	}
+	else {
+		std::cerr << "[BHV App] Could not create inverse radius texture: no data read" << std::endl;
+	}
+
+	//fboTexture_->generateMipMap();
+	//fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+}
+
+void BHVApp::initCubeMaps(){
+
+	std::vector<std::string> mwPaths{
+		"milkyway2048/right.png",
+		"milkyway2048/left.png",
+		"milkyway2048/top.png",
+		"milkyway2048/bottom.png",
+		"milkyway2048/front.png",
+		"milkyway2048/back.png"
+	};
+	cubemaps_.push_back({ "Milky Way", std::make_shared<CubeMap>(mwPaths) });
+
+	std::vector<std::string> grid{
+		"gradient/right.png",
+		"gradient/left.png",
+		"gradient/top.png",
+		"gradient/bottom.png",
+		"gradient/front.png",
+		"gradient/back.png"
+	};
+	cubemaps_.push_back({ "Gradient Grid", std::make_shared<CubeMap>(grid) });
+
+	std::vector<std::pair<GLenum, GLint>> texParametersi{
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+	};
+	for (const auto& [name, map] : cubemaps_) {
+		// configure cubemap
+		map->generateMipMap();
+		map->setParam(texParametersi);
+		map->setParam(GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
+	}
+	currentCubeMap_ = cubemaps_.at(0).second;
 }
 
 void BHVApp::resizeTextures() {
 	std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
 	fboTexture_->resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
+	//fboTexture_->generateMipMap();
+	//fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 }
 
 void BHVApp::calculateCameraOrbit() {
@@ -201,6 +271,44 @@ void BHVApp::calculateCameraOrbit() {
 	camOrbitAngle_ += camOrbitSpeed_ * dt_;
 	camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
 
+}
+
+void BHVApp::uploadBaseVectors(){
+	if (!aberration_) {
+		shader_->use();
+		shader_->setUniform("cam_tau", (glm::vec3(0.f)));
+		shader_->setUniform("cam_up", (cam_.getUp()));
+		shader_->setUniform("cam_front", (cam_.getFront()));
+		shader_->setUniform("cam_right", (cam_.getRight()));
+		return;
+	}
+	
+	// FIDO not correct yet
+	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0);
+	glm::vec4 e_x = glm::vec4(0, cam_.getRight());
+	glm::vec4 e_y = glm::vec4(0, cam_.getUp());
+	glm::vec4 e_z = glm::vec4(0, cam_.getFront());
+
+	glm::mat4 lorentz;
+	if (useCustomDirection_) {
+		glm::mat3 locToGlob(cam_.getRight(), cam_.getUp(), cam_.getFront());
+		lorentz = cam_.getBoostFromVel(locToGlob * glm::normalize(direction_), speed_);
+	} else if (useLocalDirection_) {
+		lorentz = cam_.getBoost(dt_);
+	} else {
+		lorentz = glm::mat4(1.f);
+	}
+
+	glm::vec4 e_tau = lorentz * e_t;
+	glm::vec4 e_right = lorentz * e_x;
+	glm::vec4 e_up = lorentz * e_y;
+	glm::vec4 e_front = lorentz * e_z;
+	
+	shader_->use();
+	shader_->setUniform("cam_tau", (glm::vec3(e_tau.y, e_tau.z, e_tau.w)));
+	shader_->setUniform("cam_right", (glm::vec3(e_right.y, e_right.z, e_right.w)));
+	shader_->setUniform("cam_up", (glm::vec3(e_up.y, e_up.z, e_up.w)));
+	shader_->setUniform("cam_front", (glm::vec3(e_front.y, e_front.z, e_front.w)));
 }
 
 void BHVApp::renderGui() {
@@ -247,6 +355,8 @@ void BHVApp::renderGui() {
 
 			ImGui::Checkbox("Show FPS", &showFps_);
 			ImGui::Spacing();
+			if (ImGui::Button("Debug Print"))
+				printDebug();
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Shader Settings")) {
@@ -255,6 +365,10 @@ void BHVApp::renderGui() {
 		}
 		if (ImGui::BeginTabItem("Camera Settings")) {
 			renderCameraTab();
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Sky Settings")) {
+			renderSkyTab();
 			ImGui::EndTabItem();
 		}
 	}
@@ -269,6 +383,36 @@ void BHVApp::renderShaderTab() {
 void BHVApp::renderCameraTab() {
 
 	ImGui::Text("Camera Settings");
+
+	ImGui::Separator();
+	ImGui::Checkbox("Aberration", &aberration_);
+	ImGui::Checkbox("Use custom velocity", &useCustomDirection_);
+	if (useCustomDirection_) {
+		ImGui::SliderFloat3("Direction", glm::value_ptr(direction_), -1.f, 1.0f);
+		ImGui::SliderFloat("Speed", &speed_, 0.f, 0.999f);
+	}
+	else {
+		ImGui::Checkbox("Use Local reference frame", &useLocalDirection_);
+	}
+	float speedScale = cam_.getSpeedScale();
+	if (ImGui::SliderFloat("Speed Scale", &speedScale, 0.f, 1.f))
+		cam_.setSpeedScale(speedScale);
+	
+	ImGui::Separator();
+	ImGui::Text("Camera Mode");
+	static bool lock = false, friction = true;
+	if (ImGui::Checkbox("Locked Mode", &lock))
+		cam_.setLockedMode(lock);
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Friction", &friction))
+		cam_.setFriction(friction);
+
+	if (lock) {
+		camOrbit_ = false;
+		return;
+	}
+
+	ImGui::Separator();
 	ImGui::Text("Camera Position");
 
 	if (ImGui::Checkbox("Camera Orbit", &camOrbit_)) {
@@ -294,6 +438,52 @@ void BHVApp::renderCameraTab() {
 	
 		if (xChange || yChange || zChange)
 			cam_.setPos(camPos);
+	}
+}
+
+void BHVApp::renderSkyTab() {
+	ImGui::Text("Sky Settings");
+
+	bool skyChange = false;
+	ImGui::Separator();
+	ImGui::Text("Select CubeMap");
+	static int cubemap = 0;
+	int index = 0;
+	for (const auto & [name, map] : cubemaps_) {
+		if (ImGui::RadioButton(name.c_str(), &cubemap, index++)) {
+			currentCubeMap_ = map;
+			skyChange = true;
+		}
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Cubemap MipMap");
+	static int mipMap = 0; // 0 = off, 1 = nearest, 2 = linear
+	skyChange |= ImGui::RadioButton("Off", &mipMap, 0); ImGui::SameLine();
+	skyChange |= ImGui::RadioButton("Nearest", &mipMap, 1); ImGui::SameLine();
+	skyChange |= ImGui::RadioButton("Linear", &mipMap, 2);
+	if (skyChange) {
+		switch (mipMap)	{
+		case 0:
+			currentCubeMap_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			break;
+		case 1:
+			currentCubeMap_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+			break;
+		case 2:
+			currentCubeMap_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			break;
+		default:
+			break;
+		}
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Cubemap Anisotropic Filtering");
+	static float aniSample = 1.0f, maxSample = -1.f;
+	if(maxSample < 0) glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxSample);
+	if (skyChange || ImGui::SliderFloat("#Samples", &aniSample, 1.0f, maxSample)) {
+		currentCubeMap_->setParam(GL_TEXTURE_MAX_ANISOTROPY, aniSample);
 	}
 }
 
@@ -411,3 +601,10 @@ void BHVApp::finalizeFrameTimeMeasure() {
 	measureID_ = "";
 }
 
+void BHVApp::printDebug() {
+	//std::cout << "Nothing to do here :)" << std::endl;
+	std::cout << "Cam Speed ~ " << cam_.getAvgSpeed()/dt_ << std::endl;
+	std::cout << "Current Speed: " << glm::to_string(cam_.getCurrentVel()) << std::endl;
+
+	std::cout << "Boost: \n" << glm::to_string(cam_.getBoost(dt_)) << std::endl;
+}

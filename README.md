@@ -42,3 +42,4 @@ Dependencies were installed using [vcpkg](https://github.com/Microsoft/vcpkg).
 - [LearnOpenGL](https://learnopengl.com/)
 - [Randonels Starless](https://github.com/rantonels/starless)
 - [Coding Train - Visualizing a Black Hole](https://www.youtube.com/watch?v=Iaz9TqYWUmA)
+- [Real-time High-Quality Rendering of Non-Rotating Black Holes](https://github.com/ebruneton/black_hole_shader)

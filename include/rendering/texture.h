@@ -37,15 +37,21 @@ class Texture {
 public:
 
 	// create texture from image file
-	Texture():texId_(0),width_(0),height_(0){}
+	Texture():texId_(0),width_(0),height_(0),target_(GL_TEXTURE_2D){}
+	Texture(GLenum target):texId_(0),width_(0),height_(0),target_(target){}
 	Texture(std::string filename, bool srgb = false);
 	Texture(TextureParams const& params);
 	~Texture();
 
-	virtual void setParam(GLenum param, GLint value);
-	virtual void setParam(std::vector<std::pair<GLenum, GLint>> params);
+	void setParam(GLenum param, GLint value);
+	void setParam(GLenum param, GLfloat value);
+	void setParam(std::vector<std::pair<GLenum, GLint>> params);
+	void setParam(std::vector<std::pair<GLenum, GLfloat >> params);
+	void generateMipMap();
 
-	virtual void bind() const;
+	void bind() const { glBindTexture(target_, texId_); }
+	void unbind() const { glBindTexture(target_, 0); }
+
 	unsigned int getTexId() const { return texId_; }
 
 	int getWidth() const { return width_; }
@@ -54,6 +60,7 @@ public:
 protected:
 	unsigned int texId_;
 	int width_, height_;
+	GLenum target_;
 
 	void createTexture(TextureParams const& params);
 	void setTextureFormat(TextureParams& params);
@@ -85,9 +92,6 @@ public:
 	  = +x, -x, +y, -y, +z, -z
 	*/
 	CubeMap(std::vector<std::string> faces);
-
-	void bind() const override;
-	void setParam(std::vector<std::pair<GLenum, GLint>> params) override;
 
 private:
 

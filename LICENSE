@@ -11,6 +11,10 @@
 	- [glfw](https://github.com/glfw/glfw) licensed under ```zlib License```
 	- [imgui](https://github.com/ocornut/imgui) licensed under ```MIT License```
 
+- data and shader files
+	- resources/shaders/ebruneton/* by [E.Bruneton](https://github.com/ebruneton/black_hole_shader) licensed under ```BSD-3-Clause License```
+	- resources/textures/ebruneton/* by [E.Bruneton](https://github.com/ebruneton/black_hole_shader) licensed under ```BSD-3-Clause License```
+
 - all other files in this [repository](https://github.com/brosefine/BlackHoleVis):
 ```
 MIT License

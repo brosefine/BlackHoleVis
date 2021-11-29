@@ -32,12 +32,17 @@ private:
 	float camOrbitSpeed_;
 	float camOrbitAngle_;
 
+	bool aberration_;
+	bool useCustomDirection_, useLocalDirection_;
+	glm::vec3 direction_;
+	float speed_;
 	
-	std::shared_ptr<CubeMap> sky_;
+	std::vector<std::pair<std::string,std::shared_ptr<Texture>>> cubemaps_;
+	std::shared_ptr<Texture> currentCubeMap_;
 	std::string deflectionPath_;
 	std::shared_ptr<Texture> deflectionTexture_;
-	//std::string invRadiusPath_;
-	//std::shared_ptr<Texture> invRadiusTexture_;
+	std::string invRadiusPath_;
+	std::shared_ptr<Texture> invRadiusTexture_;
 	std::shared_ptr<FBOTexture> fboTexture_;
 	int fboScale_;
 	
@@ -67,16 +72,20 @@ private:
 
 	void initShaders();
 	void initTextures();
+	void initCubeMaps();
 	void resizeTextures();
 
 	void calculateCameraOrbit();
+	void uploadBaseVectors();
 
 	void renderShaderTab();
 	void renderCameraTab();
+	void renderSkyTab();
 	void renderFPSWindow();
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);
+	void printDebug();
 
 	void initFrameTimeMeasure();
 	void finalizeFrameTimeMeasure();
