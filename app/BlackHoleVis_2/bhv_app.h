@@ -36,6 +36,9 @@ private:
 	bool useCustomDirection_, useLocalDirection_;
 	glm::vec3 direction_;
 	float speed_;
+
+	AccDisk disk_;
+	std::shared_ptr<Texture> diskTexture_;
 	
 	std::vector<std::pair<std::string,std::shared_ptr<Texture>>> cubemaps_;
 	std::shared_ptr<Texture> currentCubeMap_;

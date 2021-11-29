@@ -46,7 +46,8 @@ public:
 	float getSpeedScale() const { return speedScale_; }
 	bool isLocked() const { return lockedMode_; }
 	
-	glm::mat4 getBoost(float dt);
+	glm::mat4 getBoostLocal(float dt);
+	glm::mat4 getBoostGlobal(float dt);
 	glm::mat4 getBoostFromVel(glm::vec3 velocity) const;
 	glm::mat4 getBoostFromVel(glm::vec3 dir, float speed) const;
 

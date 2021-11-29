@@ -5,6 +5,15 @@ const float kMu = 4.0 / 27.0;
 const float rad = 1.0;
 const float pi = 3.14159265359;
 
+#ifdef DISK 
+layout (std140) uniform accDisk
+{
+    float minRad;
+    float maxRad;
+    float rot;
+};
+#endif
+
 const float ADMIN = 3.0;
 const float ADMAX = 12.0;
 const float I_ADMIN = 1.0 / ADMIN;
@@ -73,7 +82,8 @@ vec2 LookupRayInverseRadius(sampler2D tex, float e_square, float phi) {
 }
 
 float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
-    out float u0, out float phi0, out float u1, out float phi1,
+    out float u0, out float phi0, out float t0, 
+    out float u1, out float phi1, out float t1,
     sampler2D deflection_texture, sampler2D inv_radius_texture){
     
     u0 = -1.0;
@@ -92,32 +102,53 @@ float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
 
     // Compute the accretion disc intersections.
     float s = sign(u_dot);
+    // if ray direction is pointing away from BH, pi = phi + delta + deflection
     float phi = deflection.x + (s == 1.0 ? pi - delta : delta) + s * alpha;
     float phi_apsis = deflection_apsis.x + pi / 2.0;
+    // first intersection
     phi0 = mod(phi, pi);
-    vec2 ui0 =
-      LookupRayInverseRadius(inv_radius_texture, e_square, phi0);
     if (phi0 < phi_apsis) {
+        vec2 ui0 =
+          LookupRayInverseRadius(inv_radius_texture, e_square, phi0);
         float side = s * (ui0.x - u);
         if (side > 1e-3 || (side > -1e-3 && alpha < delta)) {
-          u0 = ui0.x;
-          phi0 = alpha + phi - phi0;
+            u0 = ui0.x;
+            phi0 = alpha + phi - phi0;
+            t0 = s * (ui0.y - deflection.y);
         }
     }
+    // second intersection
     phi = 2.0 * phi_apsis - phi;
     phi1 = mod(phi, pi);
-    vec2 ui1 =
-      LookupRayInverseRadius(inv_radius_texture, e_square, phi1);
     if (e_square < kMu && s == 1.0 && phi1 < phi_apsis) {
+        vec2 ui1 =
+          LookupRayInverseRadius(inv_radius_texture, e_square, phi1);
         u1 = ui1.x;
         phi1 = alpha + phi - phi1;
+        t1 = 2.0 * deflection_apsis.y - ui1.y - deflection.y;
     }
 
     return ray_deflection;
 }
 
-vec3 pixelColor(vec3 dir, vec3 pos, samplerCube cubeMap, 
-        sampler2D deflection_texture, sampler2D inv_radius_texture) {
+vec4 DiscColor(vec2 intersect, float timeDelta, bool top, 
+    float doppler, sampler2D tex) {
+    float p_r = length(intersect);
+    float p_phi = atan(intersect.y, intersect.x)+pi;
+    // rotation speed depends on distance to BH
+    float deltaPhi = p_r * sqrt(0.5 * p_r);
+    float phi = mod(p_phi - deltaPhi*timeDelta*0.005, 2.0*pi);
+
+    vec3 color = texture(tex, vec2((p_phi/(2*pi)), (p_r - ADMIN)/(ADMAX-ADMIN))).rgb;
+    float alpha = smoothstep(ADMIN, ADMIN * 1.2, p_r) *
+      smoothstep(ADMAX, ADMAX / 1.2, p_r);
+    
+    //return vec4(timeDelta, top, 0, alpha);
+    return vec4(vec3(doppler), alpha);
+}
+
+vec3 pixelColor(vec3 dir, vec3 pos, float dt, samplerCube cubeMap, 
+        sampler2D deflection_texture, sampler2D inv_radius_texture, sampler2D disk_texture) {
     vec3 e_x_prime = normalize(pos);
     vec3 e_z_prime = normalize(cross(e_x_prime, dir));
     vec3 e_y_prime = normalize(cross(e_z_prime, e_x_prime));
@@ -132,10 +163,13 @@ vec3 pixelColor(vec3 dir, vec3 pos, samplerCube cubeMap,
     float u = 1.0 / length(pos);
     float u_dot = -u / tan(delta);
     float e_square = u_dot * u_dot + u * u * (1.0 - u);
+    float e = -sqrt(e_square);
 
-    float u0, phi0, u1, phi1;
+
+    float u0, phi0, t0, u1, phi1, t1;
     float deflection = RayTrace(u, u_dot, e_square, delta, alpha,
-        u0, phi0, u1, phi1, deflection_texture, inv_radius_texture);
+        u0, phi0, t0, u1, phi1, t1,
+        deflection_texture, inv_radius_texture);
 
     vec3 color = vec3(0,0,0);
 
@@ -148,17 +182,24 @@ vec3 pixelColor(vec3 dir, vec3 pos, samplerCube cubeMap,
 
 #ifdef DISK
     if (u1 >= 0.0 && u1 < I_ADMIN && u1 > I_ADMAX) {
+        float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u1)) -
+                         u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(e_z, e_z_prime);
+        float doppler_factor = -0.1 / g_k_l_source;
         bool top_side =
             (mod(abs(phi1 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
-        vec3 disc_color = vec3(1, top_side, 0);
-        color = color * (0.2) + 0.8 * disc_color.rgb;
+        vec3 intersect = (e_x_prime * cos(phi1) + e_y_prime * sin(phi1))/u1;
+        vec4 disc_color = DiscColor(intersect.xy, abs(dt - t1), top_side, doppler_factor, disk_texture);
+        color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;
     }
     if (u0 >= 0.0 && u0 < I_ADMIN && u0 > I_ADMAX) {
+        float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u0)) -
+                         u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(e_z, e_z_prime);
+        float doppler_factor = -0.1 / g_k_l_source;
         bool top_side =
             (mod(abs(phi0 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
-
-        vec3 disc_color = vec3(1, top_side, 0);
-        color = color * (0.2) + 0.8 * disc_color.rgb;    
+        vec3 intersect = (e_x_prime * cos(phi0) + e_y_prime * sin(phi0))/u0;
+        vec4 disc_color = DiscColor(intersect.xy, abs(dt - t0), top_side, doppler_factor, disk_texture);
+        color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;    
     }
 #endif
     return color;

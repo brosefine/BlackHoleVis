@@ -76,14 +76,25 @@ float Camera::getAvgSpeed(float newSpeed) {
     return getAvgSpeed();
 }
 
-glm::mat4 Camera::getBoost(float dt) {
-    glm::vec3 vel = getCurrentVel();
+glm::mat4 Camera::getBoostLocal(float dt) {
+    glm::mat3 globToLoc = glm::inverse(glm::mat3(right_, up_, front_));
+    glm::vec3 vel = globToLoc * getCurrentVel();
     float speed = glm::length(vel);
     if (speed <= 1e-10)
         return getBoostFromVel(glm::vec3(1,0,0), 0.f);
 
     float avgSpeed = getAvgSpeed(speed / dt);
     return getBoostFromVel(glm::normalize(vel), avgSpeed*speedScale_);
+}
+
+glm::mat4 Camera::getBoostGlobal(float dt) {
+    glm::vec3 vel = getCurrentVel();
+    float speed = glm::length(vel);
+    if (speed <= 1e-10)
+        return getBoostFromVel(glm::vec3(1, 0, 0), 0.f);
+
+    float avgSpeed = getAvgSpeed(speed / dt);
+    return getBoostFromVel(glm::normalize(vel), avgSpeed * speedScale_);
 }
 
 glm::mat4 Camera::getBoostFromVel(glm::vec3 velocity) const {

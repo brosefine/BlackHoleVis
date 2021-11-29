@@ -61,6 +61,8 @@ BHVApp::BHVApp(int width, int height)
 	, useLocalDirection_(true)
 	, direction_(1,0,0)
 	, speed_(0.1f)
+	, disk_(DISKBINDING)
+	, diskTexture_(std::make_shared<Texture>("accretion1.jpg"))
 	, deflectionPath_("ebruneton/deflection.dat")
 	, invRadiusPath_("ebruneton/inverse_radius.dat")
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
@@ -116,6 +118,7 @@ void BHVApp::renderContent()
 	}
 
 	shader_->use();
+	shader_->setUniform("dt", (float)tPassed_);
 
 	glActiveTexture(GL_TEXTURE0);
 	currentCubeMap_->bind();
@@ -123,6 +126,8 @@ void BHVApp::renderContent()
 	deflectionTexture_->bind();
 	glActiveTexture(GL_TEXTURE2);
 	invRadiusTexture_->bind();
+	glActiveTexture(GL_TEXTURE3);
+	diskTexture_->bind();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
 	glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
@@ -273,7 +278,7 @@ void BHVApp::calculateCameraOrbit() {
 
 }
 
-void BHVApp::uploadBaseVectors(){
+void BHVApp::uploadBaseVectors() {
 	if (!aberration_) {
 		shader_->use();
 		shader_->setUniform("cam_tau", (glm::vec3(0.f)));
@@ -282,7 +287,7 @@ void BHVApp::uploadBaseVectors(){
 		shader_->setUniform("cam_right", (cam_.getRight()));
 		return;
 	}
-	
+
 	// FIDO not correct yet
 	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0);
 	glm::vec4 e_x = glm::vec4(0, cam_.getRight());
@@ -291,18 +296,27 @@ void BHVApp::uploadBaseVectors(){
 
 	glm::mat4 lorentz;
 	if (useCustomDirection_) {
-		glm::mat3 locToGlob(cam_.getRight(), cam_.getUp(), cam_.getFront());
-		lorentz = cam_.getBoostFromVel(locToGlob * glm::normalize(direction_), speed_);
+		lorentz = cam_.getBoostFromVel(glm::normalize(direction_), speed_);
 	} else if (useLocalDirection_) {
-		lorentz = cam_.getBoost(dt_);
+		lorentz = cam_.getBoostLocal(dt_);
 	} else {
-		lorentz = glm::mat4(1.f);
+		lorentz = cam_.getBoostGlobal(dt_);
+	}
+		
+	glm::vec4 e_tau, e_right, e_up, e_front;
+	if (useLocalDirection_ || useCustomDirection_) {
+		glm::mat4 e_static(e_t, e_x, e_y, e_z);
+		e_tau = e_static * lorentz[0];
+		e_right = e_static * lorentz[1];
+		e_up = e_static * lorentz[2];
+		e_front = e_static * lorentz[3];
+	} else {
+		e_tau = lorentz * e_t;
+		e_right = lorentz * e_x;
+		e_up = lorentz * e_y;
+		e_front = lorentz * e_z;
 	}
 
-	glm::vec4 e_tau = lorentz * e_t;
-	glm::vec4 e_right = lorentz * e_x;
-	glm::vec4 e_up = lorentz * e_y;
-	glm::vec4 e_front = lorentz * e_z;
 	
 	shader_->use();
 	shader_->setUniform("cam_tau", (glm::vec3(e_tau.y, e_tau.z, e_tau.w)));
@@ -606,5 +620,6 @@ void BHVApp::printDebug() {
 	std::cout << "Cam Speed ~ " << cam_.getAvgSpeed()/dt_ << std::endl;
 	std::cout << "Current Speed: " << glm::to_string(cam_.getCurrentVel()) << std::endl;
 
-	std::cout << "Boost: \n" << glm::to_string(cam_.getBoost(dt_)) << std::endl;
+	std::cout << "Boost Local: \n" << glm::to_string(cam_.getBoostLocal(dt_)) << std::endl;
+	std::cout << "Boost Global: \n" << glm::to_string(cam_.getBoostGlobal(dt_)) << std::endl;
 }

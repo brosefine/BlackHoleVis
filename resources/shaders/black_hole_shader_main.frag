@@ -7,11 +7,13 @@ in vec2 TexCoords;
 layout(binding = 0) uniform samplerCube cubeMap;
 layout(binding = 1) uniform sampler2D deflection_texture;
 layout(binding = 2) uniform sampler2D inv_radius_texture;
+layout(binding = 3) uniform sampler2D disk_texture;
 
 uniform vec3 cam_tau;
 uniform vec3 cam_up;
 uniform vec3 cam_front;
 uniform vec3 cam_right;
+uniform float dt;
 
 uniform bool pinhole = true;
 
@@ -20,8 +22,8 @@ void main()
     vec3 dir = normalize(viewDir);
     if(!pinhole) {
 
-        float phi = (1.0-TexCoords.x) * 2.0 * pi;
-        float theta = (1.0-TexCoords.y) * pi;
+        float phi = (1.0 - TexCoords.x) * 2.0 * pi;
+        float theta = (1.0 - TexCoords.y) * pi;
         dir.x = sin(phi) * sin(theta);
         dir.y = cos(theta);
         dir.z = cos(phi) * sin(theta);
@@ -33,8 +35,9 @@ void main()
     dir = vec3(dir.x, -dir.z, dir.y);
     vec3 pos = vec3(cameraPos.x, -cameraPos.z, cameraPos.y);
 
-    vec3 color = pixelColor(dir, pos, 
-        cubeMap, deflection_texture, inv_radius_texture);
+    vec3 color = pixelColor(dir, pos, dt*0.5,
+        cubeMap, deflection_texture, 
+        inv_radius_texture, disk_texture);
 
     FragColor = vec4(color, 1.0); 
 }
