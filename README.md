@@ -1,5 +1,5 @@
 # BlackHoleVis
-Computer Science Master's Project at the FSU Jena 
+A project on black hole visualization
 
 ![](screenshots/Screenshot_starless.png)
 
