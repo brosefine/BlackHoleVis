@@ -8,7 +8,6 @@ public:
 	BlackHoleShaderGui(): pinhole_(true) {
 
 		name_ = "Black Hole";
-		//shader_ = std::shared_ptr<ShaderBase>(new Shader("black_hole_shader.vert", "black_hole_shader.frag"));
 		shader_ = std::make_shared<Shader>(
 			std::vector<std::string>{ "black_hole_shader.vert" }, 
 			std::vector<std::string>{ "black_hole_shader_color.frag", "black_hole_shader_main.frag"},
