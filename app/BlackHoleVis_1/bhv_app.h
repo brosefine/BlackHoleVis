@@ -6,7 +6,7 @@
 #include <helpers/uboBindings.h>
 #include <rendering/shader.h>
 #include <rendering/mesh.h>
-#include <rendering/camera.h>
+#include <rendering/simpleCamera.h>
 #include <rendering/window.h>
 #include <rendering/texture.h>
 #include <objects/blackHole.h>
@@ -25,7 +25,7 @@ private:
 	void renderGui() override;
 	void processKeyboardInput() override;
 
-	Camera cam_;
+	SimpleCamera cam_;
 	bool camOrbit_;
 	float camOrbitTilt_;
 	float camOrbitRad_;

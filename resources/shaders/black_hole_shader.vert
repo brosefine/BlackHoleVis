@@ -4,7 +4,6 @@ layout (location = 1) in vec2 aTexCoords;
 
 layout (std140) uniform camera
 {
-    mat4 projectionViewInverse;
     mat4 projectionInverse;
     vec3 camPos;
 };

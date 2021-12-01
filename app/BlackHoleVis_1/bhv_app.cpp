@@ -73,7 +73,7 @@ void BHVApp::renderContent()
 		calculateCameraOrbit();
 	} else {
 		cam_.keyBoardInput(window_.getPtr(), dt_);
-		cam_.mouseInput(window_.getPtr(), dt_);
+		cam_.mouseInput(window_.getPtr());
 	}
 
 	if (window_.hasChanged()) {

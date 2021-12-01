@@ -4,6 +4,7 @@
 #include <functional>
 #include <filesystem>
 
+#include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
@@ -50,7 +51,7 @@ std::vector<T> readFile(std::string const& path) {
 
 BHVApp::BHVApp(int width, int height)
 	: GLApp(width, height, "Black Hole Vis")
-	, cam_({ 0.f, 0.f, -10.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f })
+	, cam_({ 0.f, 0.f, -10.f })
 	, camOrbit_(false)
 	, camOrbitTilt_(0.f)
 	, camOrbitRad_(10.f)
@@ -270,8 +271,8 @@ void BHVApp::calculateCameraOrbit() {
 
 	pos = glm::rotate(glm::radians(camOrbitTilt_), glm::vec3{ 0.f, 0.f, 1.f }) * pos;
 
-	cam_.setPos(glm::vec3(pos) * camOrbitRad_);
-	cam_.setFront(glm::vec3(pos) * -camOrbitRad_);
+	cam_.setPosXYZ(glm::vec3(pos) * camOrbitRad_);
+	cam_.setViewDirXYZ(glm::vec3(pos) * -camOrbitRad_);
 
 	camOrbitAngle_ += camOrbitSpeed_ * dt_;
 	camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
@@ -280,28 +281,17 @@ void BHVApp::calculateCameraOrbit() {
 
 void BHVApp::uploadBaseVectors() {
 	if (!aberration_) {
+		
+		glm::mat3 baseVectors = cam_.getBase3();
 		shader_->use();
+		shader_->setUniform("ks", glm::vec4(1.0f, 0, 0, 0));
+
 		shader_->setUniform("cam_tau", (glm::vec3(0.f)));
-		shader_->setUniform("cam_up", (cam_.getUp()));
-		shader_->setUniform("cam_front", (cam_.getFront()));
-		shader_->setUniform("cam_right", (cam_.getRight()));
+		shader_->setUniform("cam_right", baseVectors[0]);
+		shader_->setUniform("cam_up", baseVectors[1]);
+		shader_->setUniform("cam_front", baseVectors[2]);
 		return;
 	}
-
-	float u = 1.0f / glm::length(cam_.getPosition());
-	float v = glm::sqrt(1.0f - u);
-	float sinT = glm::sin(glm::radians(cam_.getTheta()));
-	// FIDO not correct yet
-	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0);
-	glm::vec4 e_x = glm::vec4(0, cam_.getRight());
-	glm::vec4 e_y = glm::vec4(0, cam_.getUp());
-	glm::vec4 e_z = glm::vec4(0, cam_.getFront());
-	/*
-	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0) * (1.f / v);
-	glm::vec4 e_x = glm::vec4(0, cam_.getRight()) * (u / sinT);
-	glm::vec4 e_y = glm::vec4(0, cam_.getUp()) * u;
-	glm::vec4 e_z = glm::vec4(0, cam_.getFront()) * v;
-	*/
 
 	glm::mat4 lorentz;
 	if (useCustomDirection_) {
@@ -313,19 +303,23 @@ void BHVApp::uploadBaseVectors() {
 	}
 		
 	glm::vec4 e_tau, e_right, e_up, e_front;
+	glm::mat4 e_static = cam_.getBase4();
 	if (useLocalDirection_ || useCustomDirection_) {
-		glm::mat4 e_static(e_t, e_x, e_y, e_z);
 		e_tau = e_static * lorentz[0];
 		e_right = e_static * lorentz[1];
 		e_up = e_static * lorentz[2];
 		e_front = e_static * lorentz[3];
 	} else {
-		e_tau = lorentz * e_t;
-		e_right = lorentz * e_x;
-		e_up = lorentz * e_y;
-		e_front = lorentz * e_z;
+		e_tau = lorentz * e_static[0];
+		e_right = lorentz * e_static[1];
+		e_up = lorentz * e_static[2];
+		e_front = lorentz * e_static[3];
 	}
 
+	glm::vec3 camRTP = cam_.getPositionRTP();
+	float u = 1.0f / camRTP.x;
+	float v = glm::sqrt(1.0f - u);
+	float sinT = glm::sin(camRTP.y);
 	glm::vec4 ks(lorentz[0].x / v, lorentz[0].y * u / sinT, lorentz[0].z * u, lorentz[0].w * v);
 
 	
@@ -335,7 +329,6 @@ void BHVApp::uploadBaseVectors() {
 	shader_->setUniform("cam_up", (glm::vec3(e_up.y, e_up.z, e_up.w)));
 	shader_->setUniform("cam_front", (glm::vec3(e_front.y, e_front.z, e_front.w)));
 	shader_->setUniform("ks", ks);
-	shader_->setUniform("th", cam_.getTheta());
 }
 
 void BHVApp::renderGui() {
@@ -427,23 +420,16 @@ void BHVApp::renderCameraTab() {
 	
 	ImGui::Separator();
 	ImGui::Text("Camera Mode");
-	static bool lock = false, friction = true;
-	if (ImGui::Checkbox("Locked Mode", &lock))
-		cam_.setLockedMode(lock);
+	static bool friction = true;
 	ImGui::SameLine();
 	if (ImGui::Checkbox("Friction", &friction))
 		cam_.setFriction(friction);
-
-	if (lock) {
-		camOrbit_ = false;
-		return;
-	}
 
 	ImGui::Separator();
 	ImGui::Text("Camera Position");
 
 	if (ImGui::Checkbox("Camera Orbit", &camOrbit_)) {
-		camOrbitRad_ = glm::length(cam_.getPosition());
+		camOrbitRad_ = glm::length(cam_.getPositionXYZ());
 	}
 
 	if (camOrbit_) {
@@ -453,7 +439,7 @@ void BHVApp::renderCameraTab() {
 		ImGui::SliderFloat("Orbit distance", &camOrbitRad_, 1.f, 100.f);
 	} else {
 
-		glm::vec3 camPos = cam_.getPosition();
+		glm::vec3 camPos = cam_.getPositionXYZ();
 		ImGui::PushItemWidth(ImGui::GetFontSize() * 7);
 		bool xChange = ImGui::InputFloat("X", &camPos.x, 0.1, 1); ImGui::SameLine();
 		bool yChange = ImGui::InputFloat("Y", &camPos.y, 0.1, 1); ImGui::SameLine();
@@ -461,10 +447,10 @@ void BHVApp::renderCameraTab() {
 		ImGui::PopItemWidth();
 
 		if (ImGui::Button("Point to Black Hole"))
-			cam_.setFront(-camPos);
+			cam_.setViewDirXYZ(-camPos);
 	
 		if (xChange || yChange || zChange)
-			cam_.setPos(camPos);
+			cam_.setPosXYZ(camPos);
 	}
 }
 
@@ -630,22 +616,14 @@ void BHVApp::finalizeFrameTimeMeasure() {
 
 void BHVApp::printDebug() {
 	//std::cout << "Nothing to do here :)" << std::endl;
-	float u = 1.0f / glm::length(cam_.getPosition());
-	float v = glm::sqrt(1.0f - u);
-	float sinT = glm::sin(glm::radians(cam_.getTheta()));
-	glm::mat4 lorentz = cam_.getBoostLocal(dt_);
+	glm::mat3 base = cam_.getBase3();
 
-	glm::vec4 ks(lorentz[0].x / v, lorentz[0].y * v, lorentz[0].z * u, lorentz[0].w * u / sinT);
-	std::cout << "KS: " << glm::to_string(ks) << std::endl;
-
-	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0);
-	glm::vec4 e_x = glm::vec4(0, cam_.getRight());
-	glm::vec4 e_y = glm::vec4(0, cam_.getUp());
-	glm::vec4 e_z = glm::vec4(0, cam_.getFront());
-	glm::mat4 e_static(e_t, e_x, e_y, e_z);
-	glm::vec4 e_tau = e_static * lorentz[0];
-	std::cout << "KS: " << glm::to_string(e_tau) << std::endl;
-	lorentz = cam_.getBoostGlobal(dt_);
-	std::cout << "etau: " << glm::to_string(lorentz * e_t) << std::endl;
+	std::cout << "posxyz: " << glm::to_string(cam_.getPositionXYZ()) << std::endl;
+	std::cout << "posrtp: " << glm::to_string(cam_.getPositionRTP()) << std::endl;
+	
+	
+	std::cout << "right: " << glm::to_string(base[0]) << std::endl;
+	std::cout << "up: " << glm::to_string(base[1]) << std::endl;
+	std::cout << "front: " << glm::to_string(base[2]) << std::endl;
 
 }
