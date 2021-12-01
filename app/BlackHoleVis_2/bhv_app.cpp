@@ -288,11 +288,20 @@ void BHVApp::uploadBaseVectors() {
 		return;
 	}
 
+	float u = 1.0f / glm::length(cam_.getPosition());
+	float v = glm::sqrt(1.0f - u);
+	float sinT = glm::sin(glm::radians(cam_.getTheta()));
 	// FIDO not correct yet
 	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0);
 	glm::vec4 e_x = glm::vec4(0, cam_.getRight());
 	glm::vec4 e_y = glm::vec4(0, cam_.getUp());
 	glm::vec4 e_z = glm::vec4(0, cam_.getFront());
+	/*
+	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0) * (1.f / v);
+	glm::vec4 e_x = glm::vec4(0, cam_.getRight()) * (u / sinT);
+	glm::vec4 e_y = glm::vec4(0, cam_.getUp()) * u;
+	glm::vec4 e_z = glm::vec4(0, cam_.getFront()) * v;
+	*/
 
 	glm::mat4 lorentz;
 	if (useCustomDirection_) {
@@ -317,12 +326,16 @@ void BHVApp::uploadBaseVectors() {
 		e_front = lorentz * e_z;
 	}
 
+	glm::vec4 ks(lorentz[0].x / v, lorentz[0].y * u / sinT, lorentz[0].z * u, lorentz[0].w * v);
+
 	
 	shader_->use();
 	shader_->setUniform("cam_tau", (glm::vec3(e_tau.y, e_tau.z, e_tau.w)));
 	shader_->setUniform("cam_right", (glm::vec3(e_right.y, e_right.z, e_right.w)));
 	shader_->setUniform("cam_up", (glm::vec3(e_up.y, e_up.z, e_up.w)));
 	shader_->setUniform("cam_front", (glm::vec3(e_front.y, e_front.z, e_front.w)));
+	shader_->setUniform("ks", ks);
+	shader_->setUniform("th", cam_.getTheta());
 }
 
 void BHVApp::renderGui() {
@@ -617,9 +630,22 @@ void BHVApp::finalizeFrameTimeMeasure() {
 
 void BHVApp::printDebug() {
 	//std::cout << "Nothing to do here :)" << std::endl;
-	std::cout << "Cam Speed ~ " << cam_.getAvgSpeed()/dt_ << std::endl;
-	std::cout << "Current Speed: " << glm::to_string(cam_.getCurrentVel()) << std::endl;
+	float u = 1.0f / glm::length(cam_.getPosition());
+	float v = glm::sqrt(1.0f - u);
+	float sinT = glm::sin(glm::radians(cam_.getTheta()));
+	glm::mat4 lorentz = cam_.getBoostLocal(dt_);
 
-	std::cout << "Boost Local: \n" << glm::to_string(cam_.getBoostLocal(dt_)) << std::endl;
-	std::cout << "Boost Global: \n" << glm::to_string(cam_.getBoostGlobal(dt_)) << std::endl;
+	glm::vec4 ks(lorentz[0].x / v, lorentz[0].y * v, lorentz[0].z * u, lorentz[0].w * u / sinT);
+	std::cout << "KS: " << glm::to_string(ks) << std::endl;
+
+	glm::vec4 e_t = glm::vec4(1.0, 0, 0, 0);
+	glm::vec4 e_x = glm::vec4(0, cam_.getRight());
+	glm::vec4 e_y = glm::vec4(0, cam_.getUp());
+	glm::vec4 e_z = glm::vec4(0, cam_.getFront());
+	glm::mat4 e_static(e_t, e_x, e_y, e_z);
+	glm::vec4 e_tau = e_static * lorentz[0];
+	std::cout << "KS: " << glm::to_string(e_tau) << std::endl;
+	lorentz = cam_.getBoostGlobal(dt_);
+	std::cout << "etau: " << glm::to_string(lorentz * e_t) << std::endl;
+
 }

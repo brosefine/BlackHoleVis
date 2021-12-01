@@ -147,7 +147,7 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
     return vec4(vec3(doppler), alpha);
 }
 
-vec3 pixelColor(vec3 dir, vec3 pos, float dt, samplerCube cubeMap, 
+vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt, samplerCube cubeMap, 
         sampler2D deflection_texture, sampler2D inv_radius_texture, sampler2D disk_texture) {
     vec3 e_x_prime = normalize(pos);
     vec3 e_z_prime = normalize(cross(e_x_prime, dir));
@@ -171,6 +171,10 @@ vec3 pixelColor(vec3 dir, vec3 pos, float dt, samplerCube cubeMap,
         u0, phi0, t0, u1, phi1, t1,
         deflection_texture, inv_radius_texture);
 
+    vec4 l = vec4(e / (1.0 - u), -u_dot, 0.0, u * u);
+    float g_k_l_receiver = ks.x * l.x * (1.0 - u) - ks.y * l.y / (1.0 - u) -
+                         u * dot(etau, e_y_prime) * l.w / (u * u);
+    //return vec3(g_k_l_receiver, abs(g_k_l_receiver), 0);
     vec3 color = vec3(0,0,0);
 
     if (deflection >= 0.0) {
@@ -184,7 +188,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, float dt, samplerCube cubeMap,
     if (u1 >= 0.0 && u1 < I_ADMIN && u1 > I_ADMAX) {
         float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u1)) -
                          u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(e_z, e_z_prime);
-        float doppler_factor = -0.1 / g_k_l_source;
+        float doppler_factor = g_k_l_receiver/g_k_l_source;
         bool top_side =
             (mod(abs(phi1 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
         vec3 intersect = (e_x_prime * cos(phi1) + e_y_prime * sin(phi1))/u1;
@@ -194,7 +198,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, float dt, samplerCube cubeMap,
     if (u0 >= 0.0 && u0 < I_ADMIN && u0 > I_ADMAX) {
         float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u0)) -
                          u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(e_z, e_z_prime);
-        float doppler_factor = -0.1 / g_k_l_source;
+        float doppler_factor = g_k_l_receiver/g_k_l_source;
         bool top_side =
             (mod(abs(phi0 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
         vec3 intersect = (e_x_prime * cos(phi0) + e_y_prime * sin(phi0))/u0;
