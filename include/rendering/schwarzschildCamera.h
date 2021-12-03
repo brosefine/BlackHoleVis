@@ -38,7 +38,9 @@ public:
 	glm::vec4 getUp() const { return up_; }
 	glm::vec4 getRight() const { return right_; }
 	glm::mat3 getBase3() const;
+	glm::mat3 getFidoBase3() const;
 	glm::mat4 getBase4() const;
+	glm::mat4 getFidoBase4() const;
 	glm::vec3 getCurrentVelXYZ() const { return positionXYZ_ - prevPositionXYZ_; }
 	float getAvgSpeed() const;
 	float getAvgSpeed(float newSpeed);
@@ -49,6 +51,7 @@ public:
 	
 	glm::mat4 getBoostLocal(float dt);
 	glm::mat4 getBoostGlobal(float dt);
+	glm::mat4 getBoostLocalFido(float dt);
 	glm::mat4 getBoostFromVel(glm::vec3 velocity) const;
 	glm::mat4 getBoostFromVel(glm::vec3 dir, float speed) const;
 

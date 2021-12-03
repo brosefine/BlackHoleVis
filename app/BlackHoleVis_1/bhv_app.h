@@ -44,7 +44,7 @@ private:
 	int bloomPasses_;
 	std::unique_ptr<ComputeShader> bloomShader_;
 
-	AccDisk disk_;
+	AccDisc disc_;
 	float diskRotationSpeed_;
 	std::map<std::string, std::shared_ptr<Texture>> diskTextures_;
 	std::string selectedTexture_;

@@ -58,14 +58,17 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitSpeed_(0.5f)
 	, camOrbitAngle_(0.f)
 	, aberration_(false)
+	, fido_(false)
 	, useCustomDirection_(false)
 	, useLocalDirection_(true)
 	, direction_(1,0,0)
 	, speed_(0.1f)
-	, disk_(DISKBINDING)
+	, disc_(std::make_shared<ParticleDiscGui>())
 	, diskTexture_(std::make_shared<Texture>("accretion1.jpg"))
 	, deflectionPath_("ebruneton/deflection.dat")
 	, invRadiusPath_("ebruneton/inverse_radius.dat")
+	, blackBodyPath_("ebruneton/black_body.dat")
+	, noiseTexture_(std::make_shared<Texture>("ebruneton/noise_texture.png"))
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
 	, quad_(quadPositions, quadUVs, quadIndices)
@@ -129,6 +132,10 @@ void BHVApp::renderContent()
 	invRadiusTexture_->bind();
 	glActiveTexture(GL_TEXTURE3);
 	diskTexture_->bind();
+	glActiveTexture(GL_TEXTURE4);
+	blackBodyTexture_->bind();
+	glActiveTexture(GL_TEXTURE5);
+	noiseTexture_->bind();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
 	glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
@@ -142,7 +149,7 @@ void BHVApp::renderContent()
 
 	sQuadShader_.use();
 
-	//fboTexture_->generateMipMap();
+	fboTexture_->generateMipMap();
 	glActiveTexture(GL_TEXTURE0);
 	fboTexture_->bind();
 
@@ -215,8 +222,46 @@ void BHVApp::initTextures() {
 		std::cerr << "[BHV App] Could not create inverse radius texture: no data read" << std::endl;
 	}
 
-	//fboTexture_->generateMipMap();
-	//fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	// create black body texture
+	std::vector<float> blackBodyData = readFile<float>(TEX_DIR"" + blackBodyPath_);
+	if (blackBodyData.size() != 0) {
+
+		TextureParams params;
+		params.nrComponents = 3;
+		params.width = 128;
+		params.height = 1;
+		params.internalFormat = GL_RGB32F;
+		params.format = GL_RGB;
+		params.type = GL_FLOAT;
+		params.data = blackBodyData.data();
+
+		blackBodyTexture_ = std::make_shared<Texture>(params);
+
+		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+			{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+		};
+		blackBodyTexture_->setParam(texParameters);
+
+		std::cout << "Created black body texture" << std::endl;
+	}
+	else {
+		std::cerr << "[BHV App] Could not create black body texture: no data read" << std::endl;
+	}
+
+	fboTexture_->generateMipMap();
+	fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+	std::vector<std::pair<GLenum, GLint>> texParameters{
+		{GL_TEXTURE_WRAP_S, GL_REPEAT },
+		{GL_TEXTURE_WRAP_T, GL_REPEAT },
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR },
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR }
+	};
+	noiseTexture_->setParam(texParameters);
+	noiseTexture_->generateMipMap();
 }
 
 void BHVApp::initCubeMaps(){
@@ -257,8 +302,8 @@ void BHVApp::initCubeMaps(){
 void BHVApp::resizeTextures() {
 	std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
 	fboTexture_->resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
-	//fboTexture_->generateMipMap();
-	//fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	fboTexture_->generateMipMap();
+	fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 }
 
 void BHVApp::calculateCameraOrbit() {
@@ -297,13 +342,13 @@ void BHVApp::uploadBaseVectors() {
 	if (useCustomDirection_) {
 		lorentz = cam_.getBoostFromVel(glm::normalize(direction_), speed_);
 	} else if (useLocalDirection_) {
-		lorentz = cam_.getBoostLocal(dt_);
+		lorentz = fido_ ? cam_.getBoostLocalFido(dt_) : cam_.getBoostLocal(dt_);
 	} else {
 		lorentz = cam_.getBoostGlobal(dt_);
 	}
 		
 	glm::vec4 e_tau, e_right, e_up, e_front;
-	glm::mat4 e_static = cam_.getBase4();
+	glm::mat4 e_static = fido_ ? cam_.getFidoBase4() : cam_.getBase4();
 	if (useLocalDirection_ || useCustomDirection_) {
 		e_tau = e_static * lorentz[0];
 		e_right = e_static * lorentz[1];
@@ -391,6 +436,10 @@ void BHVApp::renderGui() {
 			renderSkyTab();
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Disc Settings")) {
+			disc_->show();
+			ImGui::EndTabItem();
+		}
 	}
 	ImGui::EndTabBar();
 	ImGui::End();
@@ -398,6 +447,11 @@ void BHVApp::renderGui() {
 
 void BHVApp::renderShaderTab() {
 	shaderElement_->show();
+
+	ImGui::Separator();
+	ImGui::Text("Screen Quad Shader");
+	if (ImGui::Button("Reload"))
+		sQuadShader_.reload();
 }
 
 void BHVApp::renderCameraTab() {
@@ -420,6 +474,7 @@ void BHVApp::renderCameraTab() {
 	
 	ImGui::Separator();
 	ImGui::Text("Camera Mode");
+	ImGui::Checkbox("Real Fido Frame", &fido_);
 	static bool friction = true;
 	ImGui::SameLine();
 	if (ImGui::Checkbox("Friction", &friction))

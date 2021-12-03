@@ -8,6 +8,8 @@ layout(binding = 0) uniform samplerCube cubeMap;
 layout(binding = 1) uniform sampler2D deflection_texture;
 layout(binding = 2) uniform sampler2D inv_radius_texture;
 layout(binding = 3) uniform sampler2D disk_texture;
+layout(binding = 4) uniform sampler2D black_body_texture;
+layout(binding = 5) uniform sampler2D noise_texture;
 
 uniform vec3 cam_tau;
 uniform vec3 cam_up;
@@ -37,10 +39,11 @@ void main()
     vec3 pos = vec3(cameraPos.x, -cameraPos.z, cameraPos.y);
     vec3 tau = vec3(cam_tau.x, -cam_tau.z, cam_tau.y);
 
-    vec3 color = pixelColor(dir, pos, tau, k, dt,
+    vec3 color = pixelColor(dir, pos, tau, k, dt*10,
         cubeMap, deflection_texture, 
-        inv_radius_texture, disk_texture);
+        inv_radius_texture, disk_texture, 
+        black_body_texture, noise_texture);
 
     FragColor = vec4(color, 1.0); 
-    //FragColor = vec4(1,0,0,1);
+    //FragColor = vec4((texture(noise_texture, TexCoords).rrr),1);
 }

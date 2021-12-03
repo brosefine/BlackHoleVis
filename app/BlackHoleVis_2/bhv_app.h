@@ -34,11 +34,12 @@ private:
 	float camOrbitAngle_;
 
 	bool aberration_;
+	bool fido_;
 	bool useCustomDirection_, useLocalDirection_;
 	glm::vec3 direction_;
 	float speed_;
 
-	AccDisk disk_;
+	std::shared_ptr<ParticleDiscGui> disc_;
 	std::shared_ptr<Texture> diskTexture_;
 	
 	std::vector<std::pair<std::string,std::shared_ptr<Texture>>> cubemaps_;
@@ -47,6 +48,9 @@ private:
 	std::shared_ptr<Texture> deflectionTexture_;
 	std::string invRadiusPath_;
 	std::shared_ptr<Texture> invRadiusTexture_;
+	std::string blackBodyPath_;
+	std::shared_ptr<Texture> blackBodyTexture_;
+	std::shared_ptr<Texture> noiseTexture_;
 	std::shared_ptr<FBOTexture> fboTexture_;
 	int fboScale_;
 	

@@ -33,7 +33,7 @@ BHVApp::BHVApp(int width, int height)
 	, bloom_(false)
 	, bloomPasses_(2)
 	, diskRotationSpeed_(10.f)
-	, disk_(DISKBINDING)
+	, disc_(DISKBINDING)
 	, selectedTexture_("")
 	, selectedComputeShader_(0)
 	, selectedShader_(0)
@@ -94,8 +94,8 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE1);
 	diskTextures_.at(selectedTexture_)->bind();
 
-	disk_.setRotation(tPassed_ / diskRotationSpeed_);
-	disk_.uploadData();
+	disc_.setRotation(tPassed_ / diskRotationSpeed_);
+	disc_.uploadData();
 		
 	if (compute_) {
 		bloom_ = getCurrentShader()->getFlags().at("BLOOM");
@@ -341,9 +341,9 @@ void BHVApp::renderCameraTab() {
 void BHVApp::renderDiskWindow() {
 	ImGui::Text("Accretion Disk Settings");
 	
-	glm::vec2 accretionDim{ disk_.getMinRad(), disk_.getMaxRad() };
+	glm::vec2 accretionDim{ disc_.getMinRad(), disc_.getMaxRad() };
 	if (ImGui::SliderFloat2("Disk Size", glm::value_ptr(accretionDim), 1.f, 20.f)) {
-		disk_.setRad(accretionDim.x, accretionDim.y);
+		disc_.setRad(accretionDim.x, accretionDim.y);
 	}
 
 	ImGui::SliderFloat("Disk Rotation Period", &diskRotationSpeed_, 1.f, 20.f);
@@ -408,7 +408,7 @@ void BHVApp::dumpState(std::string const& file) {
 	outFile << camOrbitTilt_ << " " << camOrbitSpeed_ << "\n";
 
 	outFile << "Disk\n";
-	outFile << disk_.getMinRad() << " " << disk_.getMaxRad() << " " << diskRotationSpeed_ << "\n";
+	outFile << disc_.getMinRad() << " " << disc_.getMaxRad() << " " << diskRotationSpeed_ << "\n";
 
 	outFile << "Shaders\n";
 	for (int i = 0; i < shaderElements_.size(); ++i) {
@@ -460,7 +460,7 @@ void BHVApp::readState(std::string const& file) {
 			inFile >> word; diskSize.x = std::stof(word);
 			inFile >> word; diskSize.y = std::stof(word);
 			inFile >> word; diskRotationSpeed_ = std::stof(word);
-			disk_.setRad(diskSize.x, diskSize.y);
+			disc_.setRad(diskSize.x, diskSize.y);
 		}
 
 		if (word == "Shaders") {

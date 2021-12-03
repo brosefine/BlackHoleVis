@@ -70,6 +70,33 @@ glm::mat4 SchwarzschildCamera::getBase4() const {
     );
 }
 
+glm::mat3 SchwarzschildCamera::getFidoBase3() const
+{
+    float u = 1.f / positionRTP_.x;
+    float v = glm::sqrt(1.f - u);
+
+    glm::mat3 base = getBase3();
+    base[0] = base[0] * u;// *(u / glm::sin(positionRTP_.y)); // right
+    base[1] = base[1] * u;// *u;  // up
+    base[2] = base[2] * v;  // front
+
+    return base;
+}
+
+glm::mat4 SchwarzschildCamera::getFidoBase4() const
+{
+    float u = 1.f / positionRTP_.x;
+    float v = glm::sqrt(1.f - u);
+
+    glm::mat4 base = getBase4();
+    base[0] = base[0] / v;  // tau
+    base[1] = base[1] * u;// *(u / glm::sin(positionRTP_.y)); // right
+    base[2] = base[2] * u;// *u;  // up
+    base[3] = base[3] * v;  // front
+
+    return base;
+}
+
 float SchwarzschildCamera::getAvgSpeed() const {
     return std::reduce(speedHistory_.begin(), speedHistory_.end()) / (float)speedHistory_.size();
 }
@@ -95,6 +122,17 @@ glm::mat4 SchwarzschildCamera::getBoostLocal(float dt) {
 
 glm::mat4 SchwarzschildCamera::getBoostGlobal(float dt) {
     glm::vec3 vel = getCurrentVelXYZ();
+    float speed = glm::length(vel);
+    if (speed <= 1e-10)
+        return getBoostFromVel(glm::vec3(1, 0, 0), 0.f);
+
+    float avgSpeed = getAvgSpeed(speed / dt);
+    return getBoostFromVel(glm::normalize(vel), avgSpeed * speedScale_);
+}
+
+glm::mat4 SchwarzschildCamera::getBoostLocalFido(float dt) {
+    glm::mat3 globToLoc = glm::inverse(getFidoBase3());
+    glm::vec3 vel = globToLoc * getCurrentVelXYZ();
     float speed = glm::length(vel);
     if (speed <= 1e-10)
         return getBoostFromVel(glm::vec3(1, 0, 0), 0.f);
