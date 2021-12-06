@@ -150,7 +150,7 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
         float closestPoint = mod(p_phi - phi, 2.0 * pi);
         float u_particle = u1 + (u2 - u1) * pow(sin(dRdPhi * (closestPoint + phi)), 2.0); 
         float r_particle = 1.0 / u_particle;
-        vec2 d = vec2(closestPoint-pi, r_particle-p_r) * vec2(1.0 / pi, 0.5);
+        vec2 d = vec2(closestPoint-pi, r_particle-p_r) * vec2(1.0 / pi, 0.15);
         vec2 noise_uv = d * vec2(p_r/discSize.y, 1.0);
         float noise = 2.0 * (texture(noiseTex, noise_uv).r - 0.5) + 1.0;
         density += smoothstep(1.0, 0.0, length(d))*noise;
@@ -221,8 +221,8 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt, samplerCube cu
         float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u1)) -
                          u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(e_z, e_z_prime);
         float z_grav = sqrt((1-u1)/(1-u));
-        float doppler_factor = g_k_l_receiver/g_k_l_source;
-        //float doppler_factor = z_grav;
+        //float doppler_factor = g_k_l_receiver/g_k_l_source;
+        float doppler_factor = z_grav * g_k_l_receiver/g_k_l_source;
         bool top_side =
             (mod(abs(phi1 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
         vec3 intersect = (e_x_prime * cos(phi1) + e_y_prime * sin(phi1))/u1;
@@ -234,8 +234,8 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt, samplerCube cu
         float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u0)) -
                          u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(e_z, e_z_prime);
         float z_grav = sqrt((1-u0)/(1-u));
-        float doppler_factor = g_k_l_receiver/g_k_l_source;
-        //float doppler_factor = z_grav;
+        //float doppler_factor = g_k_l_receiver/g_k_l_source;
+        float doppler_factor = z_grav * g_k_l_receiver/g_k_l_source;
         bool top_side =
             (mod(abs(phi0 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
         vec3 intersect = (e_x_prime * cos(phi0) + e_y_prime * sin(phi0))/u0;

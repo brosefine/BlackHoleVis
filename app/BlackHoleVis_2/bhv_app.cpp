@@ -673,12 +673,24 @@ void BHVApp::printDebug() {
 	//std::cout << "Nothing to do here :)" << std::endl;
 	glm::mat3 base = cam_.getBase3();
 
-	std::cout << "posxyz: " << glm::to_string(cam_.getPositionXYZ()) << std::endl;
-	std::cout << "posrtp: " << glm::to_string(cam_.getPositionRTP()) << std::endl;
-	
-	
-	std::cout << "right: " << glm::to_string(base[0]) << std::endl;
-	std::cout << "up: " << glm::to_string(base[1]) << std::endl;
-	std::cout << "front: " << glm::to_string(base[2]) << std::endl;
+	glm::mat4 lorentz = cam_.getBoostLocal(dt_);
+
+	glm::vec4 e_tau, e_right, e_up, e_front;
+	glm::mat4 e_static = cam_.getBase4();
+	e_tau = e_static * lorentz[0];
+	e_right = e_static * lorentz[1];
+	e_up = e_static * lorentz[2];
+	e_front = e_static * lorentz[3];
+
+	glm::vec3 camRTP = cam_.getPositionRTP();
+	float u = 1.0f / camRTP.x;
+	float v = glm::sqrt(1.0f - u);
+	float sinT = glm::sin(camRTP.y);
+	glm::vec4 ks(lorentz[0].x, lorentz[0].y, lorentz[0].z, lorentz[0].w);
+	glm::vec4 ks1(lorentz[0].x / v, lorentz[0].y * u / sinT, lorentz[0].z * u, lorentz[0].w * v);
+
+	std::cout << "etau: " << glm::to_string(e_tau) << std::endl;
+	std::cout << "ks: " << glm::to_string(ks) << std::endl;
+	std::cout << "ks scaled: " << glm::to_string(ks1) << std::endl;
 
 }
