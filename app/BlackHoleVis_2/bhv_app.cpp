@@ -10,7 +10,7 @@
 #include <glm/gtc/matrix_access.hpp>
 
 #include <bhv_app.h>
-#include <rendering/quad.h>
+//#include <rendering/quad.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
 #include <helpers/Timer.hpp>
@@ -71,7 +71,8 @@ BHVApp::BHVApp(int width, int height)
 	, noiseTexture_(std::make_shared<Texture>("ebruneton/noise_texture.png"))
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
-	, quad_(quadPositions, quadUVs, quadIndices)
+	, bloom_(false)
+	, bloomEffect_(width, height, 9)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, measureFrameTime_(false)
@@ -121,6 +122,9 @@ void BHVApp::renderContent()
 		uploadBaseVectors();
 	}
 
+	if(bloom_)
+		bloomEffect_.begin();
+
 	shader_->use();
 	shader_->setUniform("dt", (float)tPassed_);
 
@@ -137,12 +141,18 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE5);
 	noiseTexture_->bind();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
-	glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
+	if (!bloom_) {
+
+		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
+		glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
+	}
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	quad_.draw(GL_TRIANGLES);
 
+	if(bloom_)
+		bloomEffect_.render(fboTexture_->getFboId());
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, window_.getWidth(), window_.getHeight());
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -154,7 +164,6 @@ void BHVApp::renderContent()
 	fboTexture_->bind();
 
 	quad_.draw(GL_TRIANGLES);
-
 }
 
 void BHVApp::initShaders() {
@@ -300,10 +309,11 @@ void BHVApp::initCubeMaps(){
 }
 
 void BHVApp::resizeTextures() {
-	std::vector<int> dim{ window_.getWidth(), window_.getHeight() };
-	fboTexture_->resize(fboScale_ * dim.at(0), fboScale_ * dim.at(1));
+	glm::vec2 dim{ window_.getWidth(), window_.getHeight() };
+	fboTexture_->resize(fboScale_ * dim.x, fboScale_ * dim.y);
 	fboTexture_->generateMipMap();
 	fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	bloomEffect_.resize(fboScale_ * dim.x, fboScale_ * dim.y);
 }
 
 void BHVApp::calculateCameraOrbit() {
@@ -438,6 +448,19 @@ void BHVApp::renderGui() {
 		}
 		if (ImGui::BeginTabItem("Disc Settings")) {
 			disc_->show();
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Bloom Settings")) {
+			ImGui::Checkbox("Bloom", &bloom_);
+			if (bloom_) {
+
+				if (ImGui::Button("Reload Bloom Shader")) {
+					bloomEffect_.reload();
+				}
+				ImGui::SliderFloat("intensity", &bloomEffect_.intensity_, 0.f, 1.f);
+				ImGui::SliderFloat("exposure", &bloomEffect_.exposure_, 0.f, 10.f);
+				ImGui::Checkbox("High contrast", &bloomEffect_.highContrast_);
+			}
 			ImGui::EndTabItem();
 		}
 	}

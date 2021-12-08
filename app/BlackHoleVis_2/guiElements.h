@@ -34,7 +34,7 @@ private:
 class ParticleDiscGui : public GuiElement {
 public:
 	ParticleDiscGui() 
-		: disc_(std::make_shared<ParticleDisc>(3.f, 40.f, DISKBINDING))
+		: disc_(std::make_shared<ParticleDisc>(3.f, 25.f, DISKBINDING))
 	{
 		density_ = disc_->getDensity();
 		opacity_ = disc_->getOpacity();

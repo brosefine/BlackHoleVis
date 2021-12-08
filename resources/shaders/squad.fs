@@ -23,10 +23,11 @@ void main()
 {    
     float gamma = 2.2;
     float exposure = 1;
+    
     vec3 color = texture(fboTexture, TexCoords).rgb;
     if(bloom)
         color += texture(bloomTexture, TexCoords).rgb;
-
+    
     //color = vec3(1.0) - exp(-color * exposure);
     // also gamma correct while we're at it       
     //color = pow(color, vec3(1.0 / gamma));

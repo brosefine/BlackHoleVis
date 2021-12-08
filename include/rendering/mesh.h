@@ -18,9 +18,15 @@ public:
 
 	Mesh(std::vector<glm::vec3> pos, std::vector<glm::vec2> uv, std::vector<unsigned int> indxs);
 	Mesh(std::vector<Vertex> verts, std::vector<unsigned int> indxs);
+	Mesh(){}
 	void draw(int drawMode) const;
-private:
+protected:
 	// vertex array object, vertex buffer object, element buffer object
 	unsigned int VAO_, VBO_, EBO_;
 	void createMesh();
+};
+
+class Quad : public Mesh {
+public:
+	Quad();
 };

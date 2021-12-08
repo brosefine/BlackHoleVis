@@ -5,10 +5,11 @@
 #include <app/app.h>
 #include <helpers/uboBindings.h>
 #include <rendering/shader.h>
-#include <rendering/mesh.h>
 #include <rendering/schwarzschildCamera.h>
 #include <rendering/window.h>
 #include <rendering/texture.h>
+#include <rendering/mesh.h>
+#include <rendering/bloom.h>
 #include <objects/blackHole.h>
 #include <objects/accretionDisk.h>
 #include <gui/gui.h>
@@ -54,7 +55,9 @@ private:
 	std::shared_ptr<FBOTexture> fboTexture_;
 	int fboScale_;
 	
-	Mesh quad_;
+	bool bloom_;
+	Bloom bloomEffect_;
+	Quad quad_;
 	Shader sQuadShader_;
 	std::shared_ptr<ShaderGui> shaderElement_;
 	std::shared_ptr<ShaderBase> shader_;

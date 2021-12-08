@@ -26,6 +26,8 @@ public:
 	void setBlockBinding(const std::string& name, unsigned int binding);
 
 	void setFlag(std::string flag, bool value);
+	void setFlag(std::string flag, std::string value);
+
 	std::map<std::string, bool> getFlags() const {
 		return preprocessorFlags_;
 	}
@@ -45,8 +47,9 @@ protected:
 
 	std::string versionDirective_;
 
-	std::map<std::string, bool> preprocessorFlags_;
-	std::string createPreprocessorFlags() const;
+	std::map<std::string, bool> preprocessorFlags_;				// #define FLAG
+	std::map<std::string, std::string> preprocessorValues_;		// #define VAL 42
+	std::string createPreprocessorCommands() const;
 };
 class Shader : public ShaderBase {
 public:

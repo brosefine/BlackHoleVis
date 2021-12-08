@@ -29,6 +29,7 @@ struct TextureParams {
 	GLint border = 0;
 	GLenum format = GL_RED;
 	GLenum type = GL_UNSIGNED_BYTE;
+	GLenum attachement = GL_DEPTH_ATTACHMENT;
 	void* data = nullptr;
 };
 
@@ -73,14 +74,19 @@ public:
 	FBOTexture(int width, int height);
 	~FBOTexture();
 
+	void createRBO(TextureParams const& params);
 	void resize(int width, int height);
+	void setMipMapRenderLevel(int level);
 
 	void bindImageTex(int binding, unsigned int mode) const;
+	void bindFBO() const;
+	void unbindFBO() const;
 	unsigned int getTexId() const { return texId_; }
 	unsigned int getFboId() const { return fboId_; }
 
 private:
 	unsigned int fboId_;
+	std::vector<std::pair<GLuint, TextureParams>> rbos_;
 };
 
 class CubeMap : public Texture{

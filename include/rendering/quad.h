@@ -1,6 +1,8 @@
-#pragma once
+#ifndef QUAD
+#define QUAD
 
 #include <glm/glm.hpp>
+#include <rendering/mesh.h>
 
 #include <vector>
 
@@ -24,3 +26,13 @@ std::vector<unsigned int> quadIndices{
     0, 1, 2,
     2, 1, 3
 };
+
+/*
+class Quad : public Mesh {
+
+public:
+    Quad() : Mesh(quadPositions, quadUVs, quadIndices){}
+};
+
+*/
+#endif // QUAD

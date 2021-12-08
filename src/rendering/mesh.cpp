@@ -46,3 +46,31 @@ void Mesh::createMesh() {
 
 	glBindVertexArray(0);
 }
+
+Quad::Quad() {
+	static std::vector<glm::vec3> quadPositions{
+	{-1.0f, -1.0f, 0.0f},
+	{-1.0f, 1.0f, 0.0f},
+	{1.0f, -1.0f, 0.0f},
+	{1.0f, 1.0f, 0.0f}
+	};
+
+	// texCoords
+	static std::vector<glm::vec2> quadUVs{
+		{0.0f, 0.0f},
+		{0.0f, 1.0f},
+		{1.0f, 0.0f},
+		{1.0f, 1.0f}
+	};
+
+	for (int i = 0; i < quadPositions.size(); ++i) {
+		vertices_.push_back({ quadPositions.at(i), quadUVs.at(i) });
+	}
+
+	indices_ = std::vector<unsigned int>{
+		0, 1, 2,
+		2, 1, 3
+	};
+
+	createMesh();
+}

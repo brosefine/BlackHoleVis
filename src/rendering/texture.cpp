@@ -28,7 +28,8 @@ Texture::Texture(std::string filename, bool srgb)
     if (params.data) {
         setTextureFormat(params);
         createTexture(params);
-    } else {
+    }
+    else {
         std::cerr << "[loadTexture] Texture failed to load: " << path << std::endl;
     }
     stbi_image_free(params.data);
@@ -78,7 +79,7 @@ void Texture::createTexture(TextureParams const& params)
         params.border, params.format, params.type, params.data);
 }
 
-void Texture::setTextureFormat(TextureParams& params){
+void Texture::setTextureFormat(TextureParams& params) {
     if (params.nrComponents == 3) {
         params.format = GL_RGB;
         params.internalFormat = params.srgb ? GL_SRGB : GL_RGB;
@@ -116,7 +117,7 @@ void Texture::setParam(std::vector<std::pair<GLenum, GLfloat>> params) {
     unbind();
 }
 
-void Texture::generateMipMap(){
+void Texture::generateMipMap() {
     bind();
     glGenerateMipmap(target_);
     unbind();
@@ -125,14 +126,12 @@ void Texture::generateMipMap(){
 FBOTexture::FBOTexture(int width, int height)
     : Texture(GL_TEXTURE_2D)
     , fboId_(0) {
-
     width_ = width;
     height_ = height;
 
     // framebuffer
     glGenFramebuffers(1, &fboId_);
-    glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
-
+    bindFBO();
     // texture
     glGenTextures(1, &texId_);
     bind();
@@ -160,49 +159,92 @@ FBOTexture::FBOTexture(int width, int height)
         fboId_ = -1; texId_ = -1;
         std::cerr << "[Texture]: Framebuffer object not initialized" << std::endl;
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    unbind();
+    unbindFBO();
 }
 
 FBOTexture::~FBOTexture() {
-    glDeleteFramebuffers(1, &fboId_);
+    for (auto const& [id, params] : rbos_) {
+        glDeleteRenderbuffers(1, &id);
+    }
     glDeleteTextures(1, &texId_);
+    glDeleteFramebuffers(1, &fboId_);
 }
 
 void FBOTexture::resize(int width, int height) {
     width_ = width;
     height_ = height;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
-
-    glDeleteTextures(1, &texId_);
-    glGenTextures(1, &texId_);
+    bindFBO();
     bind();
 
     glTexImage2D(target_, 0, GL_RGBA32F, width, height, 0, GL_RGBA,
         GL_FLOAT, NULL);
+    generateMipMap();
+    for (auto const& [id, params] : rbos_) {
 
-    std::vector<std::pair<GLenum, GLint>> texParameters{
-        {GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
-        {GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
-        {GL_TEXTURE_MIN_FILTER, GL_LINEAR},
-        {GL_TEXTURE_MAG_FILTER, GL_LINEAR}
-    };
-    setParam(texParameters);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-        texId_, 0);
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        fboId_ = -1; texId_ = -1;
-        std::cerr << "[Texture]: Framebuffer object not initialized" << std::endl;
+        glBindRenderbuffer(GL_RENDERBUFFER, id);
+        glRenderbufferStorage(GL_RENDERBUFFER, params.internalFormat, width_, height_);
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        std::cerr << "[Texture]: Framebuffer object not resized" << std::endl;
+    }
+    unbind();
+    unbindFBO();
 }
 
 void FBOTexture::bindImageTex(int binding, unsigned int mode) const {
     glBindImageTexture(binding, texId_, 0, GL_FALSE, 0, mode, GL_RGBA32F);
 }
 
-CubeMap::CubeMap(std::vector<std::string> faces) : Texture(GL_TEXTURE_CUBE_MAP){
+void FBOTexture::bindFBO() const {
+    glBindFramebuffer(GL_FRAMEBUFFER, fboId_);
+}
+
+void FBOTexture::unbindFBO() const {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void FBOTexture::createRBO(TextureParams const& params) {
+    unsigned int id;
+    bindFBO();
+    glGenRenderbuffers(1, &id);
+    glBindRenderbuffer(GL_RENDERBUFFER, id);
+
+    glRenderbufferStorage(GL_RENDERBUFFER, params.internalFormat, width_, height_);
+    glFramebufferRenderbuffer(params.target, params.attachement, GL_RENDERBUFFER, id);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        glDeleteRenderbuffers(1, &id);
+        std::cerr << "[Texture]: Renderbuffer object not initialized" << std::endl;
+    }
+    else {
+        rbos_.push_back({ id, params });
+    }
+
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    unbindFBO();
+
+
+}
+
+// set the MipMap level to write to
+// user is responsible to call generateMipMaps before this function
+// and to make sure that we can't read from the level we are writing to
+void FBOTexture::setMipMapRenderLevel(int level){
+    if (level < 0) {
+        std::cerr << "[FBO] invalid mipmap level" << std::endl;
+        return;
+    }
+    bindFBO();
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+        texId_, level);
+    unbindFBO();
+}
+
+CubeMap::CubeMap(std::vector<std::string> faces) : Texture(GL_TEXTURE_CUBE_MAP) {
     loadImages(faces);
 }
 
@@ -223,7 +265,8 @@ void CubeMap::loadImages(std::vector<std::string> faces) {
         if (params.data) {
             setTextureFormat(params);
             createTexture(params);
-        } else {
+        }
+        else {
             std::cerr << "[laodCubeMap] Cubemap failed to load: " << path << std::endl;
         }
         stbi_image_free(params.data);
@@ -238,7 +281,7 @@ void CubeMap::loadImages(std::vector<std::string> faces) {
     };
 
     setParam(texParameters);
-    
+
     unbind();
 }
 

@@ -8,7 +8,6 @@
 #include <glm/gtc/matrix_access.hpp>
 
 #include <bhv_app.h>
-#include <rendering/quad.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
 
@@ -25,12 +24,11 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitRad_(10.f)
 	, camOrbitSpeed_(0.5f)
 	, camOrbitAngle_(0.f)
-	, quad_(quadPositions, quadUVs, quadIndices)
 	, sky_({ "milkyway2048/right.png", "milkyway2048/left.png", "milkyway2048/top.png", "milkyway2048/bottom.png", "milkyway2048/front.png", "milkyway2048/back.png" })
 	, fboTexture_(width, height)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, fboScale_(1)
-	, bloom_(false)
+	, bloomEffect_(false)
 	, bloomPasses_(2)
 	, diskRotationSpeed_(10.f)
 	, disc_(DISKBINDING)
@@ -98,7 +96,7 @@ void BHVApp::renderContent()
 	disc_.uploadData();
 		
 	if (compute_) {
-		bloom_ = getCurrentShader()->getFlags().at("BLOOM");
+		bloomEffect_ = getCurrentShader()->getFlags().at("BLOOM");
 
 		fboTexture_.bindImageTex(0, GL_WRITE_ONLY);
 		bloomTextures_.at(0)->bindImageTex(1, GL_WRITE_ONLY);
@@ -111,7 +109,7 @@ void BHVApp::renderContent()
 		glDispatchCompute(workGroups.x, workGroups.y, 1);
 		//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-		if (bloom_) {
+		if (bloomEffect_) {
 			bloomShader_->use();
 			for (int i = 0; i < bloomPasses_; ++i) {
 				int index = i % 2;
@@ -125,7 +123,7 @@ void BHVApp::renderContent()
 			}
 		}
 	} else {
-		bloom_ = false;
+		bloomEffect_ = false;
 		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
 		glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -144,7 +142,7 @@ void BHVApp::renderContent()
 	fboTexture_.bind();
 	glActiveTexture(GL_TEXTURE1);
 	bloomTextures_.at(1)->bind();
-	sQuadShader_.setUniform("bloom", bloom_);
+	sQuadShader_.setUniform("bloom", bloomEffect_);
 
 	quad_.draw(GL_TRIANGLES);
 
@@ -501,7 +499,7 @@ void BHVApp::processKeyboardInput() {
 	}
 
 	if (glfwGetKey(win, GLFW_KEY_B) == GLFW_PRESS && glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-		bloom_ = !bloom_;
+		bloomEffect_ = !bloomEffect_;
 	}
 
 #ifdef PRESENTATION_HELPER

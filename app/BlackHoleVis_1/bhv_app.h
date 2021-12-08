@@ -32,7 +32,7 @@ private:
 	float camOrbitSpeed_;
 	float camOrbitAngle_;
 
-	Mesh quad_;
+	Quad quad_;
 	CubeMap sky_;
 
 	FBOTexture fboTexture_;
@@ -40,7 +40,7 @@ private:
 	Shader sQuadShader_;
 	int fboScale_;
 
-	bool bloom_;
+	bool bloomEffect_;
 	int bloomPasses_;
 	std::unique_ptr<ComputeShader> bloomShader_;
 

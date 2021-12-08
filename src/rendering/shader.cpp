@@ -115,14 +115,17 @@ void ShaderBase::reload() {
 	compile();
 }
 
-std::string ShaderBase::createPreprocessorFlags() const {
+std::string ShaderBase::createPreprocessorCommands() const {
 	std::string flags;
-	for (auto const& flag : preprocessorFlags_) {
-		if (flag.second) {
-			flags += "#define " + flag.first + "\n";
+	for (auto const& [flag, active] : preprocessorFlags_) {
+		if (active) {
+			flags += "#define " + flag + "\n";
 		}
 	}
 
+	for (auto const& [name, value] : preprocessorValues_) {
+		flags += "#define " + name + " " + value + "\n";
+	}
 	return flags;
 }
 
@@ -131,7 +134,11 @@ void ShaderBase::setBlockBinding(const std::string& name, unsigned int binding) 
 }
 
 void ShaderBase::setFlag(std::string flag, bool value) {
-	preprocessorFlags_.at(flag) = value;
+	preprocessorFlags_[flag] = value;
+}
+
+void ShaderBase::setFlag(std::string flag, std::string value) {
+	preprocessorValues_[flag] = value;
 }
 
 void ShaderBase::use() {
@@ -158,7 +165,7 @@ Shader::Shader(const std::vector<std::string>& vsPaths, const std::vector<std::s
 
 void Shader::compile() {
 	// vs = vertex shader, fs = fragment shader
-	std::string ppflags = createPreprocessorFlags();
+	std::string ppflags = createPreprocessorCommands();
 	std::string vsCode = versionDirective_ + ppflags + readShaderFiles(vsPaths_);
 	std::string fsCode = versionDirective_ + ppflags + readShaderFiles(fsPaths_);
 
@@ -208,7 +215,7 @@ ComputeShader::ComputeShader(const std::vector<std::string>& paths, std::vector<
 
 void ComputeShader::compile() {
 	unsigned int csID = glCreateShader(GL_COMPUTE_SHADER);
-	std::string code = versionDirective_ + createPreprocessorFlags() + readShaderFiles(paths_);
+	std::string code = versionDirective_ + createPreprocessorCommands() + readShaderFiles(paths_);
 	const char* csCode = code.c_str();
 	glShaderSource(csID, 1, &csCode, NULL);
 	glCompileShader(csID);

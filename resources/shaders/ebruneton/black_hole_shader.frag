@@ -200,7 +200,7 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
         float closestPoint = mod(p_phi - phi, 2.0 * pi);
         float u_particle = u1 + (u2 - u1) * pow(sin(dRdPhi * (closestPoint + phi)), 2.0); 
         float r_particle = 1.0 / u_particle;
-        vec2 d = vec2(closestPoint-pi, r_particle-p_r) * vec2(1.0 / pi, 0.2);
+        vec2 d = vec2(closestPoint-pi, r_particle-p_r) * vec2(1.0 / pi, 0.23);
         vec2 noise_uv = d * vec2(p_r/discSize.y, 1.0);
         float noise = 2.0 * (texture(noise_texture, noise_uv).r - 0.5) + 1.0;
         density += smoothstep(1.0, 0.0, length(d))*noise;
@@ -212,7 +212,7 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
     float temp = doppler * tempScale * discParams.z;
     float temp_coord = (1.0/6.0) * log(temp/100.0);
     vec3 color = texture(black_body_texture, vec2(temp_coord, 0.5)).rgb;
-    if(length(color) > 0)color = normalize(color) * min(1.0, length(color));
+    if(length(color) > 0)color = normalize(color) * min(100000, length(color));
     color *= max(density, 0.0);
 
     float alpha = smoothstep(discSize.x, discSize.x * 1.2, p_r) *
