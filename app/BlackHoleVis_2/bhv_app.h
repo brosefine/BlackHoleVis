@@ -4,6 +4,8 @@
 
 #include <app/app.h>
 #include <helpers/uboBindings.h>
+#include <helpers/json_helper.h>
+
 #include <rendering/shader.h>
 #include <rendering/schwarzschildCamera.h>
 #include <rendering/window.h>
@@ -41,17 +43,17 @@ private:
 	float speed_;
 
 	std::shared_ptr<ParticleDiscGui> disc_;
-	std::shared_ptr<Texture> diskTexture_;
+	std::shared_ptr<Texture2D> diskTexture_;
 	
-	std::vector<std::pair<std::string,std::shared_ptr<Texture>>> cubemaps_;
-	std::shared_ptr<Texture> currentCubeMap_;
-	std::string deflectionPath_;
-	std::shared_ptr<Texture> deflectionTexture_;
-	std::string invRadiusPath_;
-	std::shared_ptr<Texture> invRadiusTexture_;
-	std::string blackBodyPath_;
-	std::shared_ptr<Texture> blackBodyTexture_;
-	std::shared_ptr<Texture> noiseTexture_;
+	std::vector<std::pair<std::string,std::shared_ptr<CubeMap>>> cubemaps_;
+	std::shared_ptr<CubeMap> currentCubeMap_;
+	std::shared_ptr<CubeMap> galaxyTexture_;
+	std::shared_ptr<CubeMap> starTexture_;
+	std::shared_ptr<Texture2D> deflectionTexture_;
+	std::shared_ptr<Texture2D> invRadiusTexture_;
+	std::shared_ptr<Texture2D> blackBodyTexture_;
+	std::shared_ptr<Texture3D> dopplerTexture_;
+	std::shared_ptr<Texture2D> noiseTexture_;
 	std::shared_ptr<FBOTexture> fboTexture_;
 	int fboScale_;
 	
@@ -66,14 +68,6 @@ private:
 	double t0_, dt_;
 	float tPassed_;
 
-	// performance measurement
-	bool measureFrameTime_;
-	float measureTime_;			// duration of measurement
-	double measureStart_;		// start point of measurement
-	std::string measureID_;		// user-defined name of a measurement
-	int measureFrameWindow_;	// number of frames over which to average measured frame times
-	std::vector<float> frameTimes_;
-
 	bool vSync_;
 
 	// GUI flags
@@ -85,6 +79,8 @@ private:
 	void initTextures();
 	void initCubeMaps();
 	void resizeTextures();
+	void loadStarTextures();
+	void loadStarTile(int level, int ti, int tj, int face, int faceSize, int tileSize, GLenum target, std::string path);
 
 	void calculateCameraOrbit();
 	void uploadBaseVectors();
@@ -97,10 +93,5 @@ private:
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);
 	void printDebug();
-
-	void initFrameTimeMeasure();
-	void finalizeFrameTimeMeasure();
-
-	std::vector<float> imageData_;
 
 };

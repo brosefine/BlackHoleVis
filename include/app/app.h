@@ -1,5 +1,7 @@
-#include <rendering/window.h>
 #include <gui/gui.h>
+#include <rendering/window.h>
+#include <helpers/Timer.hpp>
+
 class GLApp {
 public:
 
@@ -11,6 +13,7 @@ protected:
 
 	GLWindow window_;
 	Gui gui_;
+	FrameTimer frameTimer_;
 
 	bool showGui_;
 

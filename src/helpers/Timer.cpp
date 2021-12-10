@@ -65,3 +65,15 @@ void Timer::summary() const {
 
 	}
 }
+
+void FrameTimer::measure() {
+	TimePoint now_ = Clock::now();
+	std::chrono::duration<double> dur = now_ - last_;
+	timeSum_ = (1.0 - weight_) * timeSum_ + weight_ * (dur).count();
+	weightSum_ = (1.0 - weight_) * weightSum_ + weight_;
+	last_ = now_;
+}
+
+double FrameTimer::getAvg() {
+	return timeSum_ / weightSum_;
+}

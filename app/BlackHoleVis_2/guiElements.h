@@ -3,18 +3,21 @@
 #include <gui/guiElement.h>
 #include <objects/accretionDisk.h>
 #include <helpers/uboBindings.h>
+#include <helpers/json_helper.h>
+
+#include <boost/json.hpp>
 
 
 class BlackHoleShaderGui : public ShaderGui {
 public:
 
-	BlackHoleShaderGui(){
+	BlackHoleShaderGui(): maxBrightness_(1000.f){
 
 		name_ = "Black Hole";
 		shader_ = std::make_shared<Shader>(
 			std::vector<std::string>{ "ebruneton/black_hole_shader.vert" }, 
 			std::vector<std::string>{"ebruneton/black_hole_shader.frag"},
-			std::vector<std::string>{"DISC", "DOPPLER", "PINHOLE"});
+			std::vector<std::string>{"DISC", "DOPPLER", "PINHOLE", "STARS"});
 		preprocessorFlags_ = shader_->getFlags();
 		shader_->use();
 		shader_->setBlockBinding("camera", CAMBINDING);
@@ -22,12 +25,31 @@ public:
 
 private:
 
+	float maxBrightness_;
+
 	void render() override {
 		ImGui::Text("I'm the Black Hole Shader");
+		ImGui::SliderFloat("Max Disc Brightness", &maxBrightness_, 1.f, 10000.f);
 		renderPreprocessorFlags();
 		ImGui::Separator();
 
 		renderRefreshMenu();
+	}
+
+	void uploadUniforms() override {
+		shader_->setUniform("max_brightness", maxBrightness_);
+	};
+
+
+	void storeConfig(boost::json::object& obj) override {
+		obj["brightness"] = maxBrightness_;
+		storePreprocessorFlags(obj);
+	}
+
+	void loadConfig(boost::json::object& obj) override {
+		jhelper::getValue(obj, "brightness", maxBrightness_);
+		loadPreprocessorFlags(obj);
+		update();
 	}
 };
 
@@ -40,6 +62,23 @@ public:
 		opacity_ = disc_->getOpacity();
 		temp_ = disc_->getTemp();
 		size_ = disc_->getRad();
+	}
+	void storeConfig(boost::json::object& obj) override {
+		obj["density"] = density_;
+		obj["opacity"] = opacity_;
+		obj["temp"] = temp_;
+		obj["size"] = { size_.x, size_.y };
+		return;
+	}
+
+	void loadConfig(boost::json::object& obj) override {
+		jhelper::getValue(obj, "density", density_);
+		jhelper::getValue(obj, "opacity", opacity_);
+		jhelper::getValue(obj, "temp", temp_);
+		jhelper::getValue(obj, "size", size_);
+		disc_ = std::make_shared<ParticleDisc>(size_.x, size_.y, DISKBINDING);
+		update();
+		return;
 	}
 
 private:

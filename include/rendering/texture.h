@@ -14,6 +14,7 @@
 * internalFormat = GL_RED;
 * width = 0;
 * height = 0;
+* depth = 0;
 * border = 0;
 * format = GL_RED;
 * type = GL_UNSIGNED_BYTE;
@@ -26,6 +27,7 @@ struct TextureParams {
 	GLint internalFormat = GL_RED;
 	GLsizei width = 0;
 	GLsizei height = 0;
+	GLsizei depth = 0;
 	GLint border = 0;
 	GLenum format = GL_RED;
 	GLenum type = GL_UNSIGNED_BYTE;
@@ -38,10 +40,7 @@ class Texture {
 public:
 
 	// create texture from image file
-	Texture():texId_(0),width_(0),height_(0),target_(GL_TEXTURE_2D){}
-	Texture(GLenum target):texId_(0),width_(0),height_(0),target_(target){}
-	Texture(std::string filename, bool srgb = false);
-	Texture(TextureParams const& params);
+	Texture(unsigned int id, GLenum target) : texId_(id) ,target_(target){}
 	~Texture();
 
 	void setParam(GLenum param, GLint value);
@@ -55,20 +54,35 @@ public:
 
 	unsigned int getTexId() const { return texId_; }
 
-	int getWidth() const { return width_; }
-	int getHeight() const { return height_; }
-
 protected:
 	unsigned int texId_;
-	int width_, height_;
 	GLenum target_;
 
-	void createTexture(TextureParams const& params);
+	virtual void createTexture(TextureParams const& params) = 0;
 	void setTextureFormat(TextureParams& params);
 
 };
 
-class FBOTexture: public Texture{
+class Texture2D : public Texture{
+public:
+
+	// create texture from image file
+	Texture2D():Texture(0, GL_TEXTURE_2D),width_(0),height_(0){}
+	Texture2D(GLenum target):Texture(0, target),width_(0),height_(0){}
+	Texture2D(std::string filename, bool srgb = false);
+	Texture2D(TextureParams const& params);
+
+	int getWidth() const { return width_; }
+	int getHeight() const { return height_; }
+
+protected:
+	int width_, height_;
+
+	void createTexture(TextureParams const& params) override;
+
+};
+
+class FBOTexture: public Texture2D{
 public:
 	// create empty fbo texture
 	FBOTexture(int width, int height);
@@ -89,7 +103,7 @@ private:
 	std::vector<std::pair<GLuint, TextureParams>> rbos_;
 };
 
-class CubeMap : public Texture{
+class CubeMap : public Texture2D {
 public:
 
 	/*
@@ -98,8 +112,24 @@ public:
 	  = +x, -x, +y, -y, +z, -z
 	*/
 	CubeMap(std::vector<std::string> faces);
+	CubeMap(int width, int height);
 
 private:
 
 	void loadImages(std::vector<std::string> faces);
+};
+
+class Texture3D : public Texture {
+public:
+	Texture3D(TextureParams const& params);
+
+
+	int getWidth() const { return width_; }
+	int getHeight() const { return height_; }
+	int getDepth() const { return depth_; }
+
+private:
+	int width_, height_, depth_;
+	void createTexture(TextureParams const& params) override;
+
 };

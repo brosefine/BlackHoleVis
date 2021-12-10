@@ -166,8 +166,8 @@ void BHVApp::initShaders() {
 
 void BHVApp::initTextures() {
 	selectedTexture_ = "Fine Texture";
-	diskTextures_.insert({ "Fine Texture", std::make_shared<Texture>("accretion.jpg") });
-	diskTextures_.insert({ "Blurred Texture", std::make_shared<Texture>("accretion1.jpg") });
+	diskTextures_.insert({ "Fine Texture", std::make_shared<Texture2D>("accretion.jpg") });
+	diskTextures_.insert({ "Blurred Texture", std::make_shared<Texture2D>("accretion1.jpg") });
 
 	bloomTextures_.push_back(std::make_shared<FBOTexture>(window_.getWidth(), window_.getHeight()));
 	bloomTextures_.push_back(std::make_shared<FBOTexture>(window_.getWidth(), window_.getHeight()));

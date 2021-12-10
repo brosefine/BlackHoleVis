@@ -259,6 +259,14 @@ void SchwarzschildCamera::mouseInput(GLFWwindow* window, float dt) {
     mouseInputLocked(window, dt);
 }
 
+void SchwarzschildCamera::storeConfig(boost::json::object& obj)
+{
+}
+
+void SchwarzschildCamera::loadConfig(boost::json::object& obj)
+{
+}
+
 glm::vec3 SchwarzschildCamera::dirCamToXYZ(glm::vec3 dir) const
 {
     return getBase3() * dir;

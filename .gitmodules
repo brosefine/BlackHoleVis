@@ -1,0 +1,3 @@
+[submodule "resources/textures/ebruneton/gaia_sky_map"]
+	path = resources/textures/ebruneton/gaia_sky_map
+	url = https://github.com/ebruneton/gaia_sky_map.git

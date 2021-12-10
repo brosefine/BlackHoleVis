@@ -1,4 +1,5 @@
 #include <rendering/bloom.h>
+#include <helpers/json_helper.h>
 
 Bloom::Bloom(int width, int height, int level)
 	: intensity_(0.5f)
@@ -8,14 +9,7 @@ Bloom::Bloom(int width, int height, int level)
 	, width_(width)
 	, height_(height)
 {
-	int l = 0;
-	int w = width_, h = height_;
-	while (h > 2 && w > 2 && l < maxLevels_) {
-		levelSizes_.push_back({ w,h });
-		w = floor(w / 2.f);
-		h = floor(h / 2.f);
-		++l;
-	}
+	initLevels();
 	initFBOS();
 	initShaders();
 }
@@ -89,15 +83,33 @@ void Bloom::resize(int width, int height) {
 	filters_->resize(width, height);
 	filters_->generateMipMap();
 
-	levelSizes_.clear();
-	int level = 0;
-	int w = width_, h = height_;
-	while (h > 2 && w > 2 && level < maxLevels_) {
-		levelSizes_.push_back({ w,h });
-		w = floor(w / 2.f);
-		h = floor(h / 2.f);
-		++level;
-	}
+	initLevels();
+}
+
+void Bloom::setLevel(int level){
+	maxLevels_ = level;
+	initLevels();
+}
+
+void Bloom::storeConfig(boost::json::object& obj){
+	obj["intensity"] = intensity_;
+	obj["exposure"] = exposure_;
+	obj["highContrast"] = highContrast_;
+	obj["maxLevels"] = maxLevels_;
+	obj["width"] = width_;
+	obj["height"] = height_;
+}
+
+void Bloom::loadConfig(boost::json::object& obj){
+	jhelper::getValue(obj, "intensity", intensity_);
+	jhelper::getValue(obj, "exposure", exposure_);
+	jhelper::getValue(obj, "highContrast", highContrast_);
+	jhelper::getValue(obj, "maxLevels", maxLevels_);
+	jhelper::getValue(obj, "width", width_);
+	jhelper::getValue(obj, "height", height_);
+
+	setLevel(maxLevels_);
+	resize(width_, height_);
 }
 
 void Bloom::initShaders() {
@@ -121,4 +133,16 @@ void Bloom::initFBOS() {
 	};
 	source_->setParam(texParameters);
 	filters_->setParam(texParameters);
+}
+
+void Bloom::initLevels() {
+	levelSizes_.clear();
+	int level = 0;
+	int w = width_, h = height_;
+	while (h > 2 && w > 2 && level < maxLevels_) {
+		levelSizes_.push_back({ w,h });
+		w = floor(w / 2.f);
+		h = floor(h / 2.f);
+		++level;
+	}
 }

@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
+#include <boost/json.hpp>
 
 #include <vector>
 #include <deque>
@@ -70,6 +71,9 @@ public:
 	void processInput(GLFWwindow* window, float dt);
 	void keyBoardInput(GLFWwindow *window, float dt);
 	void mouseInput(GLFWwindow* window, float dt);
+
+	void storeConfig(boost::json::object& obj);
+	void loadConfig(boost::json::object& obj);
 
 private:
 

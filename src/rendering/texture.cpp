@@ -7,11 +7,59 @@
 #include <iostream>
 #include <glad/glad.h>
 
-Texture::Texture(std::string filename, bool srgb)
-    : texId_(0)
+void Texture::setTextureFormat(TextureParams& params) {
+    if (params.nrComponents == 3) {
+        params.format = GL_RGB;
+        params.internalFormat = params.srgb ? GL_SRGB : GL_RGB;
+    }
+    else if (params.nrComponents == 4) {
+        params.format = GL_RGBA;
+        params.internalFormat = params.srgb ? GL_SRGB_ALPHA : GL_RGBA;
+    }
+
+}
+
+
+void Texture::setParam(GLenum param, GLfloat value) {
+    setParam(std::vector<std::pair<GLenum, GLfloat>>{ { param, value } });
+}
+
+Texture::~Texture() {
+    glDeleteTextures(1, &texId_);
+}
+
+void Texture::setParam(GLenum param, GLint value) {
+    setParam(std::vector<std::pair<GLenum, GLint>>{ { param, value } });
+}
+
+void Texture::setParam(std::vector<std::pair<GLenum, GLint>> params) {
+    bind();
+    for (auto const& [pname, param] : params) {
+
+        glTexParameteri(target_, pname, param);
+    }
+    unbind();
+}
+
+void Texture::setParam(std::vector<std::pair<GLenum, GLfloat>> params) {
+    bind();
+    for (auto const& [pname, param] : params) {
+
+        glTexParameterf(target_, pname, param);
+    }
+    unbind();
+}
+
+void Texture::generateMipMap() {
+    bind();
+    glGenerateMipmap(target_);
+    unbind();
+}
+
+Texture2D::Texture2D(std::string filename, bool srgb)
+    : Texture(0, GL_TEXTURE_2D)
     , width_(0)
     , height_(0)
-    , target_(GL_TEXTURE_2D)
 {
     glGenTextures(1, &texId_);
     bind();
@@ -50,11 +98,10 @@ Texture::Texture(std::string filename, bool srgb)
 // user is responsible for providing a pointer to the texture data
 // and all parameters of glTexImage2D via TextureParams
 // image data is not freed in constructor
-Texture::Texture(TextureParams const& params)
-    : texId_(0)
+Texture2D::Texture2D(TextureParams const& params)
+    : Texture(0, GL_TEXTURE_2D)
     , width_(params.width)
     , height_(params.height)
-    , target_(GL_TEXTURE_2D)
 {
     glGenTextures(1, &texId_);
     bind();
@@ -69,62 +116,14 @@ Texture::Texture(TextureParams const& params)
     unbind();
 }
 
-Texture::~Texture() {
-    glDeleteTextures(1, &texId_);
-}
-
-void Texture::createTexture(TextureParams const& params)
+void Texture2D::createTexture(TextureParams const& params)
 {
     glTexImage2D(params.target, params.level, params.internalFormat, params.width, params.height,
         params.border, params.format, params.type, params.data);
 }
 
-void Texture::setTextureFormat(TextureParams& params) {
-    if (params.nrComponents == 3) {
-        params.format = GL_RGB;
-        params.internalFormat = params.srgb ? GL_SRGB : GL_RGB;
-    }
-    else if (params.nrComponents == 4) {
-        params.format = GL_RGBA;
-        params.internalFormat = params.srgb ? GL_SRGB_ALPHA : GL_RGBA;
-    }
-
-}
-
-void Texture::setParam(GLenum param, GLfloat value) {
-    setParam(std::vector<std::pair<GLenum, GLfloat>>{ { param, value } });
-}
-
-void Texture::setParam(GLenum param, GLint value) {
-    setParam(std::vector<std::pair<GLenum, GLint>>{ { param, value } });
-}
-
-void Texture::setParam(std::vector<std::pair<GLenum, GLint>> params) {
-    bind();
-    for (auto const& [pname, param] : params) {
-
-        glTexParameteri(target_, pname, param);
-    }
-    unbind();
-}
-
-void Texture::setParam(std::vector<std::pair<GLenum, GLfloat>> params) {
-    bind();
-    for (auto const& [pname, param] : params) {
-
-        glTexParameterf(target_, pname, param);
-    }
-    unbind();
-}
-
-void Texture::generateMipMap() {
-    bind();
-    glGenerateMipmap(target_);
-    unbind();
-}
-
 FBOTexture::FBOTexture(int width, int height)
-    : Texture(GL_TEXTURE_2D)
+    : Texture2D(GL_TEXTURE_2D)
     , fboId_(0) {
     width_ = width;
     height_ = height;
@@ -168,7 +167,6 @@ FBOTexture::~FBOTexture() {
     for (auto const& [id, params] : rbos_) {
         glDeleteRenderbuffers(1, &id);
     }
-    glDeleteTextures(1, &texId_);
     glDeleteFramebuffers(1, &fboId_);
 }
 
@@ -244,8 +242,18 @@ void FBOTexture::setMipMapRenderLevel(int level){
     unbindFBO();
 }
 
-CubeMap::CubeMap(std::vector<std::string> faces) : Texture(GL_TEXTURE_CUBE_MAP) {
+CubeMap::CubeMap(std::vector<std::string> faces) : Texture2D(GL_TEXTURE_CUBE_MAP) {
     loadImages(faces);
+}
+
+CubeMap::CubeMap(int width, int height)
+    : Texture2D(GL_TEXTURE_CUBE_MAP)
+{
+    width_ = width;
+    height_ = height;
+
+    glCreateTextures(target_, 1, &texId_);
+
 }
 
 void CubeMap::loadImages(std::vector<std::string> faces) {
@@ -285,3 +293,41 @@ void CubeMap::loadImages(std::vector<std::string> faces) {
     unbind();
 }
 
+Texture3D::Texture3D(TextureParams const& params)
+    : Texture(0, GL_TEXTURE_3D)
+    , width_(params.width)
+    , height_(params.height)
+    , depth_(params.depth)
+{
+    glCreateTextures(target_, 1, &texId_);
+    //glGenTextures(1, &texId_);
+    bind();
+
+    std::vector<std::pair<GLenum, GLint>> texParameters{
+            {GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+            {GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+            {GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE},
+            {GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+            {GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+    };
+    setParam(texParameters);
+
+    if (params.data) {
+        createTexture(params);
+    }
+    else {
+        std::cerr << "[loadTexture] Texture failed to load: manual load" << std::endl;
+    }
+
+    unbind();
+}
+
+void Texture3D::createTexture(TextureParams const& params){
+    glTextureStorage3D(texId_, 1, params.internalFormat, params.width, params.height, params.depth);
+    glTextureSubImage3D(texId_, 0, 0, 0, 0, params.width, params.height, params.depth, params.format, params.type, params.data);
+
+    /*
+    glTexImage3D(params.target, params.level, params.internalFormat, params.width, params.height, params.depth,
+        params.border, params.format, params.type, params.data);
+    */
+}

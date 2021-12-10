@@ -5,6 +5,7 @@
 #include <map>
 
 #include <imgui.h>
+#include <boost/json.hpp>
 
 #include <rendering/shader.h>
 #include <objects/blackHole.h>
@@ -16,8 +17,12 @@ public:
 	GuiElement(std::string name): changed_(false), alwaysUpdate_(false), name_(name){}
 
 	std::string getName() const { return name_; }
-	virtual void dumpState(std::ofstream& outFile) {};
-	virtual void readState(std::ifstream& inFile) {};
+	// todo: remove old dump/readState functions
+	virtual void dumpState(std::ofstream& outFile) {}
+	virtual void readState(std::ifstream& inFile) {}
+
+	virtual void storeConfig(boost::json::object& obj) {}
+	virtual void loadConfig(boost::json::object& obj) {}
 	
 	void show() {
 		if (changed_) update();
@@ -62,6 +67,8 @@ protected:
 
 	void updatePreprocessorFlags();
 	void renderPreprocessorFlags();
+	void storePreprocessorFlags(boost::json::object& obj);
+	void loadPreprocessorFlags(boost::json::object& obj);
 
 	virtual void bindUBOs();
 	virtual void update() override;

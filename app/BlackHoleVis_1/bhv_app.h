@@ -46,7 +46,7 @@ private:
 
 	AccDisc disc_;
 	float diskRotationSpeed_;
-	std::map<std::string, std::shared_ptr<Texture>> diskTextures_;
+	std::map<std::string, std::shared_ptr<Texture2D>> diskTextures_;
 	std::string selectedTexture_;
 
 	bool compute_;

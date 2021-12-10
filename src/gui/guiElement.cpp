@@ -38,6 +38,23 @@ void ShaderGui::renderPreprocessorFlags() {
 	}
 }
 
+void ShaderGui::storePreprocessorFlags(boost::json::object& obj) {
+	boost::json::object flags;
+	for (auto const& [key, value] : preprocessorFlags_) {
+		flags[key] = value;
+	}
+	obj["flags"] = flags;
+}
+
+void ShaderGui::loadPreprocessorFlags(boost::json::object& obj) {
+	if (!obj.contains("flags") || obj.at("flags").kind() != boost::json::kind::object)
+		return;
+	auto flags = obj.at("flags").get_object();
+	for (auto const& [key, value] : flags) {
+		preprocessorFlags_[key.to_string()] = value.get_bool();
+	}
+}
+
 void ShaderGui::update() {
 	
 	updatePreprocessorFlags();

@@ -37,6 +37,7 @@ layout (std140) uniform accDisk
     vec4 discSize;   // rmin, rmax, irmin, irmax
     vec4 particles[20]; // todo: adaptive numer of particles
 };
+uniform float max_brightness;
 #endif
 
 out vec4 FragColor;
@@ -50,7 +51,9 @@ layout(binding = 1) uniform sampler2D deflection_texture;
 layout(binding = 2) uniform sampler2D inv_radius_texture;
 layout(binding = 3) uniform sampler2D disk_texture;
 layout(binding = 4) uniform sampler2D black_body_texture;
-layout(binding = 5) uniform sampler2D noise_texture;
+layout(binding = 5) uniform sampler3D doppler_texture;
+layout(binding = 6) uniform samplerCube star_texture;
+layout(binding = 7) uniform sampler2D noise_texture;
 
 uniform vec3 cam_tau;
 uniform vec3 cam_up;
@@ -60,6 +63,11 @@ uniform vec4 ks;
 uniform float dt;
 
 uniform bool pinhole = true;
+uniform bool gaiaMap;
+
+const int MAX_FOOTPRINT_LOD = 2;
+const int STARS_CUBE_MAP_SIZE = 2048;
+const float MAX_FOOTPRINT_SIZE = 4.0;
 
 const float kMu = 4.0 / 27.0;
 const float rad = 1.0;
@@ -129,6 +137,17 @@ vec2 LookupRayInverseRadius(float e_square, float phi) {
     float tex_v = GetTextureCoordFromUnitRange(phi / GetPhiUbFromEsquare(e_square),
         texDim.y);
     return texture(inv_radius_texture, vec2(tex_u, tex_v)).xy;
+}
+
+vec3 Doppler(vec3 color, float doppler_factor) {
+    float sum = color.x + color.y + color.z;
+    if (sum == 0.0) return vec3(0);
+    vec3 dopplerTexCoord;
+    dopplerTexCoord.x = color.x / sum;
+    dopplerTexCoord.y = 2.0 * color.y / sum;
+    dopplerTexCoord.z =
+        (1.0 / 3.0) * atan((1.0 / 0.21) * log(doppler_factor)) + 0.5;
+    return sum * texture(doppler_texture, dopplerTexCoord).rgb;
 }
 
 float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
@@ -212,7 +231,7 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
     float temp = doppler * tempScale * discParams.z;
     float temp_coord = (1.0/6.0) * log(temp/100.0);
     vec3 color = texture(black_body_texture, vec2(temp_coord, 0.5)).rgb;
-    if(length(color) > 0)color = normalize(color) * min(100000, length(color));
+    if(length(color) > 0)color = normalize(color) * min(max_brightness, length(color));
     color *= max(density, 0.0);
 
     float alpha = smoothstep(discSize.x, discSize.x * 1.2, p_r) *
@@ -225,6 +244,73 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
     */
     //vec3 color = vec3(max(0.0,density)) * discParams.x;
     return vec4(color*discParams.x, alpha*discParams.y);
+}
+#endif
+
+#ifdef STARS
+vec3 StarColor(vec3 dir, float lensing_amplification_factor,
+                      float min_lod) {
+  // Compute the partial derivatives of dir (continuous across cube edges).
+  vec3 dx_dir = dFdx(dir);
+  vec3 dy_dir = dFdy(dir);
+
+  // Swap the coordinates depending on the cube face, to always get the maximum
+  // absolute value of the 'dir' components in the z coordinate.
+  vec3 abs_dir = abs(dir);
+  float max_abs_dir_comp = max(abs_dir.x, max(abs_dir.y, abs_dir.z));
+  if (max_abs_dir_comp == abs_dir.x) {
+    dir = dir.zyx;
+    dx_dir = dx_dir.zyx;
+    dy_dir = dy_dir.zyx;
+  } else if (max_abs_dir_comp == abs_dir.y) {
+    dir = dir.xzy;
+    dx_dir = dx_dir.xzy;
+    dy_dir = dy_dir.xzy;
+  }
+
+  // Compute the cube face texture coordinates uv and their derivatives dx_uv
+  // and dy_uv (using an analytic formula instead of dFdx and dFdy, to avoid
+  // discontinuities at cube edges - uv is not continuous here).
+  float inv_dir_z = 1.0 / dir.z;
+  vec2 uv = dir.xy * inv_dir_z;
+  vec2 dx_uv = (dx_dir.xy - uv * dx_dir.z) * inv_dir_z;
+  vec2 dy_uv = (dy_dir.xy - uv * dy_dir.z) * inv_dir_z;
+
+  // Compute the LOD level to use to fetch the stars in the footprint of 'dir'.
+  vec2 d_uv = max(abs(dx_uv + dy_uv), abs(dx_uv - dy_uv));
+  vec2 fwidth = (0.5 * STARS_CUBE_MAP_SIZE / MAX_FOOTPRINT_SIZE) * d_uv;
+  float lod = max(ceil(max(log2(fwidth.x), log2(fwidth.y))), min_lod);
+  float lod_width = (0.5 * STARS_CUBE_MAP_SIZE) / pow(2.0, lod);
+  if (lod > MAX_FOOTPRINT_LOD) {
+    return textureLod(star_texture, dir, lod).rgb * lensing_amplification_factor;
+    //return vec3(1,0,0);
+  }
+
+  // Fetch, filter and accumulate the colors of the stars in the texels in the
+  // footprint of 'dir' at 'lod'.
+  mat2 to_screen_pixel_coords = inverse(mat2(dx_uv, dy_uv));
+  ivec2 ij0 = ivec2(floor((uv - d_uv) * lod_width));
+  ivec2 ij1 = ivec2(floor((uv + d_uv) * lod_width));
+  vec3 color_sum = vec3(0.0);
+  for (int j = ij0.y; j <= ij1.y; ++j) {
+    for (int i = ij0.x; i <= ij1.x; ++i) {
+      vec2 texel_uv = (vec2(i, j) + vec2(0.5)) / lod_width;
+      vec3 texel_dir = vec3(texel_uv * dir.z, dir.z);
+      if (max_abs_dir_comp == abs_dir.x) {
+        texel_dir = texel_dir.zyx;
+      } else if (max_abs_dir_comp == abs_dir.y) {
+        texel_dir = texel_dir.xzy;
+      }
+      vec3 color = textureLod(star_texture, texel_dir, lod).rgb;   
+      ivec2 bits = floatBitsToInt(color.rb);
+      vec2 delta_uv = vec2((bits >> 8) % 257) / 257.0 - vec2(0.5);
+      vec2 star_uv = uv - texel_uv + delta_uv / lod_width;
+      vec2 star_pixel_coords = to_screen_pixel_coords * star_uv;
+      vec2 overlap = max(vec2(1.0) - abs(star_pixel_coords), 0.0);
+      color_sum += color * overlap.x * overlap.y;
+    }
+  }
+  return color_sum * lensing_amplification_factor;
 }
 #endif
 
@@ -256,10 +342,30 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     vec3 color = vec3(0,0,0);
 
     if (deflection >= 0.0) {
+        float g_k_l_source = e;
+        float doppler_factor = g_k_l_receiver / g_k_l_source;
         float delta_prime = delta + max(deflection, 0.0);
         vec3 d_prime = cos(delta_prime) * e_x_prime + sin(delta_prime) * e_y_prime;
-        d_prime = vec3(d_prime.x, -d_prime.z, d_prime.y);
-        color = texture(cubeMap, d_prime).rgb;
+
+        if(!gaiaMap) d_prime = vec3(d_prime.x, -d_prime.z, d_prime.y);
+        color += texture(cubeMap, d_prime).rgb;
+        if(gaiaMap) color *= 6.78494e-5;
+     
+        #ifdef STARS
+        // The solid angle (times 4pi) of the pixel.
+        float omega = length(cross(dFdx(dir), dFdy(dir)));
+        // The solid angle (times 4pi) of the deflected light beam.
+        float omega_prime = length(cross(dFdx(d_prime), dFdy(d_prime)));
+
+        float lensing_amplification_factor = omega / omega_prime;
+        // Clamp the result (otherwise potentially infinite).
+        lensing_amplification_factor = min(lensing_amplification_factor, 1e6);
+
+        float pixel_area = max(omega * (1024.0 * 1024.0), 1.0);
+
+        color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0);
+        #endif
+        color = Doppler(color, doppler_factor);
     }
 
 #ifdef DISC
@@ -320,5 +426,6 @@ void main()
     vec3 color = pixelColor(dir, pos, tau, k, dt*10);
 
     FragColor = vec4(color, 1.0); 
-    //FragColor = vec4((texture(noise_texture, TexCoords).rrr),1);
+    //FragColor = vec4(2*texture(doppler_texture, vec3(TexCoords, 0.5)).rgb,1);
+    //FragColor = vec4(100*texture(doppler_texture, TexCoords).rgb,1);
 }

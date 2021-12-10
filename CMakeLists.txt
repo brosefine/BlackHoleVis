@@ -23,7 +23,7 @@ file(GLOB_RECURSE HEADER_FILES
 add_library(SOURCE ${SRC_FILES} ${HEADER_FILES})
 target_include_directories(SOURCE PUBLIC ${CMAKE_SOURCE_DIR}/include/ ${CMAKE_BINARY_DIR}/include/)
 target_link_libraries(SOURCE bhv_dependencies)
-target_compile_features(SOURCE PRIVATE cxx_std_17)
+target_compile_features(SOURCE PRIVATE cxx_std_20)
 
 file(GLOB_RECURSE APP1_FILES
         ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_1/*.cpp
@@ -32,7 +32,7 @@ file(GLOB_RECURSE APP1_FILES
 add_executable(BHVis1_main ${APP1_FILES})
 target_include_directories(BHVis1_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_1/)
 target_link_libraries(BHVis1_main SOURCE bhv_dependencies)
-target_compile_features(BHVis1_main PRIVATE cxx_std_17)
+target_compile_features(BHVis1_main PRIVATE cxx_std_20)
 
 file(GLOB_RECURSE APP2_FILES
         ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_2/*.cpp
@@ -41,7 +41,7 @@ file(GLOB_RECURSE APP2_FILES
 add_executable(BHVis2_main ${APP2_FILES})
 target_include_directories(BHVis2_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_2/)
 target_link_libraries(BHVis2_main SOURCE bhv_dependencies)
-target_compile_features(BHVis2_main PRIVATE cxx_std_17)
+target_compile_features(BHVis2_main PRIVATE cxx_std_20)
 
 file(GLOB SHADERS 
         ${CMAKE_SOURCE_DIR}/resources/shaders/*)

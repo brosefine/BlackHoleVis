@@ -23,5 +23,6 @@ void GLApp::renderLoop()
 
 		if (showGui_) gui_.renderEnd();
 		window_.endFrame();
+		frameTimer_.measure();
 	}
 }

@@ -2,18 +2,18 @@
 #include <algorithm>
 #include <numeric>
 #include <functional>
+#include <format>
 #include <filesystem>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
+#include <boost/json.hpp>
 
 #include <bhv_app.h>
-//#include <rendering/quad.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
-#include <helpers/Timer.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
@@ -64,21 +64,14 @@ BHVApp::BHVApp(int width, int height)
 	, direction_(1,0,0)
 	, speed_(0.1f)
 	, disc_(std::make_shared<ParticleDiscGui>())
-	, diskTexture_(std::make_shared<Texture>("accretion1.jpg"))
-	, deflectionPath_("ebruneton/deflection.dat")
-	, invRadiusPath_("ebruneton/inverse_radius.dat")
-	, blackBodyPath_("ebruneton/black_body.dat")
-	, noiseTexture_(std::make_shared<Texture>("ebruneton/noise_texture.png"))
+	, diskTexture_(std::make_shared<Texture2D>("accretion1.jpg"))
+	, noiseTexture_(std::make_shared<Texture2D>("ebruneton/noise_texture.png"))
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
 	, bloom_(false)
 	, bloomEffect_(width, height, 9)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
-	, measureFrameTime_(false)
-	, measureTime_(1.f), measureStart_(0.f)
-	, measureID_("")
-	, measureFrameWindow_(1)
 	, vSync_(true)
 	, showShaders_(false)
 	, showCamera_(false)
@@ -97,12 +90,6 @@ void BHVApp::renderContent()
 	dt_ = now - t0_;
 	t0_ = now;
 	tPassed_ += dt_;
-
-	if (measureFrameTime_) {
-		frameTimes_.push_back(dt_);
-		if (now - measureStart_ >= measureTime_)
-			finalizeFrameTimeMeasure();
-	}
 
 	if (camOrbit_) {
 		calculateCameraOrbit();
@@ -129,6 +116,7 @@ void BHVApp::renderContent()
 	shader_->setUniform("dt", (float)tPassed_);
 
 	glActiveTexture(GL_TEXTURE0);
+	shader_->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
 	currentCubeMap_->bind();
 	glActiveTexture(GL_TEXTURE1);
 	deflectionTexture_->bind();
@@ -139,6 +127,10 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE4);
 	blackBodyTexture_->bind();
 	glActiveTexture(GL_TEXTURE5);
+	dopplerTexture_->bind();
+	glActiveTexture(GL_TEXTURE6);
+	starTexture_->bind();
+	glActiveTexture(GL_TEXTURE7);
 	noiseTexture_->bind();
 
 	if (!bloom_) {
@@ -173,8 +165,9 @@ void BHVApp::initShaders() {
 
 void BHVApp::initTextures() {
 
+#pragma region deflection
 	// create deflection texture
-	std::vector<float> deflectionData = readFile<float>(TEX_DIR"" + deflectionPath_);
+	std::vector<float> deflectionData = readFile<float>(TEX_DIR"ebruneton/deflection.dat");
 	if (deflectionData.size() != 0) {
 
 		TextureParams params;
@@ -186,7 +179,7 @@ void BHVApp::initTextures() {
 		params.type = GL_FLOAT;
 		params.data = &deflectionData.data()[2];
 
-		deflectionTexture_ = std::make_shared<Texture>(params);
+		deflectionTexture_ = std::make_shared<Texture2D>(params);
 
 		std::vector<std::pair<GLenum, GLint>> texParameters{
 			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
@@ -201,9 +194,11 @@ void BHVApp::initTextures() {
 	else {
 		std::cerr << "[BHV App] Could not create deflection texture: no data read" << std::endl;
 	}
+#pragma endregion
 
+#pragma region inverse radius
 	// create inverse radius texture
-	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"" + invRadiusPath_);
+	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius.dat");
 	if (invRadiusData.size() != 0) {
 
 		TextureParams params;
@@ -215,7 +210,7 @@ void BHVApp::initTextures() {
 		params.type = GL_FLOAT;
 		params.data = &invRadiusData.data()[2];
 
-		invRadiusTexture_ = std::make_shared<Texture>(params);
+		invRadiusTexture_ = std::make_shared<Texture2D>(params);
 
 		std::vector<std::pair<GLenum, GLint>> texParameters{
 			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
@@ -230,9 +225,11 @@ void BHVApp::initTextures() {
 	else {
 		std::cerr << "[BHV App] Could not create inverse radius texture: no data read" << std::endl;
 	}
+#pragma endregion
 
+#pragma region black body
 	// create black body texture
-	std::vector<float> blackBodyData = readFile<float>(TEX_DIR"" + blackBodyPath_);
+	std::vector<float> blackBodyData = readFile<float>(TEX_DIR"ebruneton/black_body.dat");
 	if (blackBodyData.size() != 0) {
 
 		TextureParams params;
@@ -244,7 +241,7 @@ void BHVApp::initTextures() {
 		params.type = GL_FLOAT;
 		params.data = blackBodyData.data();
 
-		blackBodyTexture_ = std::make_shared<Texture>(params);
+		blackBodyTexture_ = std::make_shared<Texture2D>(params);
 
 		std::vector<std::pair<GLenum, GLint>> texParameters{
 			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
@@ -259,6 +256,41 @@ void BHVApp::initTextures() {
 	else {
 		std::cerr << "[BHV App] Could not create black body texture: no data read" << std::endl;
 	}
+#pragma endregion
+
+#pragma region doppler
+	// create doppler texture
+	std::vector<float> dopplerData = readFile<float>(TEX_DIR"ebruneton/doppler.dat");
+	//std::vector<float> dopplerData(3*64 * 32 * 64, 1.f);
+	if (dopplerData.size() != 0) {
+
+		TextureParams params;
+		params.nrComponents = 3;
+		params.width = 64;
+		params.height = 32;
+		params.depth = 64;
+		params.internalFormat = GL_RGB32F;
+		params.format = GL_RGB;
+		params.type = GL_FLOAT;
+		params.data = dopplerData.data();
+
+		dopplerTexture_ = std::make_shared<Texture3D>(params);
+
+		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE},
+			{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+			{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+		};
+		dopplerTexture_->setParam(texParameters);
+
+		std::cout << "Created doppler texture" << std::endl;
+	}
+	else {
+		std::cerr << "[BHV App] Could not create black body texture: no data read" << std::endl;
+	}
+#pragma endregion
 
 	fboTexture_->generateMipMap();
 	fboTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -306,6 +338,94 @@ void BHVApp::initCubeMaps(){
 		map->setParam(GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
 	}
 	currentCubeMap_ = cubemaps_.at(0).second;
+	loadStarTextures();
+	cubemaps_.push_back({ "Gaia Sky" , galaxyTexture_ });
+}
+
+void BHVApp::loadStarTextures() {
+	int textureSize = 2048;
+
+	galaxyTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	galaxyTexture_->bind();
+	std::vector<std::pair<GLenum, GLint>> texParametersi{
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+	galaxyTexture_->setParam(texParametersi);
+	glTextureStorage2D(galaxyTexture_->getTexId(), 12, GL_RGB9_E5,
+		galaxyTexture_->getWidth(), galaxyTexture_->getHeight());
+
+	starTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	starTexture_->bind();
+	texParametersi = {
+		{GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST},
+		{GL_TEXTURE_MAG_FILTER, GL_NEAREST},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+	starTexture_->setParam(texParametersi);
+	glTextureStorage2D(starTexture_->getTexId(), 12, GL_RGB9_E5,
+		starTexture_->getWidth(), starTexture_->getHeight());
+	starTexture_->unbind();
+
+
+	std::string baseDir = TEX_DIR"ebruneton/gaia_sky_map/";
+	std::vector<std::string> faces {
+		"pos-x", "neg-x",
+		"pos-y", "neg-y",
+		"pos-z", "neg-z"
+	};
+
+	Timer tim;
+	tim.start();
+	// loop over the mipmap levels
+	// loops up until level 4 because levels 4 and higher
+	// are stored in a single file
+	for (int level = 0; level <= 4; ++level) {
+		// loop over cubemap faces
+		for (int face = 0; face < 6; ++face) {
+			// calculate size of texture at this level
+			int faceSize = textureSize / (1 << level);
+			int tileSize = std::min(256, faceSize);
+			// if size is larger than maximum tile size
+			int numTiles = faceSize / tileSize;
+
+			// iterate over all tiles
+			for (int tj = 0; tj < numTiles; ++tj) {
+				for (int ti = 0; ti < numTiles; ++ti) {
+					GLenum target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + face;
+					std::string path = std::format("{}{}-{}-{}-{}.dat",
+						baseDir, faces.at(face), level, ti, tj);
+					loadStarTile(level, ti, tj, face, faceSize, tileSize, target, path);
+					std::cout << "Loaded " << path << std::endl;
+				}
+			}
+		}
+	}
+	tim.end();
+	tim.summary();
+	galaxyTexture_->unbind();
+}
+
+void BHVApp::loadStarTile(int level, int ti, int tj, int face, int faceSize, int tileSize, GLenum target, std::string path){
+	std::vector<unsigned int> tileData = readFile<unsigned int>(path);
+	int start = 0;
+	int currentLevel = level;
+	// loop is only necessary because multiple levels are stored in level-4 tiles
+	while (start < tileData.size()) {
+		glTextureSubImage3D(galaxyTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		start += tileSize * tileSize;
+		glTextureSubImage3D(starTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		start += tileSize * tileSize;
+		level++;
+		tileSize /= 2;
+	}
 }
 
 void BHVApp::resizeTextures() {
@@ -326,8 +446,8 @@ void BHVApp::calculateCameraOrbit() {
 
 	pos = glm::rotate(glm::radians(camOrbitTilt_), glm::vec3{ 0.f, 0.f, 1.f }) * pos;
 
-	cam_.setPosXYZ(glm::vec3(pos) * camOrbitRad_);
-	cam_.setViewDirXYZ(glm::vec3(pos) * -camOrbitRad_);
+	cam_.setPosXYZ(glm::vec3(pos) * camOrbitRad_, false);
+	cam_.setViewDirXYZ(-glm::vec3(pos));
 
 	camOrbitAngle_ += camOrbitSpeed_ * dt_;
 	camOrbitAngle_ -= (camOrbitAngle_ > 360) * 360.f;
@@ -419,14 +539,6 @@ void BHVApp::renderGui() {
 				resizeTextures();
 			if (ImGui::Checkbox("VSYNC", &vSync_))
 				glfwSwapInterval((int)vSync_);
-
-			// FPS plots and measurement
-			ImGui::Text("Frame Time Measuring");
-			ImGui::InputText("Measurement ID", &measureID_);
-			ImGui::InputFloat("Duration", &measureTime_);
-			ImGui::InputInt("Summarize x Frames", &measureFrameWindow_);
-			if (ImGui::Button("Start Measuring"))
-				initFrameTimeMeasure();
 
 			ImGui::Checkbox("Show FPS", &showFps_);
 			ImGui::Spacing();
@@ -580,43 +692,135 @@ void BHVApp::renderSkyTab() {
 
 void BHVApp::renderFPSWindow() {
 	ImGui::Begin("FPS");
-	static ScrollingBuffer rdata1, rdata2;
-	static float t = 0;
-	t += ImGui::GetIO().DeltaTime;
-	rdata1.AddPoint(t, dt_);
-	rdata2.AddPoint(t, (1.0f/dt_));
+	double avgTime = frameTimer_.getAvg();
+	ImGui::Text(std::to_string(avgTime).c_str());
 
-	static float history = 10.0f;
-	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
-	static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;
+	static bool showPlot = false;
+	ImGui::Checkbox("Show Plot", &showPlot);
+	if (showPlot) {
+
+		static ScrollingBuffer rdata1, rdata2;
+		static float t = 0;
+		t += ImGui::GetIO().DeltaTime;
+		rdata1.AddPoint(t, avgTime);
+		rdata2.AddPoint(t, (1.0f/ avgTime));
+
+		static float history = 10.0f;
+		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+		static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;
 	
-	ImGui::BulletText("Time btw. frames");
+		ImGui::BulletText("Time btw. frames");
 
-	ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
-	if (ImPlot::BeginPlot("##Rolling1", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
-		ImPlot::PlotLine("dt", &rdata1.Data[0].x, &rdata1.Data[0].y, rdata1.Data.size(), 0, 2 * sizeof(float));
-		ImPlot::EndPlot();
-	}
+		ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
+		ImPlot::SetNextPlotLimitsY(0, 0.1, ImGuiCond_Always);
+		if (ImPlot::BeginPlot("##Rolling1", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
+			ImPlot::PlotLine("dt", &rdata1.Data[0].x, &rdata1.Data[0].y, rdata1.Data.size(), 0, 2 * sizeof(float));
+			ImPlot::EndPlot();
+		}
 
-	ImGui::BulletText("Frames per Second");
+		ImGui::BulletText("Frames per Second");
 
-	ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
-	ImPlot::SetNextPlotLimitsY(0, 200, ImGuiCond_Always);
-	if (ImPlot::BeginPlot("##Rolling2", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
-		ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
-		ImPlot::EndPlot();
+		ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
+		ImPlot::SetNextPlotLimitsY(0, 200, ImGuiCond_Always);
+		if (ImPlot::BeginPlot("##Rolling2", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
+			ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
+			ImPlot::EndPlot();
+		}
 	}
 
 	ImGui::End();
 }
 
 void BHVApp::dumpState(std::string const& file) {
+	boost::json::object configuration;
+	configuration["camOrbit"] = camOrbit_;
+	configuration["camOrbitTilt"] = camOrbitTilt_;
+	configuration["camOrbitRad"] = camOrbitRad_;
+	configuration["camOrbitSpeed"] = camOrbitSpeed_;
+	configuration["camOrbitAngle"] = camOrbitAngle_;
+	configuration["aberration"] = aberration_;
+	configuration["fido"] = fido_;
+	configuration["useCustomDirection"] = useCustomDirection_;
+	configuration["useLocalDirection"] = useLocalDirection_;
+	configuration["speed"] = speed_;
+	configuration["fboScale"] = fboScale_;
+	configuration["bloom"] = bloom_;
+	configuration["direction"] = { direction_.x, direction_.y, direction_.z };
 
+	boost::json::object discConfiguration;
+	disc_->storeConfig(discConfiguration);
+	configuration["disc"] = discConfiguration;
+
+	boost::json::object shaderConfiguration;
+	shaderElement_->storeConfig(shaderConfiguration);
+	configuration["shader"] = shaderConfiguration;
+
+	boost::json::object bloomConfiguration;
+	bloomEffect_.storeConfig(bloomConfiguration);
+	configuration["bloomEffect"] = bloomConfiguration;
+
+	boost::json::object cameraConfiguration;
+	cam_.storeConfig(cameraConfiguration);
+	configuration["camera"] = cameraConfiguration;
+
+	std::string json = boost::json::serialize(configuration);
+	std::ofstream outFile(ROOT_DIR "saves/" + file);
+	outFile << json;
+	outFile.close();
 	return;
 }
 
 void BHVApp::readState(std::string const& file) {
 
+	if (!std::filesystem::exists(ROOT_DIR "saves/" + file)) {
+		std::cerr << "[BHVApp] file " << ROOT_DIR "saves/" + file << " not found" << std::endl;
+		return;
+	}
+	std::ifstream inFile(ROOT_DIR "saves/" + file);
+	std::ostringstream sstr;
+	sstr << inFile.rdbuf();
+	std::string json = sstr.str();
+	inFile.close();
+
+	boost::json::value v = boost::json::parse(json);
+	if (v.kind() != boost::json::kind::object) {
+		std::cerr << "[BHVApp] Error parsing configuration file" << std::endl;
+		return;
+	}
+
+	boost::json::object configuration = v.get_object();
+	jhelper::getValue(configuration, "camOrbit", camOrbit_);
+	jhelper::getValue(configuration, "camOrbitTilt", camOrbitTilt_);
+	jhelper::getValue(configuration, "camOrbitRad", camOrbitRad_);
+	jhelper::getValue(configuration, "camOrbitSpeed", camOrbitSpeed_);
+	jhelper::getValue(configuration, "camOrbitAngle", camOrbitAngle_);
+	jhelper::getValue(configuration, "aberration", aberration_);
+	jhelper::getValue(configuration, "fido", fido_);
+	jhelper::getValue(configuration, "useCustomDirection", useCustomDirection_);
+	jhelper::getValue(configuration, "useLocalDirection", useLocalDirection_);
+	jhelper::getValue(configuration, "speed", speed_);
+	jhelper::getValue(configuration, "fboScale", fboScale_);
+	jhelper::getValue(configuration, "bloom", bloom_);
+	jhelper::getValue(configuration, "direction", direction_);
+
+	boost::json::object discConfiguration;
+	if(jhelper::getValue(configuration, "disc", discConfiguration))
+		disc_->loadConfig(discConfiguration);
+
+	boost::json::object shaderConfiguration;
+	if(jhelper::getValue(configuration, "shader",shaderConfiguration))
+		shaderElement_->loadConfig(shaderConfiguration);
+
+	boost::json::object bloomConfiguration;
+	if(jhelper::getValue(configuration, "bloomEffect", bloomConfiguration))
+		bloomEffect_.loadConfig(bloomConfiguration);
+
+	boost::json::object cameraConfiguration;
+	if(jhelper::getValue(configuration, "camera", cameraConfiguration))
+		cam_.storeConfig(cameraConfiguration);
+
+	resizeTextures();
+	
 	return;
 }
 
@@ -628,68 +832,6 @@ void BHVApp::processKeyboardInput() {
 	} else if (glfwGetKey(win, GLFW_KEY_H) == GLFW_PRESS && glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 		showGui_ = false;
 	}
-}
-
-void BHVApp::initFrameTimeMeasure() {
-	// prepare vector containing frame times
-	frameTimes_.clear();
-	// assume 100 frames per second
-	frameTimes_.reserve(100 * (measureTime_ + 1));
-
-	measureFrameTime_ = true;
-	showGui_ = false;
-	measureStart_ = glfwGetTime();
-}
-
-void BHVApp::finalizeFrameTimeMeasure() {
-	measureFrameTime_ = false;
-
-	std::ofstream outIDFile(ROOT_DIR "data/measure_ids.txt", std::ios_base::app);
-	outIDFile << "\n" << measureID_ << std::endl;
-	outIDFile << "# " << frameTimes_.size() << " frames" << std::endl;
-	outIDFile << "# " << measureTime_ << " seconds" << std::endl;
-	outIDFile << "# avg over " << measureFrameWindow_ << " frames" << std::endl;
-	outIDFile.close();
-
-	std::ofstream outDataFile(ROOT_DIR "data/measure_data.txt", std::ios_base::app);
-
-	int frameCount = 0;
-	for (auto i = frameTimes_.begin(); i < frameTimes_.end(); i += measureFrameWindow_) {
-		auto last = (frameCount + measureFrameWindow_) > frameTimes_.size() ?
-			frameTimes_.end() : i + measureFrameWindow_;
-
-		int nbFrames = last - i;
-		
-		// compute median
-		float med;
-		std::sort(i, last);
-		if (nbFrames % 2) {
-			med = 0.5f * (*(i + nbFrames / 2) + *(i + nbFrames / 2 - 1));
-		} else {
-			med = *(i + nbFrames / 2);
-		}
-		
-		// compute average
-		float avg = std::accumulate(i, last, 0.f) / nbFrames;
-
-		// output is "id,frames,nbframes,min,max,med,avg,avgFPS\n";
-		outDataFile << measureID_
-			<< "," << frameCount
-			<< "-" << std::min(frameCount + measureFrameWindow_, (int)frameTimes_.size()) - 1
-			<< "," << nbFrames
-			<< "," << *std::min_element(i, last)
-			<< "," << *std::max_element(i, last)
-			<< "," << med
-			<< "," << avg
-			<< "," << 1.f / avg
-			<< "\n";
-
-		frameCount += measureFrameWindow_;
-	}
-
-	outDataFile.close();
-	showGui_ = true;
-	measureID_ = "";
 }
 
 void BHVApp::printDebug() {

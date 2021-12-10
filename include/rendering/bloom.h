@@ -4,6 +4,8 @@
 #include <rendering/shader.h>
 #include <rendering/texture.h>
 
+#include <boost/json.hpp>
+
 class Bloom {
 public:
 	Bloom(){}
@@ -13,6 +15,12 @@ public:
 	void render(int fboId = 0);
 	void reload();
 	void resize(int width, int height);
+
+	int getLevel() const { return maxLevels_; }
+	void setLevel(int level);
+
+	void storeConfig(boost::json::object& obj);
+	void loadConfig(boost::json::object& obj);
 
 	float intensity_;
 	float exposure_;
@@ -36,5 +44,6 @@ private:
 
 	void initShaders();
 	void initFBOS();
+	void initLevels();
 
 };
