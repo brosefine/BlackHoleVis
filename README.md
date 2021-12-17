@@ -1,7 +1,7 @@
 # BlackHoleVis
 A project on black hole visualization
 
-![](screenshots/Screenshot_mix.png)
+![](screenshots/screenshot_mix.png)
 
 ## Setup
 

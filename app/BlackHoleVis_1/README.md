@@ -1,11 +1,11 @@
 # BlackHoleVis 1
 
-![](../../screenshots/Screenshot_mix.png)
+![](../../screenshots/Screenshot_starless.png)
 
 A simple visualization of a Schwarzschild black hole based on
 
 - [Randonels Starless](https://github.com/rantonels/starless)
-- [J.A. Marck, Short-cut method of solution of geodesic equations for Schwarzchild black hole](https://arxiv.org/ct?url=https%3A%2F%2Fdx.doi.org%2F10.1088%2F0264-9381%2F13%2F3%2F007&v=ca843445)
+- [J.A. Marck, Short-cut method of solution of geodesic equations for Schwarzchild black hole](https://arxiv.org/abs/gr-qc/9505010)
 
 ## Controls
 - WASD: move camera

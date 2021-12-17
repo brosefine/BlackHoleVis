@@ -8,7 +8,7 @@ Performance comparison of...
 - Rendering of a distorted accretionn disk around a Schwarzschild black hole
 	- [Real-time High-Quality Rendering of Non-Rotating Black Holes](https://github.com/ebruneton/black_hole_shader)
 	- T. Müller, Interactive visualization of a thin disc around a Schwarzschild black hole
-		- [Paper](https://arxiv.org/ct?url=https%3A%2F%2Fdx.doi.org%2F10.1088%2F0143-0807%2F33%2F4%2F955&v=5b5c29ec)
+		- [Paper](https://arxiv.org/abs/1206.4259)
 		- [App](https://www2.mpia-hd.mpg.de/homes/tmueller/projects/rela/thindisk/thindisk.html)
 
 
