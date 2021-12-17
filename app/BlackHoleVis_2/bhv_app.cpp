@@ -75,7 +75,6 @@ BHVApp::BHVApp(int width, int height)
 	, vSync_(true)
 	, showShaders_(false)
 	, showCamera_(false)
-	, showFps_(false)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
@@ -131,6 +130,8 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE6);
 	starTexture_->bind();
 	glActiveTexture(GL_TEXTURE7);
+	starTexture2_->bind();
+	glActiveTexture(GL_TEXTURE8);
 	noiseTexture_->bind();
 
 	if (!bloom_) {
@@ -345,6 +346,7 @@ void BHVApp::initCubeMaps(){
 void BHVApp::loadStarTextures() {
 	int textureSize = 2048;
 
+#pragma region galaxy texture
 	galaxyTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
 	galaxyTexture_->bind();
 	std::vector<std::pair<GLenum, GLint>> texParametersi{
@@ -356,8 +358,10 @@ void BHVApp::loadStarTextures() {
 	};
 	galaxyTexture_->setParam(texParametersi);
 	glTextureStorage2D(galaxyTexture_->getTexId(), 12, GL_RGB9_E5,
-		galaxyTexture_->getWidth(), galaxyTexture_->getHeight());
+		textureSize, textureSize);
+#pragma endregion
 
+#pragma region star texture 1
 	starTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
 	starTexture_->bind();
 	texParametersi = {
@@ -369,9 +373,30 @@ void BHVApp::loadStarTextures() {
 	};
 	starTexture_->setParam(texParametersi);
 	glTextureStorage2D(starTexture_->getTexId(), 12, GL_RGB9_E5,
-		starTexture_->getWidth(), starTexture_->getHeight());
+		textureSize, textureSize);
 	starTexture_->unbind();
+#pragma endregion
 
+#pragma region star texture 2
+	starTexture2_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	starTexture2_->bind();
+	texParametersi = {
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+
+	starTexture2_->setParam(texParametersi);
+	starTexture2_->setParam(GL_TEXTURE_MAX_ANISOTROPY, 4.0f);
+	// star texture 2 is used for higher LOD levels (> max_star_lod)
+	// and therefore smaller
+	int textureSize2 = textureSize / (1 << (MAX_STAR_LOD + 1));
+	glTextureStorage2D(starTexture2_->getTexId(), 11 - MAX_STAR_LOD, GL_RGB9_E5,
+		textureSize2, textureSize2);
+	starTexture2_->unbind();
+#pragma endregion
 
 	std::string baseDir = TEX_DIR"ebruneton/gaia_sky_map/";
 	std::vector<std::string> faces {
@@ -381,7 +406,7 @@ void BHVApp::loadStarTextures() {
 	};
 
 	Timer tim;
-	tim.start();
+	tim.start("Created star textures in ");
 	// loop over the mipmap levels
 	// loops up until level 4 because levels 4 and higher
 	// are stored in a single file
@@ -401,14 +426,13 @@ void BHVApp::loadStarTextures() {
 					std::string path = std::format("{}{}-{}-{}-{}.dat",
 						baseDir, faces.at(face), level, ti, tj);
 					loadStarTile(level, ti, tj, face, faceSize, tileSize, target, path);
-					std::cout << "Loaded " << path << std::endl;
+					//std::cout << "Loaded " << path << std::endl;
 				}
 			}
 		}
 	}
 	tim.end();
-	tim.summary();
-	galaxyTexture_->unbind();
+	tim.printLast();
 }
 
 void BHVApp::loadStarTile(int level, int ti, int tj, int face, int faceSize, int tileSize, GLenum target, std::string path){
@@ -420,10 +444,16 @@ void BHVApp::loadStarTile(int level, int ti, int tj, int face, int faceSize, int
 		glTextureSubImage3D(galaxyTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
 			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
 		start += tileSize * tileSize;
-		glTextureSubImage3D(starTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
-			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		if (currentLevel <= MAX_STAR_LOD) {
+			glTextureSubImage3D(starTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+				GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		}
+		else {
+			glTextureSubImage3D(starTexture2_->getTexId(), currentLevel - (MAX_STAR_LOD+1), ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+				GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		}
 		start += tileSize * tileSize;
-		level++;
+		currentLevel++;
 		tileSize /= 2;
 	}
 }
@@ -690,47 +720,6 @@ void BHVApp::renderSkyTab() {
 	}
 }
 
-void BHVApp::renderFPSWindow() {
-	ImGui::Begin("FPS");
-	double avgTime = frameTimer_.getAvg();
-	ImGui::Text(std::to_string(avgTime).c_str());
-
-	static bool showPlot = false;
-	ImGui::Checkbox("Show Plot", &showPlot);
-	if (showPlot) {
-
-		static ScrollingBuffer rdata1, rdata2;
-		static float t = 0;
-		t += ImGui::GetIO().DeltaTime;
-		rdata1.AddPoint(t, avgTime);
-		rdata2.AddPoint(t, (1.0f/ avgTime));
-
-		static float history = 10.0f;
-		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
-		static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;
-	
-		ImGui::BulletText("Time btw. frames");
-
-		ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
-		ImPlot::SetNextPlotLimitsY(0, 0.1, ImGuiCond_Always);
-		if (ImPlot::BeginPlot("##Rolling1", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
-			ImPlot::PlotLine("dt", &rdata1.Data[0].x, &rdata1.Data[0].y, rdata1.Data.size(), 0, 2 * sizeof(float));
-			ImPlot::EndPlot();
-		}
-
-		ImGui::BulletText("Frames per Second");
-
-		ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
-		ImPlot::SetNextPlotLimitsY(0, 200, ImGuiCond_Always);
-		if (ImPlot::BeginPlot("##Rolling2", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
-			ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
-			ImPlot::EndPlot();
-		}
-	}
-
-	ImGui::End();
-}
-
 void BHVApp::dumpState(std::string const& file) {
 	boost::json::object configuration;
 	configuration["camOrbit"] = camOrbit_;
@@ -836,26 +825,36 @@ void BHVApp::processKeyboardInput() {
 
 void BHVApp::printDebug() {
 	//std::cout << "Nothing to do here :)" << std::endl;
-	glm::mat3 base = cam_.getBase3();
-
-	glm::mat4 lorentz = cam_.getBoostLocal(dt_);
-
-	glm::vec4 e_tau, e_right, e_up, e_front;
-	glm::mat4 e_static = cam_.getBase4();
-	e_tau = e_static * lorentz[0];
-	e_right = e_static * lorentz[1];
-	e_up = e_static * lorentz[2];
-	e_front = e_static * lorentz[3];
-
-	glm::vec3 camRTP = cam_.getPositionRTP();
-	float u = 1.0f / camRTP.x;
-	float v = glm::sqrt(1.0f - u);
-	float sinT = glm::sin(camRTP.y);
-	glm::vec4 ks(lorentz[0].x, lorentz[0].y, lorentz[0].z, lorentz[0].w);
-	glm::vec4 ks1(lorentz[0].x / v, lorentz[0].y * u / sinT, lorentz[0].z * u, lorentz[0].w * v);
-
-	std::cout << "etau: " << glm::to_string(e_tau) << std::endl;
-	std::cout << "ks: " << glm::to_string(ks) << std::endl;
-	std::cout << "ks scaled: " << glm::to_string(ks1) << std::endl;
+	static int mode = 0;
+	switch (mode)
+	{
+	case 0:
+		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		std::cout << "GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST" << std::endl;
+		break;
+	case 1:
+		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+		std::cout << "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST" << std::endl;
+		break;
+	case 2:
+		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+		std::cout << "GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR" << std::endl;
+		break;
+	case 3: 
+		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		std::cout << "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR" << std::endl;
+		break;
+	case 4:
+		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		std::cout << "GL_TEXTURE_MIN_FILTER, GL_LINEAR" << std::endl;
+		break;
+	case 5:
+		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		std::cout << "GL_TEXTURE_MIN_FILTER, GL_NEAREST" << std::endl;
+		break;
+	default:
+		break;
+	}
+	mode = (++mode) % 6;
 
 }

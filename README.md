@@ -1,7 +1,7 @@
 # BlackHoleVis
 A project on black hole visualization
 
-![](screenshots/Screenshot_starless.png)
+![](screenshots/Screenshot_mix.png)
 
 ## Setup
 
@@ -30,16 +30,12 @@ Dependencies were installed using [vcpkg](https://github.com/Microsoft/vcpkg).
 
 ### Linux (TODO)
 
-## Controls
-- WASD: move camera
-- SHIFT: move faster
-- Mouse move & right mouse click: rotate camera
+## Contents
+- [App 1](app/BlackHoleVis_1/README.md)
+- [App 2](app/BlackHoleVis_2/README.md)
+- [App 3](app/BlackHoleVis_3/README.md)
 
-## Sources
-### Images and Textures
-- Alternative Skybox generated with [space-3d](https://wwwtyro.github.io/space-3d/#animationSpeed=1&fov=80&nebulae=true&pointStars=true&resolution=1024&seed=3wq0xhr2fwu8&stars=true&sun=false) by Rye Terrell
-- Skybox panorama by [ESO](https://www.eso.org/public/germany/images/eso0932a/)
-### Black Hole Visualization
+## References on Black Hole Visualization
 - [LearnOpenGL](https://learnopengl.com/)
 - [Randonels Starless](https://github.com/rantonels/starless)
 - [Coding Train - Visualizing a Black Hole](https://www.youtube.com/watch?v=Iaz9TqYWUmA)

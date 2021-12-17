@@ -17,8 +17,6 @@
 #include <gui/gui.h>
 #include "guiElements.h"
 
-#define MAX_STAR_LOD 6
-
 
 class BHVApp : public GLApp{
 public:
@@ -32,40 +30,23 @@ private:
 	void processKeyboardInput() override;
 
 	SchwarzschildCamera cam_;
-	bool camOrbit_;
-	float camOrbitTilt_;
-	float camOrbitRad_;
-	float camOrbitSpeed_;
-	float camOrbitAngle_;
-
-	bool aberration_;
-	bool fido_;
-	bool useCustomDirection_, useLocalDirection_;
-	glm::vec3 direction_;
-	float speed_;
-
-	std::shared_ptr<ParticleDiscGui> disc_;
-	std::shared_ptr<Texture2D> diskTexture_;
-	
-	std::vector<std::pair<std::string,std::shared_ptr<CubeMap>>> cubemaps_;
-	std::shared_ptr<CubeMap> currentCubeMap_;
-	std::shared_ptr<CubeMap> galaxyTexture_;
-	std::shared_ptr<CubeMap> starTexture_;	// for "manual" rendering as point light sources
-	std::shared_ptr<CubeMap> starTexture2_;	// for default sampling at high LOD values
+	std::shared_ptr<CubeMap> panoramaGrid_;
 	std::shared_ptr<Texture2D> deflectionTexture_;
 	std::shared_ptr<Texture2D> invRadiusTexture_;
-	std::shared_ptr<Texture2D> blackBodyTexture_;
-	std::shared_ptr<Texture3D> dopplerTexture_;
-	std::shared_ptr<Texture2D> noiseTexture_;
 	std::shared_ptr<FBOTexture> fboTexture_;
 	int fboScale_;
 	
-	bool bloom_;
-	Bloom bloomEffect_;
 	Quad quad_;
 	Shader sQuadShader_;
-	std::shared_ptr<ShaderGui> shaderElement_;
-	std::shared_ptr<ShaderBase> shader_;
+	std::shared_ptr<ShaderBase> brunetonDiscShader_;
+	std::shared_ptr<ShaderBase> muellerDiscShader_;
+	std::shared_ptr<ShaderBase> brunetonDeflectionShader_;
+	std::shared_ptr<ShaderBase> starlessDeflectionShader_;
+	bool showBruneton_;
+	bool compareDeflection_;
+
+	glm::vec2 discSize_;
+	glm::vec2 fovXY_;
 
 	// timing variables for render loop
 	double t0_, dt_;
@@ -79,13 +60,8 @@ private:
 
 	void initShaders();
 	void initTextures();
-	void initCubeMaps();
 	void resizeTextures();
-	void loadStarTextures();
-	void loadStarTile(int level, int ti, int tj, int face, int faceSize, int tileSize, GLenum target, std::string path);
-
-	void calculateCameraOrbit();
-	void uploadBaseVectors();
+	void calcFov();
 
 	void renderShaderTab();
 	void renderCameraTab();

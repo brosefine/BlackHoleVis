@@ -43,6 +43,7 @@ public:
 	glm::mat4 getBase4() const;
 	glm::mat4 getFidoBase4() const;
 	glm::vec3 getCurrentVelXYZ() const { return positionXYZ_ - prevPositionXYZ_; }
+	float getFov() const { return fov_; }
 	float getAvgSpeed() const;
 	float getAvgSpeed(float newSpeed);
 	float getTheta() const { return positionRTP_.y; }

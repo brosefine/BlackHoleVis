@@ -16,8 +16,11 @@ protected:
 	FrameTimer frameTimer_;
 
 	bool showGui_;
+	bool showFps_;
+
 
 	virtual void renderContent() = 0;
 	virtual void processKeyboardInput() {}
-	virtual void renderGui() {}
+	virtual void renderGui();
+	virtual void renderFPSWindow();
 };

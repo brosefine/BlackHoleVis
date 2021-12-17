@@ -37,15 +37,10 @@ BHVApp::BHVApp(int width, int height)
 	, selectedShader_(0)
 	, compute_(false)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
-	, measureFrameTime_(false)
-	, measureTime_(1.f), measureStart_(0.f)
-	, measureID_("")
-	, measureFrameWindow_(1)
 	, vSync_(true)
 	, showShaders_(false)
 	, showCamera_(false)
 	, showDisk_(false)
-	, showFps_(false)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
@@ -60,12 +55,6 @@ void BHVApp::renderContent()
 	t0_ = now;
 	tPassed_ += dt_;
 	tPassed_ -= (tPassed_ > diskRotationSpeed_) * diskRotationSpeed_;
-
-	if (measureFrameTime_) {
-		frameTimes_.push_back(dt_);
-		if (now - measureStart_ >= measureTime_)
-			finalizeFrameTimeMeasure();
-	}
 
 	if (camOrbit_) {
 		calculateCameraOrbit();
@@ -229,14 +218,6 @@ void BHVApp::renderGui() {
 			if (ImGui::Checkbox("VSYNC", &vSync_))
 				glfwSwapInterval((int)vSync_);
 
-			// FPS plots and measurement
-			ImGui::Text("Frame Time Measuring");
-			ImGui::InputText("Measurement ID", &measureID_);
-			ImGui::InputFloat("Duration", &measureTime_);
-			ImGui::InputInt("Summarize x Frames", &measureFrameWindow_);
-			if (ImGui::Button("Start Measuring"))
-				initFrameTimeMeasure();
-
 			ImGui::Checkbox("Show FPS", &showFps_);
 			ImGui::Spacing();
 			if(showFps_)
@@ -354,35 +335,6 @@ void BHVApp::renderDiskWindow() {
 				selectedTexture_ = tex.first;
 		}
 		ImGui::EndListBox();
-	}
-}
-
-void BHVApp::renderFPSWindow() {
-	static ScrollingBuffer rdata1, rdata2;
-	static float t = 0;
-	t += ImGui::GetIO().DeltaTime;
-	rdata1.AddPoint(t, dt_);
-	rdata2.AddPoint(t, (1.0f/dt_));
-
-	static float history = 10.0f;
-	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
-	static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;
-	
-	ImGui::BulletText("Time btw. frames");
-
-	ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
-	if (ImPlot::BeginPlot("##Rolling1", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
-		ImPlot::PlotLine("dt", &rdata1.Data[0].x, &rdata1.Data[0].y, rdata1.Data.size(), 0, 2 * sizeof(float));
-		ImPlot::EndPlot();
-	}
-
-	ImGui::BulletText("Frames per Second");
-
-	ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
-	ImPlot::SetNextPlotLimitsY(0, 200, ImGuiCond_Always);
-	if (ImPlot::BeginPlot("##Rolling2", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
-		ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
-		ImPlot::EndPlot();
 	}
 }
 
@@ -596,68 +548,6 @@ void BHVApp::processKeyboardInput() {
 		getCurrentShader()->setUniform("forceWeight", weight);
 	}
 #endif //PRESENTATION_HELPER
-}
-
-void BHVApp::initFrameTimeMeasure() {
-	// prepare vector containing frame times
-	frameTimes_.clear();
-	// assume 100 frames per second
-	frameTimes_.reserve(100 * (measureTime_ + 1));
-
-	measureFrameTime_ = true;
-	showGui_ = false;
-	measureStart_ = glfwGetTime();
-}
-
-void BHVApp::finalizeFrameTimeMeasure() {
-	measureFrameTime_ = false;
-
-	std::ofstream outIDFile(ROOT_DIR "data/measure_ids.txt", std::ios_base::app);
-	outIDFile << "\n" << measureID_ << std::endl;
-	outIDFile << "# " << frameTimes_.size() << " frames" << std::endl;
-	outIDFile << "# " << measureTime_ << " seconds" << std::endl;
-	outIDFile << "# avg over " << measureFrameWindow_ << " frames" << std::endl;
-	outIDFile.close();
-
-	std::ofstream outDataFile(ROOT_DIR "data/measure_data.txt", std::ios_base::app);
-
-	int frameCount = 0;
-	for (auto i = frameTimes_.begin(); i < frameTimes_.end(); i += measureFrameWindow_) {
-		auto last = (frameCount + measureFrameWindow_) > frameTimes_.size() ?
-			frameTimes_.end() : i + measureFrameWindow_;
-
-		int nbFrames = last - i;
-		
-		// compute median
-		float med;
-		std::sort(i, last);
-		if (nbFrames % 2) {
-			med = 0.5f * (*(i + nbFrames / 2) + *(i + nbFrames / 2 - 1));
-		} else {
-			med = *(i + nbFrames / 2);
-		}
-		
-		// compute average
-		float avg = std::accumulate(i, last, 0.f) / nbFrames;
-
-		// output is "id,frames,nbframes,min,max,med,avg,avgFPS\n";
-		outDataFile << measureID_
-			<< "," << frameCount
-			<< "-" << std::min(frameCount + measureFrameWindow_, (int)frameTimes_.size()) - 1
-			<< "," << nbFrames
-			<< "," << *std::min_element(i, last)
-			<< "," << *std::max_element(i, last)
-			<< "," << med
-			<< "," << avg
-			<< "," << 1.f / avg
-			<< "\n";
-
-		frameCount += measureFrameWindow_;
-	}
-
-	outDataFile.close();
-	showGui_ = true;
-	measureID_ = "";
 }
 
 void BHVApp::printComputeInfo() {

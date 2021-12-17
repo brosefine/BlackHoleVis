@@ -53,7 +53,8 @@ layout(binding = 3) uniform sampler2D disk_texture;
 layout(binding = 4) uniform sampler2D black_body_texture;
 layout(binding = 5) uniform sampler3D doppler_texture;
 layout(binding = 6) uniform samplerCube star_texture;
-layout(binding = 7) uniform sampler2D noise_texture;
+layout(binding = 7) uniform samplerCube star_texture2;
+layout(binding = 8) uniform sampler2D noise_texture;
 
 uniform vec3 cam_tau;
 uniform vec3 cam_up;
@@ -65,7 +66,7 @@ uniform float dt;
 uniform bool pinhole = true;
 uniform bool gaiaMap;
 
-const int MAX_FOOTPRINT_LOD = 2;
+const float MAX_FOOTPRINT_LOD = 6.0;
 const int STARS_CUBE_MAP_SIZE = 2048;
 const float MAX_FOOTPRINT_SIZE = 4.0;
 
@@ -231,7 +232,10 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
     float temp = doppler * tempScale * discParams.z;
     float temp_coord = (1.0/6.0) * log(temp/100.0);
     vec3 color = texture(black_body_texture, vec2(temp_coord, 0.5)).rgb;
-    if(length(color) > 0)color = normalize(color) * min(max_brightness, length(color));
+    if(length(color) > 0){
+        float max_component = max(color.r, max(color.g, color.b));
+        color = color / max_component * min(max_brightness, length(color));
+    } 
     color *= max(density, 0.0);
 
     float alpha = smoothstep(discSize.x, discSize.x * 1.2, p_r) *
@@ -250,6 +254,7 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
 #ifdef STARS
 vec3 StarColor(vec3 dir, float lensing_amplification_factor,
                       float min_lod) {
+
   // Compute the partial derivatives of dir (continuous across cube edges).
   vec3 dx_dir = dFdx(dir);
   vec3 dy_dir = dFdy(dir);
@@ -279,13 +284,13 @@ vec3 StarColor(vec3 dir, float lensing_amplification_factor,
   // Compute the LOD level to use to fetch the stars in the footprint of 'dir'.
   vec2 d_uv = max(abs(dx_uv + dy_uv), abs(dx_uv - dy_uv));
   vec2 fwidth = (0.5 * STARS_CUBE_MAP_SIZE / MAX_FOOTPRINT_SIZE) * d_uv;
-  float lod = max(ceil(max(log2(fwidth.x), log2(fwidth.y))), min_lod);
+  float lod_fl = max((max(log2(fwidth.x), log2(fwidth.y))), min_lod);
+  float lod = ceil(lod_fl);
   float lod_width = (0.5 * STARS_CUBE_MAP_SIZE) / pow(2.0, lod);
   if (lod > MAX_FOOTPRINT_LOD) {
-    return textureLod(star_texture, dir, lod).rgb * lensing_amplification_factor;
-    //return vec3(1,0,0);
+   //return vec3(1,0,0);
+    return texture(star_texture2, dir).rgb * lensing_amplification_factor;
   }
-
   // Fetch, filter and accumulate the colors of the stars in the texels in the
   // footprint of 'dir' at 'lod'.
   mat2 to_screen_pixel_coords = inverse(mat2(dx_uv, dy_uv));
@@ -324,6 +329,8 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     if (dot(t, e_y_prime) < 0.0) {
         t = -t;
     }
+
+
     float alpha = acos(clamp(dot(e_x_prime, t), -1.0, 1.0));
     float delta = acos(clamp(dot(e_x_prime, normalize(dir)), -1.0, 1.0));
     float u = 1.0 / length(pos);
@@ -342,12 +349,11 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     vec3 color = vec3(0,0,0);
 
     if (deflection >= 0.0) {
-        float g_k_l_source = e;
-        float doppler_factor = g_k_l_receiver / g_k_l_source;
+        
         float delta_prime = delta + max(deflection, 0.0);
         vec3 d_prime = cos(delta_prime) * e_x_prime + sin(delta_prime) * e_y_prime;
 
-        if(!gaiaMap) d_prime = vec3(d_prime.x, -d_prime.z, d_prime.y);
+        if(!gaiaMap) d_prime = vec3(d_prime.x, d_prime.z, -d_prime.y);
         color += texture(cubeMap, d_prime).rgb;
         if(gaiaMap) color *= 6.78494e-5;
      
@@ -365,16 +371,20 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
 
         color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0);
         #endif
+
+        #ifdef DOPPLER
+        float g_k_l_source = e;
+        float doppler_factor = g_k_l_receiver / g_k_l_source;
         color = Doppler(color, doppler_factor);
+        #endif
     }
 
 #ifdef DISC
     if (u1 >= 0.0 && u1 < discSize.z && u1 > discSize.w) {
+        #ifdef DOPPLER
         float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u1)) -
                          u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(e_z, e_z_prime);
-        #ifdef DOPPLER
-        float z_grav = sqrt((1-u1)/(1-u));
-        float doppler_factor = z_grav * g_k_l_receiver/g_k_l_source;
+        float doppler_factor = g_k_l_receiver/g_k_l_source;
         #else
         float doppler_factor = 1.0;
         #endif
@@ -384,12 +394,22 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
         vec4 disc_color = DiscColor(intersect.xy, dt-t1, top_side, doppler_factor);
         color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;
     }
+#endif
+/*
+    float jet_fade = dot(e_x_prime, dir);
+    if (deflection > 0.0 
+        && abs(dot(e_z_prime, vec3(0, 0, 1))) < 0.05 
+        && jet_fade < 0.0) {
+        
+        color += vec3(50, 50, 80) * pow(abs(jet_fade),2)*pow(1.0 - abs(jet_fade),1.5);
+    }
+*/
+#ifdef DISC
     if (u0 >= 0.0 && u0 < discSize.z && u0 > discSize.w) {
+        #ifdef DOPPLER
         float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u0)) -
                          u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(e_z, e_z_prime);
-        #ifdef DOPPLER
-        float z_grav = sqrt((1-u0)/(1-u));
-        float doppler_factor = z_grav * g_k_l_receiver/g_k_l_source;
+        float doppler_factor = g_k_l_receiver/g_k_l_source;
         #else
         float doppler_factor = 1.0;
         #endif
@@ -418,14 +438,13 @@ void main()
     #endif    
 
     dir = normalize(-cam_tau + dir.x * cam_right + dir.y * cam_up - dir.z * cam_front);
+
     dir = vec3(dir.x, -dir.z, dir.y);
     vec4 k = vec4(ks.x, -ks.w, ks.y, ks.z);
     vec3 pos = vec3(cameraPos.x, -cameraPos.z, cameraPos.y);
     vec3 tau = vec3(cam_tau.x, -cam_tau.z, cam_tau.y);
 
     vec3 color = pixelColor(dir, pos, tau, k, dt*10);
-
     FragColor = vec4(color, 1.0); 
-    //FragColor = vec4(2*texture(doppler_texture, vec3(TexCoords, 0.5)).rgb,1);
-    //FragColor = vec4(100*texture(doppler_texture, TexCoords).rgb,1);
+
 }

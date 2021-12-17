@@ -43,6 +43,15 @@ target_include_directories(BHVis2_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleV
 target_link_libraries(BHVis2_main SOURCE bhv_dependencies)
 target_compile_features(BHVis2_main PRIVATE cxx_std_20)
 
+file(GLOB_RECURSE APP3_FILES
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_3/*.cpp
+        ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_3/*.h)
+
+add_executable(BHVis3_main ${APP3_FILES})
+target_include_directories(BHVis3_main PUBLIC ${CMAKE_SOURCE_DIR}/app/BlackHoleVis_3/)
+target_link_libraries(BHVis3_main SOURCE bhv_dependencies)
+target_compile_features(BHVis3_main PRIVATE cxx_std_20)
+
 file(GLOB SHADERS 
         ${CMAKE_SOURCE_DIR}/resources/shaders/*)
 

@@ -59,21 +59,12 @@ private:
 	double t0_, dt_;
 	float tPassed_;
 
-	// performance measurement
-	bool measureFrameTime_;
-	float measureTime_;			// duration of measurement
-	double measureStart_;		// start point of measurement
-	std::string measureID_;		// user-defined name of a measurement
-	int measureFrameWindow_;	// number of frames over which to average measured frame times
-	std::vector<float> frameTimes_;
-
 	bool vSync_;
 
 	// GUI flags
 	bool showShaders_;
 	bool showCamera_;
 	bool showDisk_;
-	bool showFps_;
 
 	std::shared_ptr<ShaderBase> getCurrentShader();
 	void initShaders();
@@ -85,7 +76,6 @@ private:
 	void renderShaderTab();
 	void renderCameraTab();
 	void renderDiskWindow();
-	void renderFPSWindow();
 	void renderComputeWindow();
 
 	void dumpState(std::string const& file);
