@@ -136,7 +136,8 @@ void SimpleCamera::mouseInput(GLFWwindow* window){
 void SimpleCamera::uploadData(int windowWidth, int windowHeight) {
     
     data_.camPos_ = getPosition();
-    data_.projectionViewInverse_ = glm::inverse(getProjectionMatrix((float)windowWidth / windowHeight) * getViewMatrix());
+    data_.projectionView_ = getProjectionMatrix((float)windowWidth / windowHeight) * getViewMatrix();
+    data_.projectionViewInverse_ = glm::inverse(data_.projectionView_);
     glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data_);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);

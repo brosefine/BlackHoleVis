@@ -15,6 +15,7 @@ const float FAR = 100.f;
 
 class SimpleCamera {
 	struct CameraData {
+		glm::mat4 projectionView_;
 		glm::mat4 projectionViewInverse_;
 		glm::vec3 camPos_;
 	};
