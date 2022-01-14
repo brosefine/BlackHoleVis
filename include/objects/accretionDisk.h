@@ -49,7 +49,7 @@ class ParticleDisc {
 	struct ParticleDiscData {
 		glm::vec4 params_;	// density, opacity, temperature, numparticles
 		glm::vec4 size_;	// rmin, rmax, irmin, irmax
-		glm::vec4 particles_[NUMPARTICLES];
+		//glm::vec4 particles_[NUMPARTICLES];
 	};
 
 public:

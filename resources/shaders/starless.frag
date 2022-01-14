@@ -128,7 +128,7 @@ void main() {
     #ifdef SKY
     FragColor.rgb += (1.0-FragColor.a) * texture(cubeMap, lightVel).rgb;
     #else
-    FragColor.rgb += (1.0-FragColor.a) * abs(normalize(lightVel));
+    //FragColor.rgb += (1.0-FragColor.a) * abs(normalize(lightVel));
     #endif //SKY
     FragColor.a = 1.0;
 }

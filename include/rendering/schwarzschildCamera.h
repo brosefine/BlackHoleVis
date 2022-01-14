@@ -127,6 +127,8 @@ private:
 	// for calculating an average speed over a number of frames
 	std::deque<float> speedHistory_;
 	float speedScale_;
+	double speedWeights_;
+	double speedSum_;
 
 	double lastMouseX_;
 	double lastMouseY_;

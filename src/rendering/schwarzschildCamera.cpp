@@ -9,14 +9,16 @@
 
 SchwarzschildCamera::SchwarzschildCamera()
     : ubo_(0)
-    , velocityRTP_(0,0,0)
-    , positionXYZ_(1,1,1)
-    , prevPositionXYZ_(1,1,1)
+    , velocityRTP_(0, 0, 0)
+    , positionXYZ_(1, 1, 1)
+    , prevPositionXYZ_(1, 1, 1)
     , viewDirTP_(VIEWTHETA, VIEWPHI)
     , fov_(FOV)
     , translationSpeed_(1.f)
     , rotationSpeed_(.01f)
     , speedScale_(1.f)
+    , speedWeights_(0.f)
+    , speedSum_(0.f)
     , mouseInitialized_(false)
     , changed_(true)
     , mouseMotion_(false)
@@ -98,15 +100,22 @@ glm::mat4 SchwarzschildCamera::getFidoBase4() const
 }
 
 float SchwarzschildCamera::getAvgSpeed() const {
-    return std::reduce(speedHistory_.begin(), speedHistory_.end()) / (float)speedHistory_.size();
+    return (float)(speedSum_ / speedWeights_);
+    //return std::reduce(speedHistory_.begin(), speedHistory_.end()) / (float)speedHistory_.size();
 }
 
 float SchwarzschildCamera::getAvgSpeed(float newSpeed) {
+    double weight = 0.5;
+    speedSum_ = (1.0 - weight) * speedSum_ + weight * newSpeed;
+    speedWeights_ = (1.0 - weight) * speedWeights_ + weight;
+    return getAvgSpeed();
+    /*
     speedHistory_.push_back(newSpeed);
     if (speedHistory_.size() > SMOOTHSPEED) {
         speedHistory_.pop_front();
     }
     return getAvgSpeed();
+    */
 }
 
 glm::mat4 SchwarzschildCamera::getBoostLocal(float dt) {

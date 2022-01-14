@@ -199,7 +199,7 @@ void BHVApp::initTextures() {
 
 #pragma region inverse radius
 	// create inverse radius texture
-	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius.dat");
+	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius_1024x256_b.dat");
 	if (invRadiusData.size() != 0) {
 
 		TextureParams params;
@@ -350,7 +350,7 @@ void BHVApp::loadStarTextures() {
 	galaxyTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
 	galaxyTexture_->bind();
 	std::vector<std::pair<GLenum, GLint>> texParametersi{
-		{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
 		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
 		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
 		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
@@ -525,7 +525,20 @@ void BHVApp::uploadBaseVectors() {
 	float u = 1.0f / camRTP.x;
 	float v = glm::sqrt(1.0f - u);
 	float sinT = glm::sin(camRTP.y);
-	glm::vec4 ks(lorentz[0].x / v, lorentz[0].y * u / sinT, lorentz[0].z * u, lorentz[0].w * v);
+	glm::vec4 ks = lorentz[0];
+
+	if (!useLocalDirection_) {
+		glm::mat3 globToLoc = glm::inverse(cam_.getBase3());
+		ks = glm::vec4(
+			ks.x,
+			globToLoc * glm::vec3(ks.y, ks.z, ks.w)
+		);
+	}
+
+	ks.x /= v;
+	ks.y *= u / sinT;
+	ks.z *= u;
+	ks.w *= v;
 
 	
 	shader_->use();
@@ -825,36 +838,10 @@ void BHVApp::processKeyboardInput() {
 
 void BHVApp::printDebug() {
 	//std::cout << "Nothing to do here :)" << std::endl;
-	static int mode = 0;
-	switch (mode)
-	{
-	case 0:
-		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-		std::cout << "GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST" << std::endl;
-		break;
-	case 1:
-		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-		std::cout << "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST" << std::endl;
-		break;
-	case 2:
-		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-		std::cout << "GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR" << std::endl;
-		break;
-	case 3: 
-		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		std::cout << "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR" << std::endl;
-		break;
-	case 4:
-		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		std::cout << "GL_TEXTURE_MIN_FILTER, GL_LINEAR" << std::endl;
-		break;
-	case 5:
-		starTexture_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		std::cout << "GL_TEXTURE_MIN_FILTER, GL_NEAREST" << std::endl;
-		break;
-	default:
-		break;
-	}
-	mode = (++mode) % 6;
+	float speed = 648.857971f;
+	glm::vec3 dir(-0.147305459f, -0.722951770, -0.675012469);
+	glm::mat4 boost = cam_.getBoostFromVel(dir, speed);
+
+	std::cout << glm::to_string(boost) << std::endl;
 
 }

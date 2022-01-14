@@ -6,6 +6,8 @@
 #include <helpers/json_helper.h>
 
 #include <boost/json.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 
 
 class BlackHoleShaderGui : public ShaderGui {
@@ -100,7 +102,7 @@ private:
 		ImGui::SliderFloat("Density", &density_, 0.f, 1.f);
 		ImGui::SliderFloat("Opacity", &opacity_, 0.f, 1.f);
 		ImGui::SliderFloat("Temperature (K)", &temp_, 1000.f, 10000.f);
-		//ImGui::SliderFloat2("Size", glm::value_ptr(size_), 3.f, 20.f);
+		ImGui::SliderFloat2("Size", glm::value_ptr(size_), 3.f, 200.f);
 
 		renderRefreshMenu();
 	}

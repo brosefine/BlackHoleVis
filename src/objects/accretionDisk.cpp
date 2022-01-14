@@ -62,7 +62,7 @@ ParticleDisc::ParticleDisc(unsigned int binding)
 	data_.size_.z = 1.f / data_.size_.x;
 	data_.size_.w = 1.f / data_.size_.y;
 
-	generateParticles();
+	//generateParticles();
 	bind();
 	uploadData();
 
@@ -82,7 +82,7 @@ ParticleDisc::ParticleDisc(float min, float max, unsigned int binding)
 	data_.size_.z = 1.f / data_.size_.x;
 	data_.size_.w = 1.f / data_.size_.y;
 
-	generateParticles();
+	//generateParticles();
 	bind();
 	uploadData();
 }
@@ -129,7 +129,7 @@ void ParticleDisc::generateParticles()
 		}
 		dRdPhi = glm::pi<float>() * glm::sqrt(med_u - inner_u) / (4 * dRdPhi);
 
-		data_.particles_[i] = glm::vec4(inner_u, outer_u, phi0, dRdPhi);
+		//data_.particles_[i] = glm::vec4(inner_u, outer_u, phi0, dRdPhi);
 	}
 }
 

@@ -35,7 +35,6 @@ layout (std140) uniform accDisk
 {
     vec4 discParams; // density, opacity, temperature, numparticles
     vec4 discSize;   // rmin, rmax, irmin, irmax
-    vec4 particles[20]; // todo: adaptive numer of particles
 };
 uniform float max_brightness;
 #endif
@@ -78,12 +77,36 @@ const float r_max_temp = 49.0 / 12.0;
 const float max_temp = 
     pow((1.0 - sqrt(3.0 / r_max_temp)) / (r_max_temp * r_max_temp * r_max_temp), 0.25);
 
+#ifdef DISC 
+const vec4[10] particles = vec4[10] (
+vec4(0.33333334,0.31661114,6.1977997,0.07803755),
+vec4(0.25,0.2162681,2.9107437,0.27628574),
+vec4(0.2,0.18788706,4.4959383,0.32610515),
+vec4(0.16666667,0.14545912,5.5849767,0.36773542),
+vec4(0.14285715,0.14210331,0.4037387,0.38162342),
+vec4(0.125,0.115369216,4.338544,0.40328234),
+vec4(0.11111111,0.105860256,2.4303732,0.4142117),
+vec4(0.1,0.08681646,5.188272,0.42785874),
+vec4(0.09090909,0.083897986,0.008218025,0.43319297),
+vec4(0.083333336,0.0729598,2.4058197,0.4412647)
+);
+#endif // DISC 
+
+
 float GetUapsisFromEsquare(float e_square) {
   float x = (2.0 / kMu) * e_square - 1.0;
   return 1.0 / 3.0 + (2.0 / 3.0) * sin(asin(x) * (1.0 / 3.0));
 }
 
 float GetRayDeflectionTextureUFromEsquare(float e_square) {
+  /*
+  if (e_square < kMu) {
+    return 0.5 - sqrt(sqrt(-log(1.0 - e_square / kMu) * (1.0 / 200.0)));
+  } else {
+    return 0.5 + sqrt(sqrt(-log(1.0 - kMu / e_square) * (1.0 / 200.0)));
+  }
+  */
+
   if (e_square < kMu) {
     return 0.5 - sqrt(-log(1.0 - e_square / kMu) * (1.0 / 50.0));
   } else {
@@ -123,7 +146,7 @@ vec2 LookupRayDeflection(float e_square, float u,
 }
 
 float GetRayInverseRadiusTextureUFromEsquare(float e_square) {
-    return 1.0 / (1.0 + 6.0 * e_square);
+    return 1.0 / (1.0 + 2.0 * e_square);
 }
 
 float GetPhiUbFromEsquare(float e_square) {
@@ -172,15 +195,18 @@ float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
     // Compute the accretion disc intersections.
     float s = sign(u_dot);
     // if ray direction is pointing away from BH, pi = phi + delta + deflection
-    float phi = deflection.x + (s == 1.0 ? pi - delta : delta) + s * alpha;
+    float phi = deflection.x + (s > 0 ? pi - delta : delta) + s * alpha;
     float phi_apsis = deflection_apsis.x + pi / 2.0;
     // first intersection
     phi0 = mod(phi, pi);
     if (phi0 < phi_apsis) {
         vec2 ui0 =
           LookupRayInverseRadius(e_square, phi0);
+        // s > 0 if ray looks towards bh
+        // ui0.x > u if hit is closer to black hole
         float side = s * (ui0.x - u);
-        if (side > 1e-3 || (side > -1e-3 && alpha < delta)) {
+        // if light ray direction + hit point match, or if udot = 0
+        if ((side > 1e-3 ) || (side > -1e-3 && alpha < delta)) {
             u0 = ui0.x;
             phi0 = alpha + phi - phi0;
             t0 = s * (ui0.y - deflection.y);
@@ -203,7 +229,9 @@ float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
 #ifdef DISC
 vec4 DiscColor(vec2 intersect, float timeDelta, bool top, 
     float doppler) {
-    float p_r = length(intersect);
+    float r_intersect = length(intersect);
+    // scale interesction point to dimension of disc particles (3-13)
+    float p_r = (r_intersect - discSize.x) / (discSize.y - discSize.x) * 10 + 3.0;
     float p_phi = atan(intersect.y, intersect.x);
 
     float density = 0.3;
@@ -211,7 +239,9 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
         vec4 params = particles[i];
         float u1 = params.x;
         float u2 = params.y;
-        float u_mid = (u1 + u1) * 0.5;
+        float u_mid = (u1 + u2) * 0.5;
+        // scale u_mid to dimension of user-defined accretion disc
+        u_mid = 1.0/((1.0/u_mid - 3.0)*(discSize.y-discSize.x) / 10 + discSize.x);
         float phi0 = params.z;
         float dRdPhi = params.w;
         float dPhidT = u_mid * sqrt(0.5*u_mid);
@@ -221,25 +251,25 @@ vec4 DiscColor(vec2 intersect, float timeDelta, bool top,
         float u_particle = u1 + (u2 - u1) * pow(sin(dRdPhi * (closestPoint + phi)), 2.0); 
         float r_particle = 1.0 / u_particle;
         vec2 d = vec2(closestPoint-pi, r_particle-p_r) * vec2(1.0 / pi, 0.23);
-        vec2 noise_uv = d * vec2(p_r/discSize.y, 1.0);
+        vec2 noise_uv = d * vec2(p_r/12.0, 1.0);
         float noise = 2.0 * (texture(noise_texture, noise_uv).r - 0.5) + 1.0;
         density += smoothstep(1.0, 0.0, length(d))*noise;
     }
 
     
     float tempScale = (1.0 / max_temp) *
-      pow((1.0 - sqrt(3.0 / p_r)) / (p_r * p_r * p_r), 0.25);
+        pow((1.0 - sqrt(3.0 / r_intersect)) / (r_intersect * r_intersect * r_intersect), 0.25);
     float temp = doppler * tempScale * discParams.z;
     float temp_coord = (1.0/6.0) * log(temp/100.0);
     vec3 color = texture(black_body_texture, vec2(temp_coord, 0.5)).rgb;
     if(length(color) > 0){
         float max_component = max(color.r, max(color.g, color.b));
-        color = color / max_component * min(max_brightness, length(color));
+        color = color / max_component * min(max_brightness, max_component);
     } 
     color *= max(density, 0.0);
 
-    float alpha = smoothstep(discSize.x, discSize.x * 1.2, p_r) *
-      smoothstep(discSize.y, discSize.y / 1.2, p_r);
+    float alpha = smoothstep(3.0, 3.0 * 1.2, p_r) *
+        smoothstep(12.0, 12.0 / 1.2, p_r);
     
     /*
     // rotation speed depends on distance to BH
@@ -391,8 +421,9 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
         bool top_side =
             (mod(abs(phi1 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
         vec3 intersect = (e_x_prime * cos(phi1) + e_y_prime * sin(phi1))/u1;
-        vec4 disc_color = DiscColor(intersect.xy, dt-t1, top_side, doppler_factor);
+        vec4 disc_color = DiscColor(intersect.xy, dt/*-t1*/, top_side, doppler_factor);
         color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;
+        //color = 0.5 * color + 0.5 * vec3(1,0,0);
     }
 #endif
 /*
@@ -416,8 +447,9 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
         bool top_side =
             (mod(abs(phi0 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
         vec3 intersect = (e_x_prime * cos(phi0) + e_y_prime * sin(phi0))/u0;
-        vec4 disc_color = DiscColor(intersect.xy, dt-t0, top_side, doppler_factor);
+        vec4 disc_color = DiscColor(intersect.xy, dt/*-t0*/, top_side, doppler_factor);
         color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;    
+        //color = 0.5 * color + 0.5 * vec3(0,1,0);
     }
 #endif
     return color;
