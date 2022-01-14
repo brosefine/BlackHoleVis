@@ -56,14 +56,17 @@ public:
 	// read shader file contents and compile shader code
 	Shader() {};
 	Shader(const std::string& vsPath, const std::string& fsPath, std::vector<std::string> flags = {});
+	Shader(const std::string& vsPath, const std::string& gsPath, const std::string& fsPath, std::vector<std::string> flags = {});
 	Shader(const std::vector<std::string>& vsPaths, const std::vector<std::string>& fsPaths, std::vector<std::string> flags = {});
 
 private:
 	std::vector<std::string> vsPaths_;
+	std::vector<std::string> gsPaths_;
 	std::vector<std::string> fsPaths_;
 	
 
 	void compile() override;
+	bool hasGeometryShader() { return gsPaths_.size() > 0; }
 };
 
 class ComputeShader : public ShaderBase {

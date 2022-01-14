@@ -19,7 +19,11 @@ class EnvApp : public GLApp{
 public:
 	
 	EnvApp(int width, int height);
-
+	~EnvApp()
+	{
+		glDeleteRenderbuffers(1, &rboID);
+		glDeleteFramebuffers(1, &fboID);
+	}
 
 private:
 	void renderContent() override;
@@ -27,10 +31,15 @@ private:
 	void processKeyboardInput() override;
 
 	SimpleCamera cam_;
+	std::vector<std::shared_ptr<SimpleCamera>> envCameras_;
+
 	std::shared_ptr<CubeMap> skyTexture_;
+	std::shared_ptr<CubeMap> envMap_;
+	std::shared_ptr<CubeMap> envDepthMap_;
 	std::shared_ptr<Texture2D> meshTexture_;
-	std::shared_ptr<FBOTexture> fboTexture_;
-	
+
+	GLuint fboID, rboID;
+
 	Quad quad_;
 	std::shared_ptr<Mesh> mesh_;
 	std::shared_ptr<ShaderBase> sQuadShader_;
@@ -51,6 +60,10 @@ private:
 	void initShaders();
 	void reloadShaders();
 	void initTextures();
+	void initEnvMap();
+	void initCameras();
+	void updateCameras();
+
 	void resizeTextures();
 	void calcFov();
 

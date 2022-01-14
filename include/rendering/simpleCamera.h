@@ -23,7 +23,7 @@ class SimpleCamera {
 public:
 
 	SimpleCamera();
-	SimpleCamera(glm::vec3 pos, glm::vec3 up, glm::vec3 front);
+	SimpleCamera(glm::vec3 pos, glm::vec3 up, glm::vec3 front, float fov = FOV);
 
 	glm::mat4 getViewMatrix();
 	glm::mat4 getProjectionMatrix(float aspect, float near = NEAR, float far = FAR);
@@ -43,12 +43,15 @@ public:
 	void keyBoardInput(GLFWwindow *window, float dt);
 	void mouseInput(GLFWwindow* window);
 
+	void use(int windowWidth, int windowHeight);
+
 private:
 
 	// camera ubo
 
 	unsigned int ubo_;
 	CameraData data_;
+	void init();
 	void bind();
 	void uploadData(int windowWidth, int windowHeight);
 

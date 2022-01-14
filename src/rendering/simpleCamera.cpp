@@ -10,7 +10,7 @@ SimpleCamera::SimpleCamera()
 	, upDir_({0, 1, 0})
 	, yaw_(YAW)
 	, pitch_(PITCH)
-	, fov_(FOV)
+	, fov_(glm::radians(FOV))
 	, translationSpeed_(1.f)
 	, rotationSpeed_(.1f)
     , mouseInitialized_(false)
@@ -18,13 +18,14 @@ SimpleCamera::SimpleCamera()
     , mouseMotion_(false)
 {
 	calculateCameraVectors();
-    bind();
+    init();
 }
 
-SimpleCamera::SimpleCamera(glm::vec3 pos, glm::vec3 up, glm::vec3 front)
+// fov in degrees
+SimpleCamera::SimpleCamera(glm::vec3 pos, glm::vec3 up, glm::vec3 front, float fov)
 	: position_(pos)
 	, upDir_(up)
-	, fov_(FOV)
+	, fov_(glm::radians(fov))
 	, translationSpeed_(1.f)
 	, rotationSpeed_(.1f)
     , mouseInitialized_(false) 
@@ -32,7 +33,7 @@ SimpleCamera::SimpleCamera(glm::vec3 pos, glm::vec3 up, glm::vec3 front)
     , mouseMotion_(false) 
 {
     setFront(front);
-    bind();
+    init();
 }
 
 glm::mat4 SimpleCamera::getViewMatrix() {
@@ -53,7 +54,7 @@ void SimpleCamera::setFront(glm::vec3 front) {
     front_ = glm::normalize(front);
     yaw_ = glm::degrees(std::atan2(front_.z, front_.x));
     pitch_ = glm::degrees(std::atan2(front_.y, std::sqrt(front_.x * front_.x + front_.z * front_.z)));
-    pitch_ = std::max(std::min(pitch_, 89.f), -89.f);
+    pitch_ = std::max(std::min(pitch_, 89.999999f), -89.999999f);
     calculateCameraVectors();
     changed_ = true;
 }
@@ -145,11 +146,21 @@ void SimpleCamera::uploadData(int windowWidth, int windowHeight) {
 
 
 void SimpleCamera::bind() {
+    glBindBufferBase(GL_UNIFORM_BUFFER, CAMBINDING, ubo_);
+}
+
+void SimpleCamera::init() {
     glGenBuffers(1, &ubo_);
     glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), NULL, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    glBindBufferBase(GL_UNIFORM_BUFFER, CAMBINDING, ubo_);
+}
+
+// force bind and upload camera data to CAMBINDING
+void SimpleCamera::use(int windowWidth, int windowHeight) {
+    bind();
+    if(changed_)
+        update(windowWidth, windowHeight);
 }
 
 void SimpleCamera::calculateCameraVectors() {

@@ -15,7 +15,6 @@
 #include <objects/blackHole.h>
 #include <objects/accretionDisk.h>
 #include <gui/gui.h>
-#include "guiElements.h"
 
 
 class BHVApp : public GLApp{

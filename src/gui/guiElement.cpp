@@ -225,7 +225,7 @@ void StarlessComputeShaderGui::uploadUniforms() {
 
 TestShaderGui::TestShaderGui() {
 	name_ = "Test";
-	shader_ = std::shared_ptr<ShaderBase>(new Shader("blackHole.vert", "blackHoleTest.frag", { "SKY"}));
+	shader_ = std::shared_ptr<ShaderBase>(new Shader("blackHole.vert", "blackHoleTest.frag", std::vector<std::string>{ "SKY"}));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	shader_->setBlockBinding("camera", CAMBINDING);

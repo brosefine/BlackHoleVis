@@ -154,6 +154,17 @@ Shader::Shader(const std::string& vsPath, const std::string& fsPath, std::vector
 	compile();
 }
 
+Shader::Shader(const std::string& vsPath, const std::string& gsPath, const std::string& fsPath, std::vector<std::string> flags)
+	: vsPaths_({ vsPath })
+	, gsPaths_({ gsPath })
+	, fsPaths_({ fsPath }) {
+	for (auto const& flag : flags) {
+		preprocessorFlags_.insert({ flag, false });
+	}
+	versionDirective_ = "#version 430\n";
+	compile();
+}
+
 Shader::Shader(const std::vector<std::string>& vsPaths, const std::vector<std::string>& fsPaths, std::vector<std::string> flags)
 	: vsPaths_(vsPaths), fsPaths_(fsPaths) {
 		for (auto const& flag : flags) {
@@ -164,34 +175,54 @@ Shader::Shader(const std::vector<std::string>& vsPaths, const std::vector<std::s
 }
 
 void Shader::compile() {
-	// vs = vertex shader, fs = fragment shader
+	// vs = vertex shader, gs = geometry shader, fs = fragment shader
 	std::string ppflags = createPreprocessorCommands();
-	std::string vsCode = versionDirective_ + ppflags + readShaderFiles(vsPaths_);
-	std::string fsCode = versionDirective_ + ppflags + readShaderFiles(fsPaths_);
+	std::string vsCode = "", gsCode ="", fsCode = "";
+	vsCode = versionDirective_ + ppflags + readShaderFiles(vsPaths_);
+	fsCode = versionDirective_ + ppflags + readShaderFiles(fsPaths_);
 
-	unsigned int vsID, fsID, ID;
+	if(hasGeometryShader())
+		fsCode = versionDirective_ + ppflags + readShaderFiles(gsPaths_);
+
+
+	unsigned int vsID = 0, gsID = 0, fsID = 0, ID = 0;
 	// add preprocessor definitions to shader code
-	const char *vsCodeChar = vsCode.c_str(), *fsCodeChar = fsCode.c_str();
+	const char *vsCodeChar = vsCode.c_str(), *gsCodeChar = gsCode.c_str(), *fsCodeChar = fsCode.c_str();
 	// compile vertex shader
 	vsID = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vsID, 1, &vsCodeChar, NULL);
 	glCompileShader(vsID);
 	bool vsCompiled = checkCompileErrors(vsID, "vertexShader");
+
+	bool gsCompiled = true;
+	if (hasGeometryShader()) {
+
+		// compile fragment shader
+		gsID = glCreateShader(GL_GEOMETRY_SHADER);
+		glShaderSource(gsID, 1, &gsCodeChar, NULL);
+		glCompileShader(gsID);
+		gsCompiled = checkCompileErrors(gsID, "geometryShader");
+	}
+
 	// compile fragment shader
 	fsID = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fsID, 1, &fsCodeChar, NULL);
 	glCompileShader(fsID);
 	bool fsCompiled = checkCompileErrors(fsID, "fragmentShader");
+
+
 	// compile combined shader
 	ID = glCreateProgram();
 	glAttachShader(ID, vsID);
+	if(hasGeometryShader()) glAttachShader(ID, gsID);
 	glAttachShader(ID, fsID);
 	glLinkProgram(ID);
 	bool linked = checkLinkErrors(ID);
 
-	if(vsCompiled && fsCompiled && linked)
+	if(vsCompiled && gsCompiled && fsCompiled && linked)
 		ID_ = ID;
 	glDeleteShader(vsID);
+	if (hasGeometryShader()) glDeleteShader(gsID);
 	glDeleteShader(fsID);
 }
 
