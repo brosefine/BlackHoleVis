@@ -12,18 +12,12 @@
 #include <rendering/texture.h>
 #include <rendering/mesh.h>
 #include <gui/gui.h>
-//#include "guiElements.h"
-
+#include "CubeMapScene.h"
 
 class EnvApp : public GLApp{
 public:
 	
 	EnvApp(int width, int height);
-	~EnvApp()
-	{
-		glDeleteRenderbuffers(1, &rboID);
-		glDeleteFramebuffers(1, &fboID);
-	}
 
 private:
 	void renderContent() override;
@@ -31,20 +25,10 @@ private:
 	void processKeyboardInput() override;
 
 	SimpleCamera cam_;
-	std::vector<std::shared_ptr<SimpleCamera>> envCameras_;
-
-	std::shared_ptr<CubeMap> skyTexture_;
-	std::shared_ptr<CubeMap> envMap_;
-	std::shared_ptr<CubeMap> envDepthMap_;
-	std::shared_ptr<Texture2D> meshTexture_;
-
-	GLuint fboID, rboID;
 
 	Quad quad_;
-	std::shared_ptr<Mesh> mesh_;
 	std::shared_ptr<ShaderBase> sQuadShader_;
-	std::shared_ptr<ShaderBase> skyShader_;
-	std::shared_ptr<ShaderBase> meshShader_;
+	std::shared_ptr<CubeMapScene> cubeMapScene_;
 
 	// timing variables for render loop
 	double t0_, dt_;
@@ -59,17 +43,9 @@ private:
 
 	void initShaders();
 	void reloadShaders();
-	void initTextures();
-	void initEnvMap();
-	void initCameras();
-	void updateCameras();
-
-	void resizeTextures();
-	void calcFov();
 
 	void renderShaderTab();
 	void renderCameraTab();
-	void renderSkyTab();
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);

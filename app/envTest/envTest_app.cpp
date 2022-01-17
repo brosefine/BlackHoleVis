@@ -22,11 +22,8 @@
 EnvApp::EnvApp(int width, int height)
 	: GLApp(width, height, "Black Hole Vis")
 	, cam_({ 0.f, 0.f, 20.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, -1.f })
-	, fboID(0), rboID(0)
-	, mesh_(std::make_shared<Mesh>("sphere.obj"))
-	, sQuadShader_(std::make_shared<Shader>("squad.vs", "squad.fs"))
-	, skyShader_(std::make_shared<Shader>("envTest/sky.vs", "envTest/sky.fs"))
-	, meshShader_(std::make_shared<Shader>("envTest/mesh.vs", "envTest/mesh.fs"))
+	, sQuadShader_(std::make_shared<Shader>("envTest/squad.vs", "envTest/squad.fs"))
+	, cubeMapScene_(std::make_shared<SolarSystemScene>(2048))
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, speedScale_(0.f)
 	, vSync_(true)
@@ -36,11 +33,6 @@ EnvApp::EnvApp(int width, int height)
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
 	reloadShaders();
-	initTextures();
-	initEnvMap();
-	initCameras();
-
-	//initShaders();
 }
 
 void EnvApp::renderContent() 
@@ -54,7 +46,6 @@ void EnvApp::renderContent()
 	cam_.mouseInput(window_.getPtr());
 
 	if (window_.hasChanged()) {
-		resizeTextures();
 		cam_.update(window_.getWidth(), window_.getHeight());
 
 	} else if (cam_.hasChanged()) {
@@ -62,45 +53,7 @@ void EnvApp::renderContent()
 	}
 
 
-	// render to cubemap
-	/*
-	*/
-	glBindFramebuffer(GL_FRAMEBUFFER, fboID);
-	glViewport(0, 0, envMap_->getWidth(), envMap_->getHeight());
-	updateCameras();
-	glClear(GL_DEPTH_BUFFER_BIT);
-	for (unsigned int i = 0; i < 6; ++i) {
-
-		GLenum face = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, face, envMap_->getTexId(), 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, face, envDepthMap_->getTexId(), 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-
-		envCameras_.at(i)->use(envMap_->getWidth(), envMap_->getHeight());
-
-		glActiveTexture(GL_TEXTURE0);
-		meshTexture_->bind();
-
-		meshShader_->use();
-	
-		static float rotAngle = 0;
-		rotAngle += speedScale_ * dt_;
-		glm::mat4 earthModel = glm::rotate(glm::radians(rotAngle), glm::vec3(0, 1, 0)) * glm::translate(glm::vec3(10, 0, 0)) * glm::mat4(1);
-		meshShader_->setUniform("modelMatrix", earthModel);
-		mesh_->draw(GL_TRIANGLES);
-
-		glm::mat4 moonModel = earthModel * glm::scale(glm::vec3(0.2f)) * earthModel;
-		meshShader_->setUniform("modelMatrix", moonModel);
-		mesh_->draw(GL_TRIANGLES);
-
-		glActiveTexture(GL_TEXTURE0);
-		skyTexture_->bind();
-
-		skyShader_->use();
-		quad_.draw(GL_TRIANGLES);
-	}
-	envMap_->generateMipMap();
+	cubeMapScene_->render(cam_.getPosition(), dt_);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glViewport(0, 0, window_.getWidth(), window_.getHeight());
@@ -108,118 +61,18 @@ void EnvApp::renderContent()
 
 	cam_.use(window_.getWidth(), window_.getHeight());
 
+	sQuadShader_->use();
+
 	glActiveTexture(GL_TEXTURE0);
-	envMap_->bind();
+	cubeMapScene_->bindEnv();
 
-	skyShader_->use();
+
 	quad_.draw(GL_TRIANGLES);
-}
-
-void EnvApp::initShaders() {
 }
 
 void EnvApp::reloadShaders() {
 	sQuadShader_->reload();
-	meshShader_->reload();
-	skyShader_->reload();
-	skyShader_->setBlockBinding("camera", CAMBINDING);
-	meshShader_->setBlockBinding("camera", CAMBINDING);
-}
-
-void EnvApp::initTextures() {
-	meshTexture_ = std::make_shared<Texture2D>("Earthmap.jpg");
-
-	/*
-	std::vector<std::string> skyFaces = { "milkyway2048/right.png", "milkyway2048/left.png", "milkyway2048/top.png", "milkyway2048/bottom.png", "milkyway2048/front.png", "milkyway2048/back.png" };
-	*/
-	std::vector<std::string> skyFaces{
-		"gradient/right.png",
-		"gradient/left.png",
-		"gradient/top.png",
-		"gradient/bottom.png",
-		"gradient/front.png",
-		"gradient/back.png"
-	};
-	skyTexture_ = std::make_shared<CubeMap>(skyFaces);
-
-}
-
-void EnvApp::initEnvMap(){
-	int texSize = 2048;
-	// init empty Cubemap
-	envMap_ = std::make_shared<CubeMap>(texSize, texSize);
-	glTextureStorage2D(envMap_->getTexId(), 1, GL_RGB32F,
-		texSize, texSize);
-	envMap_->generateMipMap();
-	std::vector<std::pair<GLenum, GLint>> texParametersi = {
-	{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
-	{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
-	{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
-	{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
-	{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
-	};
-	envMap_->setParam(texParametersi);
-	envMap_->setParam(GL_TEXTURE_MAX_ANISOTROPY, 10.0f);
-
-	// init empty Depth Cubemap
-	envDepthMap_ = std::make_shared<CubeMap>(texSize, texSize);
-	glTextureStorage2D(envDepthMap_->getTexId(), 1, GL_DEPTH24_STENCIL8,
-		texSize, texSize);
-	envDepthMap_->generateMipMap();
-	texParametersi = {
-	{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
-	{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
-	{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
-	{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
-	{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
-	};
-	envDepthMap_->setParam(texParametersi);
-	// create FBO
-	glGenFramebuffers(1, &fboID);
-	glBindFramebuffer(GL_FRAMEBUFFER, fboID);
-
-	//bind first cube face to fbo
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, envMap_->getTexId(), 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X, envDepthMap_->getTexId(), 0);
-
-	/*
-	// depth attachment
-	glGenRenderbuffers(1, &rboID);
-	glBindRenderbuffer(GL_RENDERBUFFER, rboID);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, texSize, texSize);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rboID);
-	*/
-
-	if (!glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-		std::cerr << "sky fbo not complete" << std::endl;
-	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void EnvApp::initCameras(){
-	glm::vec3 camPos = cam_.getPosition();
-	envCameras_.push_back(std::make_shared<SimpleCamera>(camPos, glm::vec3(0.0, -1.0, 0.0), glm::vec3(1.0, 0.0, 0.0), 90.f));
-	envCameras_.push_back(std::make_shared<SimpleCamera>(camPos, glm::vec3(0.0, -1.0, 0.0), glm::vec3(-1.0, 0.0, 0.0), 90.f));
-	envCameras_.push_back(std::make_shared<SimpleCamera>(camPos, glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, 1.0, 0.0), 90.f));
-	envCameras_.push_back(std::make_shared<SimpleCamera>(camPos, glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0), 90.f));
-	envCameras_.push_back(std::make_shared<SimpleCamera>(camPos, glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, 1.0), 90.f));
-	envCameras_.push_back(std::make_shared<SimpleCamera>(camPos, glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0), 90.f));
-
-}
-
-void EnvApp::updateCameras() {
-	glm::vec3 camPos = cam_.getPosition();
-	for (auto& cam : envCameras_)
-		cam->setPos(camPos);
-}
-
-void EnvApp::resizeTextures() {
-	//glm::vec2 dim{ window_.getWidth(), window_.getHeight() };
-	//fboTexture_->resize(dim.x, dim.y);
-}
-
-void EnvApp::calcFov(){
+	sQuadShader_->setBlockBinding("camera", CAMBINDING);
 }
 
 void EnvApp::renderGui() {
@@ -254,6 +107,10 @@ void EnvApp::renderGui() {
 		}
 		if (ImGui::BeginTabItem("Camera Settings")) {
 			renderCameraTab();
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Scene Settings")) {
+			cubeMapScene_->renderGui();
 			ImGui::EndTabItem();
 		}
 	}
