@@ -8,8 +8,7 @@
 
 
 SchwarzschildCamera::SchwarzschildCamera()
-    : ubo_(0)
-    , velocityRTP_(0, 0, 0)
+    : velocityRTP_(0, 0, 0)
     , positionXYZ_(1, 1, 1)
     , prevPositionXYZ_(1, 1, 1)
     , viewDirTP_(VIEWTHETA, VIEWPHI)
@@ -20,19 +19,17 @@ SchwarzschildCamera::SchwarzschildCamera()
     , speedWeights_(0.f)
     , speedSum_(0.f)
     , mouseInitialized_(false)
-    , changed_(true)
     , mouseMotion_(false)
     , lockedMode_(true)
     , friction_(true)
 {
     setPosXYZ(positionXYZ_);
     calculateCameraVectors();
-    bind();
+    init();
 }
 
 SchwarzschildCamera::SchwarzschildCamera(glm::vec3 pos)
-    : ubo_(0)
-    , velocityRTP_(0, 0, 0)
+    : velocityRTP_(0, 0, 0)
     , positionXYZ_(pos)
     , prevPositionXYZ_(pos)
     , viewDirTP_(VIEWTHETA, VIEWPHI)
@@ -41,14 +38,13 @@ SchwarzschildCamera::SchwarzschildCamera(glm::vec3 pos)
     , rotationSpeed_(.1f)
     , speedScale_(1.f)
     , mouseInitialized_(false)
-    , changed_(true)
     , mouseMotion_(false)
     , lockedMode_(true)
     , friction_(true)
 {
     setPosXYZ(positionXYZ_);
     calculateCameraVectors();
-    bind();
+    init();
 }
 
 glm::mat4 SchwarzschildCamera::getProjectionMatrix(float aspect, float near, float far) {
@@ -428,18 +424,9 @@ void SchwarzschildCamera::uploadData(int windowWidth, int windowHeight) {
     
     glm::vec3 front = TPtoXYZ(viewDirTP_);
     glm::mat4 viewRot = glm::lookAt(glm::vec3(0.f), front, glm::vec3(0.f, 1.f, 0.f));
-    data_.projectionInverse_ = glm::inverse(getProjectionMatrix((float)windowWidth / windowHeight) * viewRot);
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data_);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
+    data_.projectionViewInverse_ = glm::inverse(getProjectionMatrix((float)windowWidth / windowHeight) * viewRot);
 
-void SchwarzschildCamera::bind() {
-    glGenBuffers(1, &ubo_);
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), NULL, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    glBindBufferBase(GL_UNIFORM_BUFFER, CAMBINDING, ubo_);
+    uploadUboData();
 }
 
 void SchwarzschildCamera::calculateCameraVectors() {

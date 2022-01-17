@@ -35,6 +35,7 @@ private:
 
 	float rotationSpeedScale_;
 	glm::vec2 rotationTilt_;
+	float sceneScale_;
 
 	void loadTextures();
 	void loadShaders();

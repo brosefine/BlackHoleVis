@@ -71,6 +71,8 @@ BHVApp::BHVApp(int width, int height)
 	, bloom_(false)
 	, bloomEffect_(width, height, 9)
 	, sQuadShader_("squad.vs", "squad.fs")
+	, renderEnvironment_(false)
+	, environmentScene_(std::make_shared<SolarSystemScene>(2048))
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
 	, showShaders_(false)
@@ -78,6 +80,7 @@ BHVApp::BHVApp(int width, int height)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
+	cam_.use(window_.getWidth(), window_.getHeight());
 	initShaders();
 	initTextures();
 	initCubeMaps();
@@ -94,6 +97,11 @@ void BHVApp::renderContent()
 		calculateCameraOrbit();
 	} else {
 		cam_.processInput(window_.getPtr(), dt_);
+	}
+
+	if (renderEnvironment_) {
+		environmentScene_->render(cam_.getPositionXYZ(), dt_);
+		cam_.use(window_.getWidth(), window_.getHeight(), false);
 	}
 
 	if (window_.hasChanged()) {
@@ -115,8 +123,15 @@ void BHVApp::renderContent()
 	shader_->setUniform("dt", (float)tPassed_);
 
 	glActiveTexture(GL_TEXTURE0);
-	shader_->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
-	currentCubeMap_->bind();
+	if (renderEnvironment_) {
+		shader_->setUniform("gaiaMap", false);
+		environmentScene_->bindEnv();
+	}
+	else {
+		shader_->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
+		currentCubeMap_->bind();
+	}
+
 	glActiveTexture(GL_TEXTURE1);
 	deflectionTexture_->bind();
 	glActiveTexture(GL_TEXTURE2);
@@ -616,6 +631,12 @@ void BHVApp::renderGui() {
 				ImGui::SliderFloat("exposure", &bloomEffect_.exposure_, 0.f, 10.f);
 				ImGui::Checkbox("High contrast", &bloomEffect_.highContrast_);
 			}
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Env Settings")) {
+			ImGui::Checkbox("Render Environment Scene", &renderEnvironment_);
+			if(renderEnvironment_)
+				environmentScene_->renderGui();
 			ImGui::EndTabItem();
 		}
 	}

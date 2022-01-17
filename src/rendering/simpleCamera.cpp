@@ -5,8 +5,7 @@
 #include <rendering/simpleCamera.h>
 
 SimpleCamera::SimpleCamera() 
-	: ubo_(0)
-    , position_({0, 0, 0})
+    : position_({0, 0, 0})
 	, upDir_({0, 1, 0})
 	, yaw_(YAW)
 	, pitch_(PITCH)
@@ -14,7 +13,6 @@ SimpleCamera::SimpleCamera()
 	, translationSpeed_(1.f)
 	, rotationSpeed_(.1f)
     , mouseInitialized_(false)
-    , changed_(true)
     , mouseMotion_(false)
 {
 	calculateCameraVectors();
@@ -29,7 +27,6 @@ SimpleCamera::SimpleCamera(glm::vec3 pos, glm::vec3 up, glm::vec3 front, float f
 	, translationSpeed_(1.f)
 	, rotationSpeed_(.1f)
     , mouseInitialized_(false) 
-    , changed_(true)
     , mouseMotion_(false) 
 {
     setFront(front);
@@ -139,28 +136,9 @@ void SimpleCamera::uploadData(int windowWidth, int windowHeight) {
     data_.camPos_ = getPosition();
     data_.projectionView_ = getProjectionMatrix((float)windowWidth / windowHeight) * getViewMatrix();
     data_.projectionViewInverse_ = glm::inverse(data_.projectionView_);
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data_);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
+    
 
-
-void SimpleCamera::bind() {
-    glBindBufferBase(GL_UNIFORM_BUFFER, CAMBINDING, ubo_);
-}
-
-void SimpleCamera::init() {
-    glGenBuffers(1, &ubo_);
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), NULL, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
-
-// force bind and upload camera data to CAMBINDING
-void SimpleCamera::use(int windowWidth, int windowHeight) {
-    bind();
-    if(changed_)
-        update(windowWidth, windowHeight);
+    uploadUboData();
 }
 
 void SimpleCamera::calculateCameraVectors() {

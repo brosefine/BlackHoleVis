@@ -3,7 +3,8 @@ layout (location = 0) in vec3 aPos;
 
 layout (std140) uniform camera
 {
-    mat4 projectionInverse;
+    mat4 projectionView;
+    mat4 projectionViewInverse;
     vec3 camPos;
 };
 

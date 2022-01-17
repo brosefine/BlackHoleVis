@@ -1,24 +1,15 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <rendering/UBOCamera.h>
 
 #include <vector>
 
-const float YAW = -90.f;
-const float PITCH = 0.f;
-const float FOV = 45.f;
-const float NEAR = 1.f;
-const float FAR = 100.f;
-
-class SimpleCamera {
-	struct CameraData {
-		glm::mat4 projectionView_;
-		glm::mat4 projectionViewInverse_;
-		glm::vec3 camPos_;
-	};
+class SimpleCamera : public UBOCamera{
+	inline static float YAW = -90.f;
+	inline static float PITCH = 0.f;
+	inline static float FOV = 45.f;
+	inline static float NEAR = 1.f;
+	inline static float FAR = 1000.f;
 
 public:
 
@@ -33,7 +24,7 @@ public:
 	glm::vec3 getUp() const { return up_; }
 
 	bool hasChanged() const { return changed_; }
-	void update(int windowWidth, int windowHeight);
+	void update(int windowWidth, int windowHeight) override;
 
 	void setSpeed(float speed) { translationSpeed_ = speed; }
 	void setFront(glm::vec3 front);
@@ -43,16 +34,8 @@ public:
 	void keyBoardInput(GLFWwindow *window, float dt);
 	void mouseInput(GLFWwindow* window);
 
-	void use(int windowWidth, int windowHeight);
-
 private:
 
-	// camera ubo
-
-	unsigned int ubo_;
-	CameraData data_;
-	void init();
-	void bind();
 	void uploadData(int windowWidth, int windowHeight);
 
 	// camera
@@ -77,6 +60,5 @@ private:
 	double lastMouseY_;
 	bool mouseInitialized_;
 
-	bool changed_;
 	bool mouseMotion_;
 };

@@ -1,30 +1,23 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/constants.hpp>
+#include <rendering/UBOCamera.h>
+
 #include <boost/json.hpp>
+
 
 #include <vector>
 #include <deque>
 #include <algorithm>
 
-const float PI = glm::pi<float>();
-const float HALFPI = glm::half_pi<float>();
-const float VIEWPHI = HALFPI;
-const float VIEWTHETA = HALFPI;
-const float FOV = glm::radians(45.f);
-const float NEAR = 1.f;
-const float FAR = 100.f;
-const int SMOOTHSPEED = 10;
-
-class SchwarzschildCamera {
-	struct CameraData {
-		glm::mat4 projectionInverse_;
-		glm::vec3 camPos_;
-	};
+class SchwarzschildCamera : public UBOCamera {
+	inline static float PI = glm::pi<float>();
+	inline static float HALFPI = glm::half_pi<float>();
+	inline static float VIEWPHI = HALFPI;
+	inline static float VIEWTHETA = HALFPI;
+	inline static float FOV = glm::radians(45.f);
+	inline static float NEAR = 1.f;
+	inline static float FAR = 100.f;
+	inline static int SMOOTHSPEED = 10;
 
 public:
 
@@ -58,7 +51,7 @@ public:
 	glm::mat4 getBoostFromVel(glm::vec3 dir, float speed) const;
 
 	bool hasChanged() const { return changed_; }
-	void update(int windowWidth, int windowHeight);
+	void update(int windowWidth, int windowHeight) override;
 
 	void setSpeed(float speed) { translationSpeed_ = speed; }
 	void setViewDirXYZ(glm::vec3 dir);
@@ -78,11 +71,6 @@ public:
 
 private:
 
-	// camera ubo
-
-	unsigned int ubo_;
-	CameraData data_;
-	void bind();
 	void uploadData(int windowWidth, int windowHeight);
 
 	// camera
@@ -134,7 +122,6 @@ private:
 	double lastMouseY_;
 	bool mouseInitialized_;
 
-	bool changed_;
 	bool mouseMotion_;
 	// switch between two camera modes:
 	// 0 = free mode, wasd = motion, mouse = rotate camera

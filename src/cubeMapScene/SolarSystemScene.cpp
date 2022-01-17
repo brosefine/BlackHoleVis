@@ -7,6 +7,7 @@
 
 SolarSystemScene::SolarSystemScene()
 	: CubeMapScene()
+	, sceneScale_(1.f)
 	, rotationSpeedScale_(0.f)
 	, rotationTilt_(0.f)
 {}
@@ -17,6 +18,7 @@ SolarSystemScene::SolarSystemScene(int size)
 	, meshTextures_()
 	, meshColors_()
 	, modelMatrices_()
+	, sceneScale_(1.f)
 	, rotationSpeedScale_(1.f)
 	, rotationTilt_(-0.4f)
 {
@@ -47,7 +49,7 @@ void SolarSystemScene::render(glm::vec3 camPos, float dt)
 		for (auto const& [objName, objTransform] : modelMatrices_) {
 
 			meshShader_->use();
-			meshShader_->setUniform("modelMatrix", objTransform);
+			meshShader_->setUniform("modelMatrix", glm::scale(glm::vec3(sceneScale_)) * objTransform);
 			
 			glActiveTexture(GL_TEXTURE0);
 			bool useTexture = false;
@@ -84,8 +86,9 @@ void SolarSystemScene::render(glm::vec3 camPos, float dt)
 void SolarSystemScene::renderGui()
 {
 	ImGui::Text("Solar System Scene Settings");
+	ImGui::SliderFloat("Scene Scale", &sceneScale_, 0.f, 10.f);
 	ImGui::SliderFloat("Rotation Scale", &rotationSpeedScale_, 0.f, 10.f);
-	ImGui::SliderFloat2("Rotation Tilt Z", glm::value_ptr(rotationTilt_), -1.f, 1.f);
+	ImGui::SliderFloat2("Rotation Tilt X,Z", glm::value_ptr(rotationTilt_), -1.f, 1.f);
 	if (ImGui::Button("Reload Shaders"))
 		reloadShaders();
 	ImGui::Separator();
@@ -134,7 +137,7 @@ void SolarSystemScene::updateModelTransforms(float dt)
 	// Earth
 	const float earthDist = 10.f, earthScale = 1.f, earthRotSpeed = 1.f, earthOrbitSpeed = 1.f;
 	modelMatrices_[Objects::EARTH] = 
-		//glm::rotate(glm::radians(earthOrbitSpeed * rotAngle), glm::vec3(0, 1, 0)) * 
+		glm::rotate(glm::radians(earthOrbitSpeed * rotAngle), glm::vec3(0, 1, 0)) * 
 		glm::translate(glm::vec3(earthDist, 0, 0)) * 
 		glm::rotate(glm::radians(earthRotSpeed * rotAngle), glm::vec3(rotationTilt_.x, 1, rotationTilt_.y)) * 
 		glm::mat4(1);
@@ -143,7 +146,7 @@ void SolarSystemScene::updateModelTransforms(float dt)
 	const float moonDist = 3.f, moonScale = 0.2f, moonRotSpeed = 1.5f, moonOrbitSpeed = 1.5f;
 	modelMatrices_[Objects::MOON] = 
 		modelMatrices_[Objects::EARTH] * 
-		//glm::rotate(glm::radians(moonOrbitSpeed * rotAngle), glm::vec3(0, 1, 0)) * 
+		glm::rotate(glm::radians(moonOrbitSpeed * rotAngle), glm::vec3(0, 1, 0)) * 
 		glm::translate(glm::vec3(moonDist, 0, 0)) * 
 		glm::scale(glm::vec3(moonScale)) * 
 		glm::rotate(glm::radians(moonRotSpeed * rotAngle), glm::vec3(rotationTilt_.x, 1, rotationTilt_.y)) * 
@@ -152,7 +155,7 @@ void SolarSystemScene::updateModelTransforms(float dt)
 	// Mars
 	const float marsDist = 20.f, marsScale = 0.8f, marsRotSpeed = 0.9f, marsOrbitSpeed = 0.7f;
 	modelMatrices_[Objects::MARS] = 
-		//glm::rotate(glm::radians(marsOrbitSpeed * rotAngle), glm::vec3(0, 1, 0)) * 
+		glm::rotate(glm::radians(marsOrbitSpeed * rotAngle), glm::vec3(0, 1, 0)) * 
 		glm::translate(glm::vec3(0, 0, -marsDist))  * 
 		glm::scale(glm::vec3(marsScale))  * 
 		glm::rotate(glm::radians(marsRotSpeed * rotAngle), glm::vec3(rotationTilt_.x, 1, rotationTilt_.y)) * 

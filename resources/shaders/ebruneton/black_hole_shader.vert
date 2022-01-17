@@ -4,7 +4,8 @@ layout (location = 1) in vec2 aTexCoords;
 
 layout (std140) uniform camera
 {
-    mat4 projectionInverse;
+    mat4 projectionView;
+    mat4 projectionViewInverse;
     vec3 camPos;
 };
 
@@ -15,7 +16,7 @@ out vec2 TexCoords;
 
 void main()
 {
-    viewDir = normalize(vec3(projectionInverse * vec4(aPos, 1.0)));
+    viewDir = normalize(vec3(projectionViewInverse * vec4(aPos, 1.0)));
     cameraPos = camPos;
     TexCoords = aTexCoords;    
 

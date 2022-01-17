@@ -15,6 +15,7 @@
 #include <objects/blackHole.h>
 #include <objects/accretionDisk.h>
 #include <gui/gui.h>
+#include <cubeMapScene/SolarSystemScene.h>
 #include "guiElements.h"
 
 #define MAX_STAR_LOD 6
@@ -66,6 +67,9 @@ private:
 	Shader sQuadShader_;
 	std::shared_ptr<ShaderGui> shaderElement_;
 	std::shared_ptr<ShaderBase> shader_;
+
+	bool renderEnvironment_;
+	std::shared_ptr<CubeMapScene> environmentScene_;
 
 	// timing variables for render loop
 	double t0_, dt_;
