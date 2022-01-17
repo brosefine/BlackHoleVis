@@ -110,8 +110,8 @@ void SolarSystemScene::loadTextures()
 
 void SolarSystemScene::loadShaders()
 {
-	skyShader_ = std::make_shared<Shader>("envTest/sky.vs", "envTest/sky.fs");
-	meshShader_ = std::make_shared<Shader>("envTest/mesh.vs", "envTest/mesh.fs");
+	skyShader_ = std::make_shared<Shader>("cubeMapScene/sky.vs", "cubeMapScene/sky.fs");
+	meshShader_ = std::make_shared<Shader>("cubeMapScene/mesh.vs", "cubeMapScene/mesh.fs");
 	reloadShaders();
 }
 
