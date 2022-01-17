@@ -12,7 +12,7 @@
 #include <rendering/texture.h>
 #include <rendering/mesh.h>
 #include <gui/gui.h>
-#include "CubeMapScene.h"
+#include <cubeMapScene/SolarSystemScene.h>
 
 class EnvApp : public GLApp{
 public:
