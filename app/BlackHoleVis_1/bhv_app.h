@@ -33,8 +33,9 @@ private:
 	float camOrbitAngle_;
 
 	Quad quad_;
-	CubeMap sky_;
 
+	std::vector<std::pair<std::string, std::shared_ptr<CubeMap>>> cubemaps_;
+	std::shared_ptr<CubeMap> currentCubeMap_;
 	FBOTexture fboTexture_;
 	std::vector<std::shared_ptr<FBOTexture>> bloomTextures_;
 	Shader sQuadShader_;
@@ -77,12 +78,11 @@ private:
 	void renderCameraTab();
 	void renderDiskWindow();
 	void renderComputeWindow();
+	void renderSkyTab();
+
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);
-
-	void initFrameTimeMeasure();
-	void finalizeFrameTimeMeasure();
 
 	void printComputeInfo();
 	void updateComputeUniforms();

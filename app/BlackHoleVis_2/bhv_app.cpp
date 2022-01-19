@@ -72,7 +72,6 @@ BHVApp::BHVApp(int width, int height)
 	, bloomEffect_(width, height, 9)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, renderEnvironment_(false)
-	, environmentScene_(std::make_shared<SolarSystemScene>(2048))
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
 	, showShaders_(false)
@@ -84,6 +83,7 @@ BHVApp::BHVApp(int width, int height)
 	initShaders();
 	initTextures();
 	initCubeMaps();
+	initScenes();
 }
 
 void BHVApp::renderContent() 
@@ -99,10 +99,12 @@ void BHVApp::renderContent()
 		cam_.processInput(window_.getPtr(), dt_);
 	}
 
-	if (renderEnvironment_) {
-		environmentScene_->render(cam_.getPositionXYZ(), dt_);
+	static int turns = 0; 
+	if (turns == 0 && renderEnvironment_) {
+		currentEnvironmentScene_->render(cam_.getPositionXYZ(), dt_);
 		cam_.use(window_.getWidth(), window_.getHeight(), false);
 	}
+	//turns = ++turns % 3; // update env only every 3rd frame
 
 	if (window_.hasChanged()) {
 		resizeTextures();
@@ -125,7 +127,7 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE0);
 	if (renderEnvironment_) {
 		shader_->setUniform("gaiaMap", false);
-		environmentScene_->bindEnv();
+		currentEnvironmentScene_->bindEnv();
 	}
 	else {
 		shader_->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
@@ -343,6 +345,16 @@ void BHVApp::initCubeMaps(){
 	};
 	cubemaps_.push_back({ "Gradient Grid", std::make_shared<CubeMap>(grid) });
 
+	std::vector<std::string> bwgrid{
+		"grid/right.png",
+		"grid/right.png",
+		"grid/top.png",
+		"grid/bottom.png",
+		"grid/right.png",
+		"grid/right.png"
+	};
+	cubemaps_.push_back({ "Grid", std::make_shared<CubeMap>(bwgrid) });
+
 	std::vector<std::pair<GLenum, GLint>> texParametersi{
 		{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
 		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
@@ -356,6 +368,13 @@ void BHVApp::initCubeMaps(){
 	currentCubeMap_ = cubemaps_.at(0).second;
 	loadStarTextures();
 	cubemaps_.push_back({ "Gaia Sky" , galaxyTexture_ });
+}
+
+void BHVApp::initScenes()
+{
+	environmentScenes_.insert({ "Solar System", std::make_shared<SolarSystemScene>(2048) });
+	environmentScenes_.insert({ "Checker Sphere", std::make_shared<CheckerSphereScene>(2048) });
+	currentEnvironmentScene_ = environmentScenes_["Solar System"];
 }
 
 void BHVApp::loadStarTextures() {
@@ -634,9 +653,7 @@ void BHVApp::renderGui() {
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Env Settings")) {
-			ImGui::Checkbox("Render Environment Scene", &renderEnvironment_);
-			if(renderEnvironment_)
-				environmentScene_->renderGui();
+			renderSceneTab();
 			ImGui::EndTabItem();
 		}
 	}
@@ -751,6 +768,26 @@ void BHVApp::renderSkyTab() {
 	if(maxSample < 0) glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxSample);
 	if (skyChange || ImGui::SliderFloat("#Samples", &aniSample, 1.0f, maxSample)) {
 		currentCubeMap_->setParam(GL_TEXTURE_MAX_ANISOTROPY, aniSample);
+	}
+}
+
+void BHVApp::renderSceneTab()
+{
+	ImGui::Checkbox("Render Environment Scene", &renderEnvironment_);
+	if (renderEnvironment_) {
+
+		if (ImGui::BeginListBox("")) {
+
+			for (auto const& [name, scene] : environmentScenes_) {
+				if (ImGui::Selectable(name.c_str(), false)) {
+					currentEnvironmentScene_ = scene;
+				}
+			}
+			ImGui::EndListBox();
+		}
+		ImGui::Separator();
+		if(currentEnvironmentScene_)
+			currentEnvironmentScene_->renderGui();
 	}
 }
 

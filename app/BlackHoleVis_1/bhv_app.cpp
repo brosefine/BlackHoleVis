@@ -24,7 +24,6 @@ BHVApp::BHVApp(int width, int height)
 	, camOrbitRad_(10.f)
 	, camOrbitSpeed_(0.5f)
 	, camOrbitAngle_(0.f)
-	, sky_({ "milkyway2048/right.png", "milkyway2048/left.png", "milkyway2048/top.png", "milkyway2048/bottom.png", "milkyway2048/front.png", "milkyway2048/back.png" })
 	, fboTexture_(width, height)
 	, sQuadShader_("squad.vs", "squad.fs")
 	, fboScale_(1)
@@ -44,6 +43,7 @@ BHVApp::BHVApp(int width, int height)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
+	cam_.use(window_.getWidth(), window_.getHeight());
 	initShaders();
 	initTextures();
 }
@@ -76,7 +76,7 @@ void BHVApp::renderContent()
 	getCurrentShader()->use();
 
 	glActiveTexture(GL_TEXTURE0);
-	sky_.bind();
+	currentCubeMap_->bind();
 
 	glActiveTexture(GL_TEXTURE1);
 	diskTextures_.at(selectedTexture_)->bind();
@@ -160,6 +160,28 @@ void BHVApp::initTextures() {
 
 	bloomTextures_.push_back(std::make_shared<FBOTexture>(window_.getWidth(), window_.getHeight()));
 	bloomTextures_.push_back(std::make_shared<FBOTexture>(window_.getWidth(), window_.getHeight()));
+
+	std::vector<std::string> mwPaths{
+		"milkyway2048/right.png",
+		"milkyway2048/left.png",
+		"milkyway2048/top.png",
+		"milkyway2048/bottom.png",
+		"milkyway2048/front.png",
+		"milkyway2048/back.png"
+	};
+	cubemaps_.push_back({ "Milky Way", std::make_shared<CubeMap>(mwPaths) });
+
+	std::vector<std::string> grid{
+		"grid/right.png",
+		"grid/right.png",
+		"grid/top.png",
+		"grid/bottom.png",
+		"grid/right.png",
+		"grid/right.png"
+	};
+	cubemaps_.push_back({ "Grid", std::make_shared<CubeMap>(grid) });
+	currentCubeMap_ = cubemaps_.at(0).second;
+
 }
 
 void BHVApp::resizeTextures() {
@@ -235,6 +257,10 @@ void BHVApp::renderGui() {
 		}
 		if (ImGui::BeginTabItem("Accretion Disk Settings")) {
 			renderDiskWindow();
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Sky Settings")) {
+			renderSkyTab();
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Compute Shader Settings")) {
@@ -314,6 +340,17 @@ void BHVApp::renderCameraTab() {
 	
 		if (xChange || yChange || zChange)
 			cam_.setPos(camPos);
+	}
+}
+
+void BHVApp::renderSkyTab() {
+	ImGui::Text("Select CubeMap");
+	if (ImGui::BeginListBox("")) {
+		for (auto const& [name, map] : cubemaps_) {
+			if (ImGui::Selectable(name.c_str(), false)) {
+				currentCubeMap_ = map;
+			}
+		}
 	}
 }
 

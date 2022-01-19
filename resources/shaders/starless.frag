@@ -93,12 +93,12 @@ void main() {
         }
         #endif //ERLYTERM
          
-        #ifdef CHECKEREDHOR
-        if(horizonIntersect (lightPos, -lightVel*step, rs, horizonColor)){
-            FragColor.rgb += (1.0 - FragColor.a) * horizonColor.rgb;
-        #else 
+        //#ifdef CHECKEREDHOR
+        //if(horizonIntersect (lightPos, -lightVel*step, rs, horizonColor)){
+            //FragColor.rgb += (1.0 - FragColor.a) * horizonColor.rgb;
+        //#else 
         if(length(lightPos) <= rs){
-        #endif //CHECKEREDHOR
+        //#endif //CHECKEREDHOR
             return;
         }
 

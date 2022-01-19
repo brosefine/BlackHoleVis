@@ -16,6 +16,7 @@
 #include <objects/accretionDisk.h>
 #include <gui/gui.h>
 #include <cubeMapScene/SolarSystemScene.h>
+#include <cubeMapScene/CheckerSphereScene.h>
 #include "guiElements.h"
 
 #define MAX_STAR_LOD 6
@@ -69,7 +70,8 @@ private:
 	std::shared_ptr<ShaderBase> shader_;
 
 	bool renderEnvironment_;
-	std::shared_ptr<CubeMapScene> environmentScene_;
+	std::map<std::string, std::shared_ptr<CubeMapScene>> environmentScenes_;
+	std::shared_ptr<CubeMapScene> currentEnvironmentScene_;
 
 	// timing variables for render loop
 	double t0_, dt_;
@@ -84,6 +86,7 @@ private:
 	void initShaders();
 	void initTextures();
 	void initCubeMaps();
+	void initScenes();
 	void resizeTextures();
 	void loadStarTextures();
 	void loadStarTile(int level, int ti, int tj, int face, int faceSize, int tileSize, GLenum target, std::string path);
@@ -94,6 +97,7 @@ private:
 	void renderShaderTab();
 	void renderCameraTab();
 	void renderSkyTab();
+	void renderSceneTab();
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);

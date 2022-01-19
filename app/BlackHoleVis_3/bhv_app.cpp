@@ -66,6 +66,7 @@ BHVApp::BHVApp(int width, int height)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
+	cam_.use(window_.getWidth(), window_.getHeight(), false);
 	initShaders();
 	initTextures();
 	calcFov();
@@ -201,7 +202,7 @@ void BHVApp::initTextures() {
 
 #pragma region inverse radius
 	// create inverse radius texture
-	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius.dat");
+	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius_256x256.dat");
 	if (invRadiusData.size() != 0) {
 
 		TextureParams params;
