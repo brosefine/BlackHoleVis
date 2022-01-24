@@ -48,7 +48,7 @@ in vec2 TexCoords;
 layout(binding = 0) uniform samplerCube cubeMap;
 layout(binding = 1) uniform sampler2D deflection_texture;
 layout(binding = 2) uniform sampler2D inv_radius_texture;
-layout(binding = 3) uniform sampler2D disk_texture;
+layout(binding = 3) uniform sampler2D jet_texture;
 layout(binding = 4) uniform sampler2D black_body_texture;
 layout(binding = 5) uniform sampler3D doppler_texture;
 layout(binding = 6) uniform samplerCube star_texture;
@@ -61,6 +61,9 @@ uniform vec3 cam_front;
 uniform vec3 cam_right;
 uniform vec4 ks;
 uniform float dt;
+
+uniform float jet_angle;
+uniform vec4 jet_size; // x = min, y = max, z = umin, w = umax
 
 uniform bool pinhole = true;
 uniform bool gaiaMap;
@@ -99,14 +102,6 @@ float GetUapsisFromEsquare(float e_square) {
 }
 
 float GetRayDeflectionTextureUFromEsquare(float e_square) {
-  /*
-  if (e_square < kMu) {
-    return 0.5 - sqrt(sqrt(-log(1.0 - e_square / kMu) * (1.0 / 200.0)));
-  } else {
-    return 0.5 + sqrt(sqrt(-log(1.0 - kMu / e_square) * (1.0 / 200.0)));
-  }
-  */
-
   if (e_square < kMu) {
     return 0.5 - sqrt(-log(1.0 - e_square / kMu) * (1.0 / 50.0));
   } else {
@@ -146,7 +141,7 @@ vec2 LookupRayDeflection(float e_square, float u,
 }
 
 float GetRayInverseRadiusTextureUFromEsquare(float e_square) {
-    return 1.0 / (1.0 + 2.0 * e_square);
+    return 1.0 / (1.0 + 6.0 * e_square);
 }
 
 float GetPhiUbFromEsquare(float e_square) {
@@ -160,7 +155,9 @@ vec2 LookupRayInverseRadius(float e_square, float phi) {
         texDim.x);
     float tex_v = GetTextureCoordFromUnitRange(phi / GetPhiUbFromEsquare(e_square),
         texDim.y);
-    return texture(inv_radius_texture, vec2(tex_u, tex_v)).xy;
+    vec2 result = texture(inv_radius_texture, vec2(tex_u, tex_v)).xy;
+    //if(e_square < 1e-3) result.x = sqrt(e_square) * sin(phi);
+    return result * sqrt(e_square);
 }
 
 vec3 Doppler(vec3 color, float doppler_factor) {
@@ -174,12 +171,64 @@ vec3 Doppler(vec3 color, float doppler_factor) {
     return sum * texture(doppler_texture, dopplerTexCoord).rgb;
 }
 
-float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
-    out float u0, out float phi0, out float t0, 
-    out float u1, out float phi1, out float t1){
+// s = sign(u_dot)
+void Intersect(float s, float u, float e_square, float deflection, float deflection_apsis, float delta, float alpha,
+    out float phi0, out float phi1, out float u0, out float u1) {
+
+    // if ray direction is pointing away from BH, pi = phi + delta + deflection
+    float phi = deflection + (s > 0 ? pi - delta : delta) + s * alpha;
+    float phi_apsis = deflection_apsis + pi / 2.0;
+    // first intersection
+    phi0 = mod(phi, pi);
+    if (phi0 < phi_apsis) {
+        vec2 ui0 =
+          LookupRayInverseRadius(e_square, phi0);
+        // s > 0 if ray looks towards bh
+        // ui0.x > u if hit is closer to black hole
+        float side = s * (ui0.x - u);
+        // if light ray direction + hit point match, or if udot = 0
+        if ((side > 1e-3 ) || (side > -1e-3 && alpha < delta)) {
+            u0 = ui0.x;
+            phi0 = alpha + phi - phi0;
+        }
+    }
+    // second intersection
+    phi = 2.0 * phi_apsis - phi;
+    phi1 = mod(phi, pi);
+    if (e_square < kMu && s == 1.0 && phi1 < phi_apsis) {
+        vec2 ui1 =
+          LookupRayInverseRadius(e_square, phi1);
+        u1 = ui1.x;
+        phi1 = alpha + phi - phi1;
+    }
+}
+
+#ifdef JET
+float RayTrace(float u, float u_dot, float e_square, float delta, 
+    float disk_alpha, float front_jet_alpha, float back_jet_alpha, bool jet_hit,
+    out float disk_u0, out float disk_phi0,
+    out float disk_u1, out float disk_phi1,
+    out float front_jet_u0, out float front_jet_phi0,  
+    out float front_jet_u1, out float front_jet_phi1,
+    out float back_jet_u0, out float back_jet_phi0,  
+    out float back_jet_u1, out float back_jet_phi1){
+#else
+float RayTrace(float u, float u_dot, float e_square, float delta, 
+    float disk_alpha, 
+    out float disk_u0, out float disk_phi0,
+    out float disk_u1, out float disk_phi1){
+#endif // JET
     
-    u0 = -1.0;
-    u1 = -1.0;
+    disk_u0 = -1.0;
+    disk_u1 = -1.0;
+
+    #ifdef JET
+    front_jet_u0 = -1.0;
+    front_jet_u1 = -1.0;
+    back_jet_u0 = -1.0;
+    back_jet_u1 = -1.0;
+    #endif // JET
+
     if (e_square < kMu && u > 2.0 / 3.0) {
         return -1.0 * rad;
     }
@@ -194,40 +243,25 @@ float RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
 
     // Compute the accretion disc intersections.
     float s = sign(u_dot);
-    // if ray direction is pointing away from BH, pi = phi + delta + deflection
-    float phi = deflection.x + (s > 0 ? pi - delta : delta) + s * alpha;
-    float phi_apsis = deflection_apsis.x + pi / 2.0;
-    // first intersection
-    phi0 = mod(phi, pi);
-    if (phi0 < phi_apsis) {
-        vec2 ui0 =
-          LookupRayInverseRadius(e_square, phi0);
-        // s > 0 if ray looks towards bh
-        // ui0.x > u if hit is closer to black hole
-        float side = s * (ui0.x - u);
-        // if light ray direction + hit point match, or if udot = 0
-        if ((side > 1e-3 ) || (side > -1e-3 && alpha < delta)) {
-            u0 = ui0.x;
-            phi0 = alpha + phi - phi0;
-            t0 = s * (ui0.y - deflection.y);
-        }
-    }
-    // second intersection
-    phi = 2.0 * phi_apsis - phi;
-    phi1 = mod(phi, pi);
-    if (e_square < kMu && s == 1.0 && phi1 < phi_apsis) {
-        vec2 ui1 =
-          LookupRayInverseRadius(e_square, phi1);
-        u1 = ui1.x;
-        phi1 = alpha + phi - phi1;
-        t1 = 2.0 * deflection_apsis.y - ui1.y - deflection.y;
-    }
+    Intersect(s, u, e_square, deflection.x, deflection_apsis.x, delta, disk_alpha,
+        disk_phi0, disk_phi1, disk_u0, disk_u1);
+    
+#ifdef JET
+    if(!jet_hit) return ray_deflection;
 
+    Intersect(s, u, e_square, deflection.x, deflection_apsis.x, delta, front_jet_alpha,
+        front_jet_phi0, front_jet_phi1, front_jet_u0, front_jet_u1);
+
+    Intersect(s, u, e_square, deflection.x, deflection_apsis.x, delta, back_jet_alpha,
+        back_jet_phi0, back_jet_phi1, back_jet_u0, back_jet_u1);
+
+    
+#endif // JET
     return ray_deflection;
 }
 
 #ifdef DISC
-vec4 DiscColor(vec2 intersect, float timeDelta, bool top, 
+vec4 DiscColor(vec2 intersect, float timeDelta,
     float doppler) {
     float r_intersect = length(intersect);
     // scale interesction point to dimension of disc particles (3-13)
@@ -349,6 +383,27 @@ vec3 StarColor(vec3 dir, float lensing_amplification_factor,
 }
 #endif
 
+#ifdef JET
+vec4 JetColor(vec3 intersect, float timeDelta) {
+
+    float r_intersect = length(intersect);
+    float texV = 1.0 - (r_intersect - jet_size.x)/(jet_size.y-jet_size.x);
+    float texU = atan(intersect.y, intersect.x) + pi;
+    float texU1 = texU - timeDelta/5.0;
+    float texU2 = texU + timeDelta/4.0;
+    texU1 = mod(texU1, 2.0*pi) / (2.0 * pi);
+    texU2 = 1.0 - mod(texU2, 2.0*pi) / (2.0 * pi);
+    vec3 color1 = vec3(0.6, 0.8, 1.0) * max_brightness; 
+    vec3 color2 = vec3(0.8, 1, 0.6)* max_brightness; 
+    float alpha1 = texture(jet_texture, vec2(texU1, texV)).r * texture(noise_texture, vec2(r_intersect/2.0, (texU - timeDelta/4.0)/2.0)).r; 
+    float alpha2 = texture(jet_texture, vec2(texU2, texV)).r * texture(noise_texture, vec2(r_intersect/3.0, (texU + timeDelta/4.0)/2.0)).r;
+    float alpha =  smoothstep(jet_size.x, jet_size.x * 2.5, r_intersect) 
+        *  smoothstep(jet_size.y, jet_size.y / 2.5, r_intersect);
+
+    return vec4(color1/alpha2 + color2/alpha1, alpha*alpha1*alpha2);
+}
+#endif
+
 vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     vec3 e_x_prime = normalize(pos);
     vec3 e_z_prime = normalize(cross(e_x_prime, dir));
@@ -361,17 +416,44 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     }
 
 
-    float alpha = acos(clamp(dot(e_x_prime, t), -1.0, 1.0));
+    float disk_alpha = acos(clamp(dot(e_x_prime, t), -1.0, 1.0));
     float delta = acos(clamp(dot(e_x_prime, normalize(dir)), -1.0, 1.0));
     float u = 1.0 / length(pos);
     float u_dot = -u / tan(delta);
     float e_square = u_dot * u_dot + u * u * (1.0 - u);
     float e = -sqrt(e_square);
 
+    float disk_u0, disk_phi0, disk_u1, disk_phi1;
+#ifndef JET
+    float deflection = RayTrace(u, u_dot, e_square, delta, disk_alpha,
+            disk_u0, disk_phi0, disk_u1, disk_phi1);
+#else
+    float front_jet_alpha, back_jet_alpha;
+    bool jet_hit = false;
 
-    float u0, phi0, t0, u1, phi1, t1;
-    float deflection = RayTrace(u, u_dot, e_square, delta, alpha,
-        u0, phi0, t0, u1, phi1, t1);
+    vec3 z = vec3(0, 0, 1);
+    if ( e_y_prime.z < 0.0 ) z = -z;
+    vec3 z_prime = normalize(z - dot(z, e_z_prime) * e_z_prime);
+    float a = acos(dot(z_prime, e_x_prime));
+    float b = acos(dot(z_prime, z));
+    jet_hit = b <= jet_angle;
+
+    if(jet_hit) {
+
+        float angle_dist = 1.0 - (jet_angle - b)/jet_angle;
+        float f = sqrt(1.0 - (angle_dist*angle_dist));
+        front_jet_alpha = a - jet_angle * f;
+        back_jet_alpha = a + jet_angle * f;
+    } 
+    
+    float front_jet_u0, front_jet_phi0, front_jet_u1, front_jet_phi1;
+    float back_jet_u0, back_jet_phi0, back_jet_u1, back_jet_phi1;
+
+    float deflection = RayTrace(u, u_dot, e_square, delta, disk_alpha, front_jet_alpha, back_jet_alpha, jet_hit,
+        disk_u0, disk_phi0, disk_u1, disk_phi1, 
+        front_jet_u0, front_jet_phi0, front_jet_u1, front_jet_phi1,
+        back_jet_u0, back_jet_phi0, back_jet_u1, back_jet_phi1);
+#endif //JET
 
     vec4 l = vec4(e / (1.0 - u), -u_dot, 0.0, u * u);
     float g_k_l_receiver = ks.x * l.x * (1.0 - u) - ks.y * l.y / (1.0 - u) -
@@ -410,48 +492,81 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     }
 
 #ifdef DISC
-    if (u1 >= 0.0 && u1 < discSize.z && u1 > discSize.w) {
+    if (disk_u1 >= 0.0 && disk_u1 < discSize.z && disk_u1 > discSize.w) {
         #ifdef DOPPLER
-        float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u1)) -
-                         u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(e_z, e_z_prime);
+        float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * disk_u1)) -
+                         disk_u1 * sqrt(disk_u1 / (2.0 - 3.0 * disk_u1)) * dot(e_z, e_z_prime);
         float doppler_factor = g_k_l_receiver/g_k_l_source;
         #else
         float doppler_factor = 1.0;
         #endif
-        bool top_side =
-            (mod(abs(phi1 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
-        vec3 intersect = (e_x_prime * cos(phi1) + e_y_prime * sin(phi1))/u1;
-        vec4 disc_color = DiscColor(intersect.xy, dt/*-t1*/, top_side, doppler_factor);
+        vec3 intersect = (e_x_prime * cos(disk_phi1) + e_y_prime * sin(disk_phi1))/disk_u1;
+        vec4 disc_color = DiscColor(intersect.xy, dt, doppler_factor);
         color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;
         //color = 0.5 * color + 0.5 * vec3(1,0,0);
     }
-#endif
-/*
-    float jet_fade = dot(e_x_prime, dir);
-    if (deflection > 0.0 
-        && abs(dot(e_z_prime, vec3(0, 0, 1))) < 0.05 
-        && jet_fade < 0.0) {
+#endif // DISC
+
+#ifdef JET
+    if(jet_hit) {
+        float jet_fade = smoothstep(jet_angle, jet_angle*0.1, b);
+        if ( back_jet_u1 >= 0.0 && back_jet_u1 < jet_size.z && back_jet_u1 > jet_size.w) {
+
+            float back_jet_r1 = 1.0 / back_jet_u1;
+            vec3 intersect = (e_x_prime * cos(back_jet_phi1) + e_y_prime * sin(back_jet_phi1))/back_jet_u1;
+            vec4 jet_color = JetColor(intersect, dt);//vec4(0.0,1.0,0.0,1);
+            jet_color.a *= jet_fade;
+            color = color * (1.0-jet_color.a) + jet_color.a * jet_color.rgb;
+        }
         
-        color += vec3(50, 50, 80) * pow(abs(jet_fade),2)*pow(1.0 - abs(jet_fade),1.5);
+        if ( back_jet_u0 >= 0.0 && back_jet_u0 < jet_size.z && back_jet_u0 > jet_size.w) {
+
+            float back_jet_r0 = 1.0 / back_jet_u0;
+            vec3 intersect = (e_x_prime * cos(back_jet_phi0) + e_y_prime * sin(back_jet_phi0))/back_jet_u0;
+            vec4 jet_color = JetColor(intersect, dt);//vec4(0.0,1.0,0.0,1);
+            jet_color.a *= jet_fade;
+            color = color * (1.0-jet_color.a) + jet_color.a * jet_color.rgb;
+        }
+        
+        
+        if ( front_jet_u1 >= 0.0 && front_jet_u1 < jet_size.z && front_jet_u1 > jet_size.w) {
+
+            float front_jet_r1 = 1.0 / front_jet_u1;
+            vec3 intersect = (e_x_prime * cos(front_jet_phi1) + e_y_prime * sin(front_jet_phi1))/front_jet_u1;
+            vec4 jet_color = JetColor(intersect, dt);//vec4(0.0,0.0,1.0,1);
+            jet_color.a *= jet_fade;
+            color = color * (1.0-jet_color.a) + jet_color.a * jet_color.rgb;
+        }
+        
+        if ( front_jet_u0 >= 0.0 && front_jet_u0 < jet_size.z && front_jet_u0 > jet_size.w) {
+
+            float front_jet_r0 = 1.0 / front_jet_u0;
+            vec3 intersect = (e_x_prime * cos(front_jet_phi0) + e_y_prime * sin(front_jet_phi0))/front_jet_u0;
+            vec4 jet_color = JetColor(intersect, dt);//vec4(0.0,0.0,1.0,1);
+            jet_color.a *= jet_fade;
+            color = color * (1.0-jet_color.a) + jet_color.a * jet_color.rgb;
+        }
+
     }
-*/
+
+#endif //JET
+
 #ifdef DISC
-    if (u0 >= 0.0 && u0 < discSize.z && u0 > discSize.w) {
+    if (disk_u0 >= 0.0 && disk_u0 < discSize.z && disk_u0 > discSize.w) {
         #ifdef DOPPLER
-        float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * u0)) -
-                         u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(e_z, e_z_prime);
+        float g_k_l_source = e * sqrt(2.0 / (2.0 - 3.0 * disk_u0)) -
+                         disk_u0 * sqrt(disk_u0 / (2.0 - 3.0 * disk_u0)) * dot(e_z, e_z_prime);
         float doppler_factor = g_k_l_receiver/g_k_l_source;
         #else
         float doppler_factor = 1.0;
         #endif
-        bool top_side =
-            (mod(abs(phi0 - alpha), 2.0 * pi) < 1e-3) == (e_x_prime.z > 0.0);
-        vec3 intersect = (e_x_prime * cos(phi0) + e_y_prime * sin(phi0))/u0;
-        vec4 disc_color = DiscColor(intersect.xy, dt/*-t0*/, top_side, doppler_factor);
+        vec3 intersect = (e_x_prime * cos(disk_phi0) + e_y_prime * sin(disk_phi0))/disk_u0;
+        vec4 disc_color = DiscColor(intersect.xy, dt, doppler_factor);
         color = color * (1.0-disc_color.a) + disc_color.a * disc_color.rgb;    
         //color = 0.5 * color + 0.5 * vec3(0,1,0);
     }
-#endif
+#endif // DISC
+
     return color;
 
 }
@@ -478,5 +593,6 @@ void main()
 
     vec3 color = pixelColor(dir, pos, tau, k, dt*10);
     FragColor = vec4(color, 1.0); 
+    //FragColor = vec4(texture(jet_texture, TexCoords).rgb, 1);
 
 }

@@ -13,13 +13,16 @@
 class BlackHoleShaderGui : public ShaderGui {
 public:
 
-	BlackHoleShaderGui(): maxBrightness_(1000.f){
+	BlackHoleShaderGui()
+		: maxBrightness_(1000.f)
+		, jetAngle_(0.4f)
+		, jetSize_(3.f, 9.f){
 
 		name_ = "Black Hole";
 		shader_ = std::make_shared<Shader>(
 			std::vector<std::string>{ "ebruneton/black_hole_shader.vert" }, 
 			std::vector<std::string>{"ebruneton/black_hole_shader.frag"},
-			std::vector<std::string>{"DISC", "DOPPLER", "PINHOLE", "STARS"});
+			std::vector<std::string>{"DISC", "DOPPLER", "PINHOLE", "STARS", "JET", "SIMPLEJET"});
 		preprocessorFlags_ = shader_->getFlags();
 		shader_->use();
 		shader_->setBlockBinding("camera", CAMBINDING);
@@ -28,10 +31,14 @@ public:
 private:
 
 	float maxBrightness_;
+	float jetAngle_;
+	glm::vec2 jetSize_;
 
 	void render() override {
 		ImGui::Text("I'm the Black Hole Shader");
 		ImGui::SliderFloat("Max Disc Brightness", &maxBrightness_, 1.f, 10000.f);
+		ImGui::SliderFloat("Jet Angle (rad)", &jetAngle_, -1.f, 1.f);
+		ImGui::SliderFloat2("Jet Size", glm::value_ptr(jetSize_), 3.f, 2000.f);
 		renderPreprocessorFlags();
 		ImGui::Separator();
 
@@ -40,6 +47,8 @@ private:
 
 	void uploadUniforms() override {
 		shader_->setUniform("max_brightness", maxBrightness_);
+		shader_->setUniform("jet_angle", jetAngle_);
+		shader_->setUniform("jet_size", glm::vec4(jetSize_.x, jetSize_.y, 1.f/jetSize_.x, 1.f/ jetSize_.y));
 	};
 
 
@@ -101,8 +110,8 @@ private:
 		ImGui::Text("Accretion Disc Settings");
 		ImGui::SliderFloat("Density", &density_, 0.f, 1.f);
 		ImGui::SliderFloat("Opacity", &opacity_, 0.f, 1.f);
-		ImGui::SliderFloat("Temperature (K)", &temp_, 1000.f, 10000.f);
-		ImGui::SliderFloat2("Size", glm::value_ptr(size_), 3.f, 200.f);
+		ImGui::SliderFloat("Temperature (K)", &temp_, 1000.f, 100000.f);
+		ImGui::SliderFloat2("Size", glm::value_ptr(size_), 3.f, 2000.f);
 
 		renderRefreshMenu();
 	}

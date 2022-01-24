@@ -47,7 +47,7 @@ private:
 	float speed_;
 
 	std::shared_ptr<ParticleDiscGui> disc_;
-	std::shared_ptr<Texture2D> diskTexture_;
+	std::shared_ptr<Texture2D> jetTexture_;
 	
 	std::vector<std::pair<std::string,std::shared_ptr<CubeMap>>> cubemaps_;
 	std::shared_ptr<CubeMap> currentCubeMap_;

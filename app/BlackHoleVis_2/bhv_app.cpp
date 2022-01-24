@@ -64,7 +64,6 @@ BHVApp::BHVApp(int width, int height)
 	, direction_(1,0,0)
 	, speed_(0.1f)
 	, disc_(std::make_shared<ParticleDiscGui>())
-	, diskTexture_(std::make_shared<Texture2D>("accretion1.jpg"))
 	, noiseTexture_(std::make_shared<Texture2D>("ebruneton/noise_texture.png"))
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
@@ -139,7 +138,7 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE2);
 	invRadiusTexture_->bind();
 	glActiveTexture(GL_TEXTURE3);
-	diskTexture_->bind();
+	jetTexture_->bind();
 	glActiveTexture(GL_TEXTURE4);
 	blackBodyTexture_->bind();
 	glActiveTexture(GL_TEXTURE5);
@@ -183,6 +182,16 @@ void BHVApp::initShaders() {
 
 void BHVApp::initTextures() {
 
+	jetTexture_ = std::make_shared<Texture2D>("jet_noise.jpg");
+	std::vector<std::pair<GLenum, GLint>> jettexParameters{
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE },
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE },
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR },
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR }
+	};
+	jetTexture_->setParam(jettexParameters);
+
+
 #pragma region deflection
 	// create deflection texture
 	std::vector<float> deflectionData = readFile<float>(TEX_DIR"ebruneton/deflection.dat");
@@ -216,7 +225,7 @@ void BHVApp::initTextures() {
 
 #pragma region inverse radius
 	// create inverse radius texture
-	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius_1024x256_b.dat");
+	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius.dat");
 	if (invRadiusData.size() != 0) {
 
 		TextureParams params;
