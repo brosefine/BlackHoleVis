@@ -54,6 +54,7 @@ private:
 	std::shared_ptr<CubeMap> galaxyTexture_;
 	std::shared_ptr<CubeMap> starTexture_;	// for "manual" rendering as point light sources
 	std::shared_ptr<CubeMap> starTexture2_;	// for default sampling at high LOD values
+	std::shared_ptr<CubeMap> starTextureFull_;	// for comparison to manual rendering
 	std::shared_ptr<Texture2D> deflectionTexture_;
 	std::shared_ptr<Texture2D> invRadiusTexture_;
 	std::shared_ptr<Texture2D> blackBodyTexture_;

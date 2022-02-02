@@ -16,7 +16,8 @@ public:
 	BlackHoleShaderGui()
 		: maxBrightness_(1000.f)
 		, jetAngle_(0.4f)
-		, jetSize_(3.f, 9.f){
+		, jetSize_(3.f, 9.f)
+		, scale_(1.f){
 
 		name_ = "Black Hole";
 		shader_ = std::make_shared<Shader>(
@@ -33,11 +34,13 @@ private:
 	float maxBrightness_;
 	float jetAngle_;
 	glm::vec2 jetSize_;
+	float scale_;
 
 	void render() override {
 		ImGui::Text("I'm the Black Hole Shader");
+		ImGui::SliderFloat("Black Hole Scale", &scale_, 0.f, 10.f);
 		ImGui::SliderFloat("Max Disc Brightness", &maxBrightness_, 1.f, 10000.f);
-		ImGui::SliderFloat("Jet Angle (rad)", &jetAngle_, -1.f, 1.f);
+		ImGui::SliderFloat("Jet Angle (rad)", &jetAngle_, -1.f, 2.f);
 		ImGui::SliderFloat2("Jet Size", glm::value_ptr(jetSize_), 3.f, 2000.f);
 		renderPreprocessorFlags();
 		ImGui::Separator();
@@ -46,6 +49,7 @@ private:
 	}
 
 	void uploadUniforms() override {
+		shader_->setUniform("scale", scale_);
 		shader_->setUniform("max_brightness", maxBrightness_);
 		shader_->setUniform("jet_angle", jetAngle_);
 		shader_->setUniform("jet_size", glm::vec4(jetSize_.x, jetSize_.y, 1.f/jetSize_.x, 1.f/ jetSize_.y));
@@ -54,11 +58,17 @@ private:
 
 	void storeConfig(boost::json::object& obj) override {
 		obj["brightness"] = maxBrightness_;
+		obj["jetAngle"] = jetAngle_;
+		obj["jetSize"] = {jetSize_.x, jetSize_.y};
+		obj["scale"] = scale_;
 		storePreprocessorFlags(obj);
 	}
 
 	void loadConfig(boost::json::object& obj) override {
 		jhelper::getValue(obj, "brightness", maxBrightness_);
+		jhelper::getValue(obj, "jetAngle", jetAngle_);
+		jhelper::getValue(obj, "jetSize", jetSize_);
+		jhelper::getValue(obj, "scale", scale_);
 		loadPreprocessorFlags(obj);
 		update();
 	}

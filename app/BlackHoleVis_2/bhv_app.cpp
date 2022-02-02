@@ -148,6 +148,8 @@ void BHVApp::renderContent()
 	glActiveTexture(GL_TEXTURE7);
 	starTexture2_->bind();
 	glActiveTexture(GL_TEXTURE8);
+	starTextureFull_->bind();
+	glActiveTexture(GL_TEXTURE9);
 	noiseTexture_->bind();
 
 	if (!bloom_) {
@@ -441,6 +443,23 @@ void BHVApp::loadStarTextures() {
 	starTexture2_->unbind();
 #pragma endregion
 
+#pragma region star texture 3
+	starTextureFull_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	starTextureFull_->bind();
+	texParametersi = {
+			{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+	starTextureFull_->setParam(texParametersi);
+	starTexture2_->setParam(GL_TEXTURE_MAX_ANISOTROPY, 4.0f);
+	glTextureStorage2D(starTextureFull_->getTexId(), 12, GL_RGB9_E5,
+		textureSize, textureSize);
+	starTextureFull_->unbind();
+#pragma endregion
+
 	std::string baseDir = TEX_DIR"ebruneton/gaia_sky_map/";
 	std::vector<std::string> faces {
 		"pos-x", "neg-x",
@@ -487,6 +506,8 @@ void BHVApp::loadStarTile(int level, int ti, int tj, int face, int faceSize, int
 		glTextureSubImage3D(galaxyTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
 			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
 		start += tileSize * tileSize;
+		glTextureSubImage3D(starTextureFull_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
 		if (currentLevel <= MAX_STAR_LOD) {
 			glTextureSubImage3D(starTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
 				GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
@@ -571,13 +592,12 @@ void BHVApp::uploadBaseVectors() {
 	glm::vec4 ks = lorentz[0];
 
 	if (!useLocalDirection_) {
-		glm::mat3 globToLoc = glm::inverse(cam_.getBase3());
+		glm::mat3 globToLoc = fido_? glm::inverse(cam_.getFidoBase3()) : glm::inverse(cam_.getBase3());
 		ks = glm::vec4(
 			ks.x,
 			globToLoc * glm::vec3(ks.y, ks.z, ks.w)
 		);
 	}
-
 	ks.x /= v;
 	ks.y *= u / sinT;
 	ks.z *= u;
@@ -905,10 +925,13 @@ void BHVApp::processKeyboardInput() {
 
 void BHVApp::printDebug() {
 	//std::cout << "Nothing to do here :)" << std::endl;
-	float speed = 648.857971f;
-	glm::vec3 dir(-0.147305459f, -0.722951770, -0.675012469);
-	glm::mat4 boost = cam_.getBoostFromVel(dir, speed);
+	glm::mat4 lorentz = cam_.getBoostGlobal(dt_);
+	glm::mat4 e_static = fido_ ? cam_.getFidoBase4() : cam_.getBase4();
 
-	std::cout << glm::to_string(boost) << std::endl;
+	glm::vec4 e_tau = lorentz * e_static[0];
+	glm::vec4 ks = lorentz[0];
+
+	std::cout << "tau: " << glm::to_string(e_tau) << std::endl;
+	std::cout << "ks: " << glm::to_string(ks) << std::endl;
 
 }

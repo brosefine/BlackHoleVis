@@ -53,8 +53,10 @@ layout(binding = 4) uniform sampler2D black_body_texture;
 layout(binding = 5) uniform sampler3D doppler_texture;
 layout(binding = 6) uniform samplerCube star_texture;
 layout(binding = 7) uniform samplerCube star_texture2;
-layout(binding = 8) uniform sampler2D noise_texture;
+layout(binding = 8) uniform samplerCube star_textureFull;
+layout(binding = 9) uniform sampler2D noise_texture;
 
+uniform float scale = 1.0;
 uniform vec3 cam_tau;
 uniform vec3 cam_up;
 uniform vec3 cam_front;
@@ -73,7 +75,6 @@ const int STARS_CUBE_MAP_SIZE = 2048;
 const float MAX_FOOTPRINT_SIZE = 4.0;
 
 const float kMu = 4.0 / 27.0;
-const float rad = 1.0;
 const float pi = 3.14159265359;
 // temperature is highest at radius of ~ 4.08;
 const float r_max_temp = 49.0 / 12.0;
@@ -145,7 +146,7 @@ float GetRayInverseRadiusTextureUFromEsquare(float e_square) {
 }
 
 float GetPhiUbFromEsquare(float e_square) {
-    return (1.0 + e_square) / (1.0 / 3.0 + 2.0 * e_square * sqrt(e_square)) * rad;
+    return (1.0 + e_square) / (1.0 / 3.0 + 2.0 * e_square * sqrt(e_square));
 }
 
 vec2 LookupRayInverseRadius(float e_square, float phi) {
@@ -230,15 +231,16 @@ float RayTrace(float u, float u_dot, float e_square, float delta,
     #endif // JET
 
     if (e_square < kMu && u > 2.0 / 3.0) {
-        return -1.0 * rad;
+        return -1.0;
     }
     vec2 deflection_apsis;
     vec2 deflection = LookupRayDeflection(e_square, u, deflection_apsis);
     float ray_deflection = deflection.x;
 
     if (u_dot > 0.0) {
+        // delta_inf - delta
         ray_deflection =
-            e_square < kMu ? 2.0 * deflection_apsis.x - ray_deflection : -1.0 * rad;
+            e_square < kMu ? 2.0 * deflection_apsis.x - ray_deflection : -1.0;
     }
 
     // Compute the accretion disc intersections.
@@ -431,7 +433,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
     float front_jet_alpha, back_jet_alpha;
     bool jet_hit = false;
 
-    vec3 z = vec3(0, 0, 1);
+    vec3 z = vec3(0.0, 0.0, 1.0);
     if ( e_y_prime.z < 0.0 ) z = -z;
     vec3 z_prime = normalize(z - dot(z, e_z_prime) * e_z_prime);
     float a = acos(dot(z_prime, e_x_prime));
@@ -481,6 +483,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
 
         float pixel_area = max(omega * (1024.0 * 1024.0), 1.0);
 
+        //color += texture(star_textureFull, d_prime).rgb * lensing_amplification_factor/pixel_area;
         color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0);
         #endif
 
@@ -585,13 +588,20 @@ void main()
     #endif    
 
     dir = normalize(-cam_tau + dir.x * cam_right + dir.y * cam_up - dir.z * cam_front);
+    vec3 color;
+    if(scale <= 0.0) {
+        color = texture(cubeMap, dir).rgb;
+    } else {
 
-    dir = vec3(dir.x, -dir.z, dir.y);
-    vec4 k = vec4(ks.x, -ks.w, ks.y, ks.z);
-    vec3 pos = vec3(cameraPos.x, -cameraPos.z, cameraPos.y);
-    vec3 tau = vec3(cam_tau.x, -cam_tau.z, cam_tau.y);
 
-    vec3 color = pixelColor(dir, pos, tau, k, dt*10);
+        dir = vec3(dir.x, -dir.z, dir.y);
+        vec4 k = vec4(ks.x, -ks.w, ks.y, ks.z);
+        vec3 pos = vec3(cameraPos.x, -cameraPos.z, cameraPos.y) / scale;
+        vec3 tau = vec3(cam_tau.x, -cam_tau.z, cam_tau.y);
+
+        color = pixelColor(dir, pos, tau, k, dt*10);
+    }
+
     FragColor = vec4(color, 1.0); 
     //FragColor = vec4(texture(jet_texture, TexCoords).rgb, 1);
 
