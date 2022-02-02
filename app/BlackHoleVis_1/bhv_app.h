@@ -73,6 +73,7 @@ private:
 	void resizeTextures();
 
 	void calculateCameraOrbit();
+	void uploadCameraVectors();
 
 	void renderShaderTab();
 	void renderCameraTab();

@@ -113,6 +113,8 @@ void BHVApp::renderContent()
 		}
 	} else {
 		bloomEffect_ = false;
+		uploadCameraVectors();
+
 		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_.getFboId());
 		glViewport(0, 0, fboTexture_.getWidth(), fboTexture_.getHeight());
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -144,8 +146,8 @@ std::shared_ptr<ShaderBase> BHVApp::getCurrentShader() {
 }
 
 void BHVApp::initShaders() {
-	shaderElements_.push_back(std::make_shared<NewtonShaderGui>());
 	shaderElements_.push_back(std::make_shared<StarlessShaderGui>());
+	shaderElements_.push_back(std::make_shared<NewtonShaderGui>());
 	shaderElements_.push_back(std::make_shared<TestShaderGui>());
 
 	computeShaderElements_.push_back(std::make_shared<StarlessComputeShaderGui>());
@@ -310,6 +312,14 @@ void BHVApp::renderShaderTab() {
 		shaderElements_.at(selectedShader_)->show();
 
 	}
+}
+
+
+void BHVApp::uploadCameraVectors(){
+	if (compute_) return;
+	getCurrentShader()->setUniform("cam_up", cam_.getUp());
+	getCurrentShader()->setUniform("cam_front", cam_.getFront());
+	getCurrentShader()->setUniform("cam_right", cam_.getRight());
 }
 
 void BHVApp::renderCameraTab() {

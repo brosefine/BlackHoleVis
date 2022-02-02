@@ -7,11 +7,17 @@ uniform float forceWeight = 1.0;
 uniform float M;
 uniform vec4 sphere = vec4(0, 0, 0, 0);
 
+uniform vec3 cam_up;
+uniform vec3 cam_front;
+uniform vec3 cam_right;
+
 in vec3 cameraPos;
 in vec3 worldPos;
+in vec2 TexCoords;
 out vec4 FragColor;
 
 float rs = 2.0 * M;
+const float pi = 3.14159265359;
 
 vec3 starless(vec3 pos, float h2){
     return -3 * h2 * M * pos / pow(dot(pos, pos), 2.5);
@@ -46,7 +52,18 @@ void main() {
     vec4 horizonColor;
     #endif
 
+    #ifdef PINHOLE
     vec3 viewDir = normalize(worldPos - cameraPos);
+    #else
+    float phi = (1.0 - TexCoords.x) * 2.0 * pi;
+    float theta = (1.0 - TexCoords.y) * pi;
+    vec3 viewDir;
+    viewDir.x = sin(phi) * sin(theta);
+    viewDir.y = cos(theta);
+    viewDir.z = -cos(phi) * sin(theta);
+    viewDir = normalize(cam_right * viewDir.x + cam_up * viewDir.y + cam_front * viewDir.z);
+    #endif    
+
   
     float dotP = dot(normalize(-cameraPos), viewDir);
     float dist = length(dotP * length(cameraPos) * viewDir + cameraPos);
@@ -128,7 +145,7 @@ void main() {
     #ifdef SKY
     FragColor.rgb += (1.0-FragColor.a) * texture(cubeMap, lightVel).rgb;
     #else
-    //FragColor.rgb += (1.0-FragColor.a) * abs(normalize(lightVel));
+    FragColor.rgb += (1.0-FragColor.a) * abs(normalize(lightVel));
     #endif //SKY
     FragColor.a = 1.0;
 }

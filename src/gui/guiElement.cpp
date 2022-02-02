@@ -246,11 +246,11 @@ void TestShaderGui::render() {
 
 StarlessShaderGui::StarlessShaderGui() : stepSize_(0.2f), mass_(0.5f), forceWeight_(1.f), sphere_({0.f, 0.f, 4.f, 1.f}) {
 	name_ = "Starless";
-	shader_ = std::shared_ptr<ShaderBase>(new Shader(std::vector<std::string>{ "blackHole.vert" }, 
+	shader_ = std::shared_ptr<ShaderBase>(new Shader(std::vector<std::string>{ "starless.vert" }, 
 		std::vector<std::string>{ "intersect.frag","starless.frag" },
 		{ "EHSIZE", "RAYDIRTEST", "SKY", "FIRSTRK4", "DISK", 
 		"CHECKEREDDISK", "CHECKEREDHOR", "DISKTEX",
-		"ADPTSTEP", "ERLYTERM", "SPHERE"}));
+		"ADPTSTEP", "ERLYTERM", "SPHERE", "PINHOLE" }));
 	preprocessorFlags_ = shader_->getFlags();
 	shader_->use();
 	bindUBOs();

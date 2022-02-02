@@ -22,6 +22,7 @@ public:
 	glm::vec3 getPosition() const { return position_; }
 	glm::vec3 getFront() const { return front_; }
 	glm::vec3 getUp() const { return up_; }
+	glm::vec3 getRight() const { return right_; }
 
 	bool hasChanged() const { return changed_; }
 	void update(int windowWidth, int windowHeight) override;
