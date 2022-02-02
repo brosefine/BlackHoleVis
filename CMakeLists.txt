@@ -29,6 +29,7 @@ target_compile_features(SOURCE PRIVATE cxx_std_20)
 add_subdirectory(app/BlackHoleVis_1)
 add_subdirectory(app/BlackHoleVis_2)
 add_subdirectory(app/BlackHoleVis_3)
+add_subdirectory(app/KerrVis)
 
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/saves)
