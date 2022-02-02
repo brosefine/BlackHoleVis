@@ -574,10 +574,54 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
 
 }
 
+// functions for rotation using quaternions
+// from https://gist.github.com/nkint/7449c893fb7d6b5fa83118b8474d7dcb
+vec4 setAxisAngle (vec3 axis, float rad) {
+  rad = rad * 0.5;
+  float s = sin(rad);
+  return vec4(s * axis.x, s * axis.y, s * axis.z, cos(rad));
+}
+
+vec4 multQuat(vec4 q1, vec4 q2) {
+  return vec4(
+    q1.w * q2.x + q1.x * q2.w + q1.z * q2.y - q1.y * q2.z,
+    q1.w * q2.y + q1.y * q2.w + q1.x * q2.z - q1.z * q2.x,
+    q1.w * q2.z + q1.z * q2.w + q1.y * q2.x - q1.x * q2.y,
+    q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+  );
+}
+
+vec3 rotateVector( vec4 quat, vec3 vec ) {
+  // https://twistedpairdevelopment.wordpress.com/2013/02/11/rotating-a-vector-by-a-quaternion-in-glsl/
+  vec4 qv = multQuat( quat, vec4(vec, 0.0) );
+  return multQuat( qv, vec4(-quat.x, -quat.y, -quat.z, quat.w) ).xyz;
+}
+
 void main()
 {    
-    #ifdef PINHOLE
+    #if defined(PINHOLE)
     vec3 dir = normalize(viewDir);
+    #elif defined(DOME)
+    
+    vec2 fragCoord = 2.0*(TexCoords - vec2(0.5));
+
+    if(length(fragCoord) > 1) {
+        FragColor = vec4(0,0,0,1);
+        return;
+    }
+
+    float theta = (length(fragCoord)) * pi / 2.0;
+    float phi = atan(fragCoord.y, fragCoord.x) - pi/2.0;
+    vec3 dir;
+    dir.x = sin(phi) * sin(theta);
+    dir.y = cos(theta);
+    dir.z = cos(phi) * sin(theta);
+
+    // rotate view direction downwards to move black hole into
+    // dome focus area
+    vec4 rotQuat = setAxisAngle(vec3(1, 0, 0), pi/4.0);
+    dir = normalize(rotateVector(rotQuat, dir));
+
     #else
     float phi = (1.0 - TexCoords.x) * 2.0 * pi;
     float theta = (1.0 - TexCoords.y) * pi;

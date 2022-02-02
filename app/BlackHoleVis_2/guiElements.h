@@ -23,7 +23,7 @@ public:
 		shader_ = std::make_shared<Shader>(
 			std::vector<std::string>{ "ebruneton/black_hole_shader.vert" }, 
 			std::vector<std::string>{"ebruneton/black_hole_shader.frag"},
-			std::vector<std::string>{"DISC", "DOPPLER", "PINHOLE", "STARS", "JET", "SIMPLEJET"});
+			std::vector<std::string>{"DISC", "DOPPLER", "PINHOLE", "STARS", "JET", "DOME"});
 		preprocessorFlags_ = shader_->getFlags();
 		shader_->use();
 		shader_->setBlockBinding("camera", CAMBINDING);
