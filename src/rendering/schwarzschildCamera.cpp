@@ -95,6 +95,12 @@ glm::mat4 SchwarzschildCamera::getFidoBase4() const
     return base;
 }
 
+glm::mat3 SchwarzschildCamera::getLookAtRot() const
+{
+    glm::vec3 front = TPtoXYZ(viewDirTP_);
+    return glm::lookAt(glm::vec3(0.f), front, glm::vec3(0.f, 1.f, 0.f));
+}
+
 float SchwarzschildCamera::getAvgSpeed() const {
     return (float)(speedSum_ / speedWeights_);
     //return std::reduce(speedHistory_.begin(), speedHistory_.end()) / (float)speedHistory_.size();
