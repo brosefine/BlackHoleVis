@@ -9,6 +9,7 @@
 
 #include <time.h>
 #include <iostream>
+#include <fstream>
 // ------------- public --------------
 
 PSHOffsetTable::PSHOffsetTable(std::vector<glm::ivec2>& _elements, std::vector<glm::vec2>& _datapoints)
@@ -59,6 +60,14 @@ void PSHOffsetTable::quicksort(std::vector<OffsetBucket>& bucketList, int start,
 		quicksort(bucketList, start, j);
 	if (i < end)
 		quicksort(bucketList, i, end);
+}
+
+void PSHOffsetTable::writeToFile(std::string const& fileName) const
+{
+	std::ofstream ofs(fileName);
+	for (auto const& elem : hashTable)
+		ofs << ", " << elem;
+	ofs.close();
 }
 
 glm::ivec2 PSHOffsetTable::hashFunc(glm::ivec2 key)

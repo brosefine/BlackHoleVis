@@ -16,6 +16,7 @@
 #include <string>
 #include <numeric>
 #include <algorithm>
+#include <memory>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -23,6 +24,18 @@
 #include <glm/glm.hpp>
 #include <cereal/access.hpp>
 
+struct GridProperties {
+
+	double blackHole_a_ = 0.5;
+
+	double cam_rad_ = 10.0;
+	double cam_the_ = PI1_2;
+	double cam_phi_ = 0.0;
+	double cam_vel_ = 0.0;
+
+	int grid_strtLvl_ = 1;
+	int grid_maxLvl_ = 10;
+};
 
 class Grid
 {
@@ -70,7 +83,17 @@ class Grid
 
 public:
 
-	static bool loadFromFile(Grid& outGrid, std::string filename);
+	// create grid and save in outGrid
+	// loads from file if possible, else creates new grid
+	// returns true if read from file
+	static bool makeGrid(std::shared_ptr<Grid> outGrid, GridProperties props);
+	static bool loadFromFile(std::shared_ptr<Grid> outGrid, std::string filename);
+	static bool loadFromFile(std::shared_ptr<Grid> outGrid, GridProperties props);
+	static bool saveToFile(std::shared_ptr<Grid> inGrid);
+	
+	static std::string getFileNameFromConfig(GridProperties const& props);
+
+	std::string getFileNameFromConfig() const;
 
 	/// <summary>
 	/// 1 if rotation axis != camera axis, 0 otherwise
@@ -95,8 +118,6 @@ public:
 
 	PSHOffsetTable hasher;
 
-	//PSHOffsetTable hasher;
-
 	/// <summary>
 	/// Mapping from block position to level at that point.
 	/// </summary>
@@ -108,6 +129,8 @@ public:
 	/// </summary>
 	Grid() {};
 
+	Grid(GridProperties props);
+
 	/// <summary>
 	/// Initializes a new instance of the <see cref="Grid"/> class.
 	/// </summary>
@@ -116,23 +139,7 @@ public:
 	/// <param name="angle">If the camera is not on the symmetry axis.</param>
 	/// <param name="camera">The camera.</param>
 	/// <param name="bh">The black hole.</param>
-	Grid(const int maxLevelPrec, const int startLevel, const bool angle, const Camera* camera, const BlackHole* bh, bool testDisk = false);;
-
-
-	//void callKernelTEST(const Camera* camera, const BlackHole* bh, size_t s) {
-	//	cam = camera;
-	//	black = bh;
-	//	M = 2048;
-	//	N = 512;
-	//	equafactor = 0;
-	//	std::vector<double> theta(s), phi(s);
-	//	int num = 10;
-	//	for (int q = 0; q < s; q++) {
-	//		theta[q] = (double)(num) / (N - 1) * PI / (2 - equafactor);
-	//		phi[q] = (double)(num) / M * PI2;
-	//	}
-	//	integration_wrapper(theta, phi, s);
-	//}
+	Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk /*= false*/);
 
 	void saveAsGpuHash();
 
@@ -144,14 +151,15 @@ private:
 	/** ------------------------------ VARIABLES ------------------------------ **/
 
 	bool disk;
-	
+	GridProperties props_;
 	// Camera & Blackhole
-	const Camera* cam;
-	const BlackHole* black;
+	std::shared_ptr<Camera> cam;
+	std::shared_ptr<BlackHole> black;
 
 	// Set of blocks to be checked for division
 	std::unordered_set<uint64_t, hashing_func2> checkblocks;
 
+	void init();
 
 	/** ------------------------------ POST PROCESSING ------------------------------ **/
 

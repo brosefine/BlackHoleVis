@@ -1,7 +1,6 @@
 #include <kerr_app.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
-#include <blacktracer/Grid.h>
 
 #include <fstream>
 #include <algorithm>
@@ -197,6 +196,11 @@ void KerrApp::uploadCameraVectors() {
 	testShader_->setUniform("cam_front", baseVectors[2]);
 }
 
+
+void KerrApp::calculateGrid() {
+
+}
+
 void KerrApp::renderGui() {
 
 	if (showFps_)
@@ -335,13 +339,49 @@ void KerrApp::renderCameraTab() {
 }
 
 void KerrApp::dumpState(std::string const& file) {
+	boost::json::object configuration;
+
+	configuration["blackHole_a"] = properties_.blackHole_a_;
+	configuration["cam_rad"] = properties_.cam_rad_;
+	configuration["cam_the"] = properties_.cam_the_;
+	configuration["cam_phi"] = properties_.cam_phi_;
+	configuration["cam_vel"] = properties_.cam_vel_;
+	configuration["grid_strtLvl"] = properties_.grid_strtLvl_;
+	configuration["grid_maxLvl"] = properties_.grid_maxLvl_;
 	
+	std::string json = boost::json::serialize(configuration);
+	std::ofstream outFile(ROOT_DIR "saves/kerr/" + file);
+	outFile << json;
+	outFile.close();
 	return;
 }
 
 void KerrApp::readState(std::string const& file) {
-
+	if (!std::filesystem::exists(ROOT_DIR "saves/kerr/" + file)) {
+		std::cerr << "[BHVApp] file " << ROOT_DIR "saves/kerr/" + file << " not found" << std::endl;
+		return;
+	}
+	std::ifstream inFile(ROOT_DIR "saves/kerr/" + file);
+	std::ostringstream sstr;
+	sstr << inFile.rdbuf();
+	std::string json = sstr.str();
+	inFile.close();
 	
+	boost::json::value v = boost::json::parse(json);
+	if (v.kind() != boost::json::kind::object) {
+		std::cerr << "[BHVApp] Error parsing configuration file" << std::endl;
+		return;
+	}
+
+	boost::json::object configuration = v.get_object();
+	jhelper::getValue(configuration, "blackHole_a", properties_.blackHole_a_);
+	jhelper::getValue(configuration, "cam_rad", properties_.cam_rad_);
+	jhelper::getValue(configuration, "cam_the", properties_.cam_the_);
+	jhelper::getValue(configuration, "cam_phi", properties_.cam_phi_);
+	jhelper::getValue(configuration, "cam_vel", properties_.cam_vel_);
+	jhelper::getValue(configuration, "grid_strtLvl", properties_.grid_strtLvl_);
+	jhelper::getValue(configuration, "grid_maxLvl", properties_.grid_maxLvl_);
+
 	return;
 }
 

@@ -5,6 +5,8 @@
 #include <app/app.h>
 #include <helpers/uboBindings.h>
 #include <helpers/json_helper.h>
+#include <blacktracer/Const.h>
+#include <blacktracer/Grid.h>
 
 #include <rendering/shader.h>
 #include <rendering/schwarzschildCamera.h>
@@ -15,6 +17,7 @@
 
 
 class KerrApp : public GLApp{
+
 public:
 	
 	KerrApp(int width, int height);
@@ -24,6 +27,8 @@ private:
 	void renderContent() override;
 	void renderGui() override;
 	void processKeyboardInput() override;
+
+	GridProperties properties_;
 
 	SchwarzschildCamera cam_;
 	std::vector<std::pair<std::string, std::shared_ptr<CubeMap>>> cubemaps_;
@@ -39,6 +44,7 @@ private:
 	std::shared_ptr<ShaderBase> sQuadShader_;
 	std::shared_ptr<ShaderBase> testShader_;
 
+	std::shared_ptr<Grid> grid_;
 
 	// timing variables for render loop
 	double t0_, dt_;
@@ -58,9 +64,12 @@ private:
 
 	void uploadCameraVectors();
 
+	void calculateGrid();
+
 	void renderShaderTab();
 	void renderCameraTab();
 	void renderSkyTab();
+	void renderGridTab();
 
 	void dumpState(std::string const& file);
 	void readState(std::string const& file);

@@ -75,6 +75,8 @@ public:
 
 	void quicksort(std::vector<OffsetBucket>& bucketList, int start, int end);
 
+	void writeToFile(std::string const& fileName) const;
+
 private:
 
 	std::vector<glm::ivec2> elements;

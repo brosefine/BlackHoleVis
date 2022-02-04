@@ -9,11 +9,13 @@
 
 #include <blacktracer/Metric.h>
 #include <blacktracer/Code.h>
+#include <helpers/RootDir.h>
 
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <format>
 
 #include <cereal/archives/binary.hpp>
 
@@ -22,19 +24,57 @@
 #define ERROR 0.001//1e-6
 
 
-bool Grid::loadFromFile(Grid& outGrid, std::string filename)
+bool Grid::makeGrid(std::shared_ptr<Grid> outGrid, GridProperties props) {
+	if (loadFromFile(outGrid, props)) {
+		std::cout << "[GRID] loaded grid from file." << std::endl;
+		return true;
+	}
+
+	outGrid = std::make_shared<Grid>(props);
+	std::cout << "[GRID] generated new grid." << std::endl;
+	return false;
+}
+
+bool Grid::loadFromFile(std::shared_ptr<Grid> outGrid, std::string filename)
 {
-	std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+	std::ifstream ifs(ROOT_DIR "resources/grids/" + filename, std::ios::in | std::ios::binary);
 	if (!ifs.good()) {
 		std::cerr << "[GRID] couldn't load grid file" << std::endl;
 		return false;
 	}
 	cereal::BinaryInputArchive iarch(ifs);
-	iarch(outGrid);
+	iarch(*outGrid);
 	return true;
 }
 
-Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, const Camera* camera, const BlackHole* bh, bool testDisk /*= false*/)
+bool Grid::loadFromFile(std::shared_ptr<Grid> outGrid, GridProperties props)
+{
+	return Grid::loadFromFile(outGrid, getFileNameFromConfig(props));
+}
+
+bool Grid::saveToFile(std::shared_ptr<Grid> inGrid) {
+
+	std::string filename = inGrid->getFileNameFromConfig();
+	std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+	cereal::BinaryOutputArchive oarch(ofs);
+	oarch(*inGrid);
+	return true;
+}
+
+std::string Grid::getFileNameFromConfig(GridProperties const& props) {
+	return std::format(
+		"rayTraceLvl-strt-{}-max-{}_pos-r-{:.2f}-the-{:.2f}-phi{:.2f}_vel-{:.2f}_spin-{}.grid",
+		props.grid_strtLvl_, props.grid_maxLvl_,
+		props.cam_rad_, props.cam_the_, props.cam_phi_, props.cam_vel_,
+		props.blackHole_a_
+	);
+}
+
+std::string Grid::getFileNameFromConfig() const {
+	return getFileNameFromConfig(props_);
+}
+
+Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk /*= false*/)
 {
 	disk = testDisk;
 	MAXLEVEL = maxLevelPrec;
@@ -43,8 +83,29 @@ Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, const
 	black = bh;
 	equafactor = angle ? 1 : 0;
 
+	init();
+	
+};
+
+Grid::Grid(GridProperties props)
+	: equafactor(1)	// ignore symmetry for now
+	, MAXLEVEL(props.grid_maxLvl_)
+	, STARTLVL(props.grid_strtLvl_)
+	, disk(false) // ... and disk as well
+{
+	cam = std::make_shared<Camera>(
+		props.cam_the_, props.cam_phi_,
+		props.cam_rad_, props.cam_vel_
+	);
+
+	black = std::make_shared<BlackHole>(props.blackHole_a_);
+
+	init();
+};
+
+void Grid::init() {
 	N = (uint32_t)round(pow(2, MAXLEVEL) / (2 - equafactor) + 1);
-	STARTN = (uint32_t)round(pow(2, startLevel) / (2 - equafactor) + 1);
+	STARTN = (uint32_t)round(pow(2, STARTLVL) / (2 - equafactor) + 1);
 	M = (2 - equafactor) * 2 * (N - 1);
 	STARTM = (2 - equafactor) * 2 * (STARTN - 1);
 	steps = std::vector<int>(M * N);
@@ -54,8 +115,8 @@ Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, const
 	for (auto block : blockLevels) {
 		fixTvertices(block);
 	}
-	if (startLevel != maxLevelPrec) saveAsGpuHash();
-};
+	if (STARTLVL != MAXLEVEL) saveAsGpuHash();
+}
 
 void Grid::saveAsGpuHash()
 {
