@@ -1,3 +1,8 @@
+#include <kerr_app.h>
+#include <helpers/RootDir.h>
+#include <helpers/uboBindings.h>
+#include <blacktracer/Grid.h>
+
 #include <fstream>
 #include <algorithm>
 #include <numeric>
@@ -11,9 +16,6 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <boost/json.hpp>
 
-#include <kerr_app.h>
-#include <helpers/RootDir.h>
-#include <helpers/uboBindings.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
@@ -24,7 +26,6 @@ template <typename T>
 std::vector<T> readFile(std::string const& path) {
 
 	std::ifstream file(path, std::ios::binary | std::ios::ate);
-
 	if (!file) {
 		std::cerr << "[BHV App] Error reading file " << path << std::endl;
 		return {};

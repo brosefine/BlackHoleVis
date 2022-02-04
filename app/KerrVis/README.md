@@ -1,15 +1,7 @@
-# BlackHoleVis 3
+# Kerr Vis
 
-Performance comparison of...
-
-- Rendering of gravitational lensing of a Schwarzschild black hole based on
-	- [Real-time High-Quality Rendering of Non-Rotating Black Holes](https://github.com/ebruneton/black_hole_shader)
-	- [Randonels Starless](https://github.com/rantonels/starless)
-- Rendering of a distorted accretionn disk around a Schwarzschild black hole
-	- [Real-time High-Quality Rendering of Non-Rotating Black Holes](https://github.com/ebruneton/black_hole_shader)
-	- T. Müller, Interactive visualization of a thin disc around a Schwarzschild black hole
-		- [Paper](https://arxiv.org/abs/1206.4259)
-		- [App](https://www2.mpia-hd.mpg.de/homes/tmueller/projects/rela/thindisk/thindisk.html)
+Application of Kerr [Black Hole visualization](https://github.com/annemiekie/blacktracer) by A. Verbraeck:
+[Interactive Black-Hole Visualization](https://doi.org/10.1109/TVCG.2020.3030452)
 
 
 ## Controls

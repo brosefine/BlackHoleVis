@@ -11,6 +11,9 @@
 	- resources/shaders/ebruneton/* by [E.Bruneton](https://github.com/ebruneton/black_hole_shader) licensed under ```BSD-3-Clause License```
 	- resources/textures/ebruneton/* by [E.Bruneton](https://github.com/ebruneton/black_hole_shader) licensed under ```BSD-3-Clause License```
 
+- adapted source code 
+	- app/KerrVis/blacktracer/* by A. Verbraeck's [blacktracer](https://github.com/annemiekie/blacktracer)
+
 - all other files in this [repository](https://github.com/brosefine/BlackHoleVis):
 ```
 MIT License
