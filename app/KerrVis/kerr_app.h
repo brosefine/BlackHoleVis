@@ -45,6 +45,7 @@ private:
 	std::shared_ptr<ShaderBase> testShader_;
 
 	std::shared_ptr<Grid> grid_;
+	bool gridChange_;
 
 	// timing variables for render loop
 	double t0_, dt_;

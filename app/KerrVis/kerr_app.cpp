@@ -1,6 +1,7 @@
 #include <kerr_app.h>
 #include <helpers/RootDir.h>
 #include <helpers/uboBindings.h>
+#include <gui/gui_helpers.h>
 
 #include <fstream>
 #include <algorithm>
@@ -56,6 +57,7 @@ KerrApp::KerrApp(int width, int height)
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, fboScale_(1)
 	, compute_(false)
+	, gridChange_(true)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
 	, showShaders_(false)
@@ -248,6 +250,10 @@ void KerrApp::renderGui() {
 			renderCameraTab();
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Grid Settings")) {
+			renderGridTab();
+			ImGui::EndTabItem();
+		}
 	}
 	ImGui::EndTabBar();
 	ImGui::End();
@@ -310,6 +316,38 @@ void KerrApp::renderSkyTab() {
 	if (skyChange || ImGui::SliderFloat("#Samples", &aniSample, 1.0f, maxSample)) {
 		currentCubeMap_->setParam(GL_TEXTURE_MAX_ANISOTROPY, aniSample);
 	}
+}
+
+
+void KerrApp::renderGridTab() {
+	ImGui::Text("Grid Settings");
+	ImGui::Separator();
+
+	ImGui::Text("Grid Properties");
+	imgui_helpers::sliderDouble("Black Hole Spin", properties_.blackHole_a_, 0.001, 0.999);
+	imgui_helpers::sliderDouble("Cam Rad", properties_.cam_rad_, 3.0, 20.0);
+	imgui_helpers::sliderDouble("Cam Theta", properties_.cam_the_, 0.0, PI1_2);
+	imgui_helpers::sliderDouble("Cam Phi", properties_.cam_phi_, 0.0, PI2);
+	imgui_helpers::sliderDouble("Cam Speed", properties_.cam_vel_, 0.0, 0.9);
+
+	ImGui::SliderInt("Grid Start Level", &properties_.grid_strtLvl_, 1, 10);
+	ImGui::SliderInt("Grid Max Level", &properties_.grid_maxLvl_, properties_.grid_strtLvl_+1, 100);
+
+	ImGui::Separator();
+
+	if (ImGui::Button("Make Grid (Load or Compute)")) {
+		grid_ = std::make_shared<Grid>(properties_);
+		gridChange_ = true;
+	}
+
+	static int printLvl = 1;
+	if (ImGui::Button("Print Grid")) {
+		if (grid_)
+			grid_->printGridCam(printLvl);
+		else
+			std::cerr << "[Kerr] can't print grid: not initialized" << std::endl;
+	}
+	ImGui::SameLine(); ImGui::SliderInt("Print level: ", &printLvl, 1, 8);
 }
 
 void KerrApp::renderCameraTab() {

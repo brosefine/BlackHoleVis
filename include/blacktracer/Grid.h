@@ -22,9 +22,16 @@
 #include <unordered_set>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/type_precision.hpp>
 #include <cereal/access.hpp>
 
 struct GridProperties {
+
+	template < class Archive >
+	void serialize(Archive& ar)
+	{
+		ar(blackHole_a_, cam_rad_, cam_the_, cam_phi_, cam_vel_, grid_strtLvl_, grid_maxLvl_);
+	}
 
 	double blackHole_a_ = 0.5;
 
@@ -86,9 +93,9 @@ public:
 	// create grid and save in outGrid
 	// loads from file if possible, else creates new grid
 	// returns true if read from file
-	static bool makeGrid(std::shared_ptr<Grid> outGrid, GridProperties props);
-	static bool loadFromFile(std::shared_ptr<Grid> outGrid, std::string filename);
-	static bool loadFromFile(std::shared_ptr<Grid> outGrid, GridProperties props);
+	static bool makeGrid(std::shared_ptr<Grid>& outGrid, GridProperties props);
+	static bool loadFromFile(std::shared_ptr<Grid>& outGrid, std::string filename);
+	static bool loadFromFile(std::shared_ptr<Grid>& outGrid, GridProperties props);
 	static bool saveToFile(std::shared_ptr<Grid> inGrid);
 	
 	static std::string getFileNameFromConfig(GridProperties const& props);
@@ -142,6 +149,12 @@ public:
 	Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk /*= false*/);
 
 	void saveAsGpuHash();
+
+	/// <summary>
+	/// Prints the grid cam.
+	/// </summary>
+	/// <param name="level">The level.</param>
+	void printGridCam(int level);
 
 	/// <summary>
 	/// Finalizes an instance of the <see cref="Grid"/> class.
@@ -205,12 +218,6 @@ private:
 #pragma endregion
 
 	/** -------------------------------- RAY TRACING -------------------------------- **/
-
-	/// <summary>
-	/// Prints the grid cam.
-	/// </summary>
-	/// <param name="level">The level.</param>
-	void printGridCam(int level);
 
 	/// <summary>
 	/// Raytraces this instance.

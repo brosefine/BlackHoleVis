@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_precision.hpp>
 
 #include "cereal/types/vector.hpp"
 #include "cereal/types/memory.hpp"
@@ -69,7 +70,7 @@ public:
 
 	glm::ivec2 hashFunc(glm::ivec2 key);
 
-	PSHOffsetTable() {};
+	PSHOffsetTable():n(0) {};
 
 	PSHOffsetTable(std::vector<glm::ivec2>& _elements, std::vector<glm::vec2>& _datapoints);
 

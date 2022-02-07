@@ -24,7 +24,7 @@
 #define ERROR 0.001//1e-6
 
 
-bool Grid::makeGrid(std::shared_ptr<Grid> outGrid, GridProperties props) {
+bool Grid::makeGrid(std::shared_ptr<Grid>& outGrid, GridProperties props) {
 	if (loadFromFile(outGrid, props)) {
 		std::cout << "[GRID] loaded grid from file." << std::endl;
 		return true;
@@ -35,7 +35,7 @@ bool Grid::makeGrid(std::shared_ptr<Grid> outGrid, GridProperties props) {
 	return false;
 }
 
-bool Grid::loadFromFile(std::shared_ptr<Grid> outGrid, std::string filename)
+bool Grid::loadFromFile(std::shared_ptr<Grid>& outGrid, std::string filename)
 {
 	std::ifstream ifs(ROOT_DIR "resources/grids/" + filename, std::ios::in | std::ios::binary);
 	if (!ifs.good()) {
@@ -47,14 +47,14 @@ bool Grid::loadFromFile(std::shared_ptr<Grid> outGrid, std::string filename)
 	return true;
 }
 
-bool Grid::loadFromFile(std::shared_ptr<Grid> outGrid, GridProperties props)
+bool Grid::loadFromFile(std::shared_ptr<Grid>& outGrid, GridProperties props)
 {
 	return Grid::loadFromFile(outGrid, getFileNameFromConfig(props));
 }
 
 bool Grid::saveToFile(std::shared_ptr<Grid> inGrid) {
 
-	std::string filename = inGrid->getFileNameFromConfig();
+	std::string filename = ROOT_DIR "resources/grids/" + inGrid->getFileNameFromConfig();
 	std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 	cereal::BinaryOutputArchive oarch(ofs);
 	oarch(*inGrid);
@@ -63,7 +63,7 @@ bool Grid::saveToFile(std::shared_ptr<Grid> inGrid) {
 
 std::string Grid::getFileNameFromConfig(GridProperties const& props) {
 	return std::format(
-		"rayTraceLvl-strt-{}-max-{}_pos-r-{:.2f}-the-{:.2f}-phi{:.2f}_vel-{:.2f}_spin-{}.grid",
+		"rayTraceLvl-strt-{}-max-{}_pos-r-{:.2f}-the-{:.2f}-phi-{:.2f}_vel-{:.2f}_spin-{}.grid",
 		props.grid_strtLvl_, props.grid_maxLvl_,
 		props.cam_rad_, props.cam_the_, props.cam_phi_, props.cam_vel_,
 		props.blackHole_a_
@@ -120,6 +120,8 @@ void Grid::init() {
 
 void Grid::saveAsGpuHash()
 {
+	if (hasher.n > 0) return;
+
 	if (print) std::cout << "Computing Perfect Hash.." << std::endl;
 
 	std::vector<glm::ivec2> elements;
@@ -241,6 +243,16 @@ glm::dvec2 const Grid::hermite(double aValue, glm::dvec2 const& aX0, glm::dvec2 
 
 void Grid::printGridCam(int level)
 {
+	if (level > MAXLEVEL) {
+		std::cerr << "[Grid]: invalid level at printGridCam" << std::endl;
+		return;
+	}
+	
+	if (CamToCel.size() <= 0) {
+		std::cerr << "[Grid]: cannot print empty Grid data (probably because it was loaded from file)" << std::endl;
+		return;
+	}
+
 	std::cout.precision(2);
 	std::cout << std::endl;
 
@@ -441,7 +453,6 @@ void Grid::fillVector(std::vector<uint64_t>& toIntIJ, uint32_t i, uint32_t j)
 
 void Grid::adaptiveBlockIntegration(int level)
 {
-
 	while (level < MAXLEVEL) {
 		if (level < 5 && print) printGridCam(level);
 		if (print) std::cout << "Computing level " << level + 1 << "..." << std::endl;
