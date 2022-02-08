@@ -7,7 +7,7 @@
 * ------------------------------------------------------------------------------------
 */
 
-#include <blacktracer/Metric.h>
+#include <blacktracer/MetricClass.h>
 
 #include <vector>
 

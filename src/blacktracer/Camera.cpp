@@ -30,17 +30,17 @@ Camera::Camera(double theCam, double phiCam, double radfactor, double _br, doubl
 	btheta = _btheta;
 	br = _br;
 
-	speed = metric::calcSpeed(r, theta);
+	speed = Metric::getInstance().calcSpeed(r, theta);
 	initforms();
 }
 
 void Camera::initforms()
 {
-	alpha = metric::_alpha(this->r, this->theta);
-	w = metric::_w(this->r, this->theta);
-	wbar = metric::_wbar(this->r, this->theta);
-	Delta = metric::_Delta(this->r);
-	ro = metric::_ro(this->r, this->theta);
+	alpha = Metric::getInstance()._alpha(this->r, this->theta);
+	w = Metric::getInstance()._w(this->r, this->theta);
+	wbar = Metric::getInstance()._wbar(this->r, this->theta);
+	Delta = Metric::getInstance()._Delta(this->r);
+	ro = Metric::getInstance()._ro(this->r, this->theta);
 }
 
 std::vector<float> Camera::getParamArray()

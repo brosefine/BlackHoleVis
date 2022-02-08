@@ -7,7 +7,7 @@
 * ------------------------------------------------------------------------------------
 */
 
-#include <blacktracer/Metric.h>
+#include <blacktracer/MetricClass.h>
 #include <blacktracer/Code.h>
 #include <helpers/RootDir.h>
 
@@ -202,13 +202,13 @@ void Grid::checkAdjacentBlock(uint64_t ij, uint64_t ij2, int level, int udlr, in
 			if (CamToCel[ijprev] != glm::dvec2(-1, -1) && CamToCel[ijnext] != glm::dvec2(-1, -1)) {
 				succes = true;
 				if (half) check[3].x = PI - check[3].x;
-				if (metric::check2PIcross(check, 5.)) metric::correct2PIcross(check, 5.);
+				if (Metric::getInstance().check2PIcross(check, 5.)) Metric::getInstance().correct2PIcross(check, 5.);
 				CamToCel[i_j] = hermite(0.5, check[0], check[1], check[2], check[3], 0., 0.);
 			}
 		}
 		if (!succes) {
 			std::vector<glm::dvec2> check = { CamToCel[ij], CamToCel[ij2] };
-			if (metric::check2PIcross(check, 5.)) metric::correct2PIcross(check, 5.);
+			if (Metric::getInstance().check2PIcross(check, 5.)) Metric::getInstance().correct2PIcross(check, 5.);
 			CamToCel[i_j] = 1. / 2. * (check[1] + check[0]);
 		}
 		if (level + 1 == MAXLEVEL) return;
@@ -527,14 +527,14 @@ void Grid::integration_wrapper(std::vector<double>& theta, std::vector<double>& 
 		double pPhi = eF * cam->wbar * phiFido;
 
 		double b = pPhi;
-		double q = pTheta * pTheta + cos(thetaS) * cos(thetaS) * (b * b / (sin(thetaS) * sin(thetaS)) - *metric::asq);
+		double q = pTheta * pTheta + cos(thetaS) * cos(thetaS) * (b * b / (sin(thetaS) * sin(thetaS)) - Metric::getInstance().asq());
 
 		theta[i] = -1;
 		phi[i] = -1;
 		step[i] = 0;
 
-		if (metric::checkCelest(pR, rS, thetaS, b, q)) {
-			metric::rkckIntegrate1(rS, thetaS, phiS, pR, b, q, pTheta, theta[i], phi[i], step[i]);
+		if (Metric::getInstance().checkCelest(pR, rS, thetaS, b, q)) {
+			Metric::getInstance().rkckIntegrate1(rS, thetaS, phiS, pR, b, q, pTheta, theta[i], phi[i], step[i]);
 		}
 	}
 }

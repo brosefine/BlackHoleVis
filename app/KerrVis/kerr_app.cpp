@@ -340,14 +340,14 @@ void KerrApp::renderGridTab() {
 		gridChange_ = true;
 	}
 
-	static int printLvl = 1;
+	static int printLvl = 0;
 	if (ImGui::Button("Print Grid")) {
 		if (grid_)
 			grid_->printGridCam(printLvl);
 		else
 			std::cerr << "[Kerr] can't print grid: not initialized" << std::endl;
 	}
-	ImGui::SameLine(); ImGui::SliderInt("Print level: ", &printLvl, 1, 8);
+	ImGui::SameLine(); ImGui::SliderInt("Print level: ", &printLvl, 0, 8);
 }
 
 void KerrApp::renderCameraTab() {

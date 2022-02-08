@@ -7,7 +7,7 @@
 * ------------------------------------------------------------------------------------
 */
 
-#include <blacktracer/Metric.h>
+#include <blacktracer/MetricClass.h>
 
 class BlackHole
 {
@@ -19,7 +19,7 @@ public:
 
 	void setA(double afactor) {
 		a = afactor;
-		metric::setAngVel(afactor);
+		Metric::getInstance().setAngVel(afactor);
 	}
 
 	double getAngVel(double mass) {
