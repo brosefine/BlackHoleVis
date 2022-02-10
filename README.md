@@ -36,6 +36,7 @@ Dependencies are installed using [vcpkg](https://github.com/Microsoft/vcpkg).
 - [App 1](app/BlackHoleVis_1/README.md)
 - [App 2](app/BlackHoleVis_2/README.md)
 - [App 3](app/BlackHoleVis_3/README.md)
+- [Kerr Vis](app/KerrVis/README.md)
 
 ## References on Black Hole Visualization
 - [LearnOpenGL](https://learnopengl.com/)
