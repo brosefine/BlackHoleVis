@@ -1,11 +1,13 @@
 layout(local_size_x = 32, local_size_y = 32) in;
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
+layout(std430, binding = 3) buffer layoutName
+{
+    vec2 data_SSBO[];
+};
+
 uniform int checkerSize = 10;
 
-// linear sampling blur shader from rastergrid
-// https://rastergrid.com/blog/2010/09/efficient-gaussian-blur-with-linear-sampling/
- 
 void main(void) {
 
     vec2 coords = vec2(gl_GlobalInvocationID.xy);
@@ -14,7 +16,22 @@ void main(void) {
         return;
 
     ivec2 checker = ivec2(mod(coords/checkerSize,vec2(2.0)));
-    vec4 pixel = checker.x == checker.y ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0);
+
+    vec2 sum = vec2(0);
+    
+    
+    for (int i = 0; i < data_SSBO.length(); ++i)
+        sum += data_SSBO[i];
+    sum *= 0.4;
+
+    vec4 pixel;
+    if(checker.x == checker.y) {
+        pixel = vec4(data_SSBO[0].x, data_SSBO[0].y, sum.x, 1.0);
+        // pixel = vec4(0.0, 0.0, 0.0, 1.0);
+    } else {
+        pixel = vec4(sum.y, data_SSBO[1].x, data_SSBO[1].y, 1.0);
+        // pixel = vec4(1.0, 1.0, 1.0, 1.0);
+    }
 
     imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
 }

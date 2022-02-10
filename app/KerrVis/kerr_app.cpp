@@ -3,12 +3,13 @@
 #include <helpers/uboBindings.h>
 #include <gui/gui_helpers.h>
 
-#include <fstream>
 #include <algorithm>
-#include <numeric>
-#include <functional>
-#include <format>
 #include <filesystem>
+#include <format>
+#include <fstream>
+#include <functional>
+#include <numeric>
+#include <thread>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -53,11 +54,14 @@ std::vector<T> readFile(std::string const& path) {
 
 KerrApp::KerrApp(int width, int height)
 	: GLApp(width, height, "Black Hole Vis")
+	, mode_(RenderMode::SKY)
 	, cam_({ 0.f, 0.f, -10.f })
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
+	, gpuGrid_(std::make_shared<FBOTexture>(1, 1))
 	, fboScale_(1)
 	, compute_(false)
-	, gridChange_(true)
+	, gridChange_(false)
+	, makeNewGrid_(false)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
 	, showShaders_(false)
@@ -69,6 +73,17 @@ KerrApp::KerrApp(int width, int height)
 	initShaders();
 	initCubeMaps();
 	resizeTextures();
+	initTestSSBO();
+
+	// init first grid because first execution
+	// always fails for some reason
+	GridProperties tmpProps;
+	tmpProps.grid_maxLvl_ = 1;
+	grid_ = std::make_shared<Grid>(tmpProps);
+	resizeGridTextures();
+	initMakeGridSSBO();
+	makeNewGrid_ = true;
+
 }
 
 void KerrApp::renderContent() 
@@ -77,6 +92,17 @@ void KerrApp::renderContent()
 	dt_ = now - t0_;
 	t0_ = now;
 	tPassed_ += dt_;
+
+	if (gridChange_) {
+		grid_ = newGrid_;
+		newGrid_ = nullptr;
+		std::cout << "Grid changed!" << std::endl;
+		gridChange_ = false;
+		joinGridThread();
+		resizeGridTextures();
+		initMakeGridSSBO();
+		makeNewGrid_ = true;
+	}
 
 	cam_.processInput(window_.getPtr(), dt_);
 
@@ -91,12 +117,11 @@ void KerrApp::renderContent()
 		uploadCameraVectors();
 	}
 	
-	if (compute_) {
-		computeShader_->use();
-		fboTexture_->bindImageTex(0, GL_WRITE_ONLY);
-		glDispatchCompute(workGroups_.x, workGroups_.y, 1);
-	}
-	else {
+	// different paths may write to different fbos
+	std::shared_ptr<FBOTexture> fbo = fboTexture_;
+	switch (mode_)
+	{
+	case KerrApp::RenderMode::SKY:
 
 		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
 		glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
@@ -107,6 +132,40 @@ void KerrApp::renderContent()
 
 		testShader_->use();
 		quad_.draw(GL_TRIANGLES);
+		break;
+
+	case KerrApp::RenderMode::COMPUTE:
+
+		computeShader_->use();
+		fboTexture_->bindImageTex(0, GL_WRITE_ONLY);
+		testSSBO_->bindBase(3);
+
+		glDispatchCompute(testWorkGroups_.x, testWorkGroups_.y, 1);
+		break;
+
+	case KerrApp::RenderMode::MAKEGRID:
+
+		if (makeNewGrid_) {
+
+			makeGridShader_->use();
+			gpuGrid_->bindImageTex(0, GL_WRITE_ONLY);
+			hashTableSSBO_->bindBase(1);
+			hashPosSSBO_->bindBase(2);
+			offsetTableSSBO_->bindBase(3);
+			tableSizeSSBO_->bindBase(4);
+
+			makeGridShader_->setUniform("GM", grid_->M_);
+			makeGridShader_->setUniform("GN", grid_->N_);
+			makeGridShader_->setUniform("GN1", grid_->N_);
+
+			glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
+			makeNewGrid_ = false;
+		}
+
+		fbo = gpuGrid_;
+		break;
+	default:
+		break;
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -116,7 +175,7 @@ void KerrApp::renderContent()
 	sQuadShader_->use();
 
 	glActiveTexture(GL_TEXTURE0);
-	fboTexture_->bind();
+	fbo->bind();
 
 	quad_.draw(GL_TRIANGLES);
 }
@@ -125,6 +184,7 @@ void KerrApp::initShaders() {
 	sQuadShader_ = std::make_shared<Shader>("squad.vs", "squad.fs");
 	testShader_ = std::make_shared<Shader>("kerr/sky.vs", "kerr/sky.fs");
 	computeShader_ = std::make_shared<ComputeShader>("kerr/compute.comp");
+	makeGridShader_ = std::make_shared<ComputeShader>("kerr/makeGrid.comp");
 
 	reloadShaders();
 }
@@ -132,6 +192,7 @@ void KerrApp::initShaders() {
 void KerrApp::reloadShaders()
 {
 	computeShader_->reload();
+	makeGridShader_->reload();
 	testShader_->reload();
 	testShader_->setBlockBinding("camera", CAMBINDING);
 }
@@ -185,9 +246,62 @@ void KerrApp::resizeTextures() {
 	glm::vec2 dim{ window_.getWidth(), window_.getHeight() };
 	fboTexture_->resize(fboScale_ * dim.x, fboScale_ * dim.y);
 
-	glGetProgramiv(computeShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(workGroups_));
-	workGroups_.x = std::ceil(fboTexture_->getWidth() / (float)workGroups_.x);
-	workGroups_.y = std::ceil(fboTexture_->getHeight() / (float)workGroups_.y);
+	glGetProgramiv(computeShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(testWorkGroups_));
+	testWorkGroups_.x = std::ceil(fboTexture_->getWidth() / (float)testWorkGroups_.x);
+	testWorkGroups_.y = std::ceil(fboTexture_->getHeight() / (float)testWorkGroups_.y);
+}
+
+
+void KerrApp::resizeGridTextures(){
+	gpuGrid_->resize(grid_->M_, grid_->N_);
+
+	glGetProgramiv(makeGridShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(makeGridWorkGroups_));
+	makeGridWorkGroups_.x = std::ceil(gpuGrid_->getWidth() / (float)makeGridWorkGroups_.x);
+	makeGridWorkGroups_.y = std::ceil(gpuGrid_->getHeight() / (float)makeGridWorkGroups_.y);
+}
+
+void KerrApp::initTestSSBO() {
+	std::vector<float> data{ 1.0f, 0.5f, 0.8f, 0.9f };
+	testSSBO_ = std::make_shared<SSBO>(sizeof(float) * data.size(), data.data());
+	//testSSBO_->subData(0, sizeof(int), &i1);
+	//testSSBO_->subData(sizeof(int), sizeof(int), &i2);
+	//testSSBO_->subData(2*sizeof(int), sizeof(float) * data.size(), data.data());
+
+}
+
+
+void KerrApp::initMakeGridSSBO(){
+	// Table sizes
+	std::vector<int> tableSizes{grid_->hasher.hashTableWidth, grid_->hasher.offsetTableWidth};
+	tableSizeSSBO_ = std::make_shared<SSBO>(sizeof(int)*tableSizes.size(), tableSizes.data());
+
+	// Hash Table
+	std::vector<float> &hashTable = grid_->hasher.hashTable;
+	hashTableSSBO_ = std::make_shared<SSBO>(sizeof(float)*hashTable.size(), hashTable.data());
+
+	// Hash Pos Tag Table
+	std::vector<int>& hashPosTag = grid_->hasher.hashPosTag;
+	hashPosSSBO_ = std::make_shared<SSBO>(sizeof(int) * hashPosTag.size(), hashPosTag.data());
+
+	// Offset Table
+	std::vector<int>& offsetTable = grid_->hasher.offsetTable;
+	offsetTableSSBO_ = std::make_shared<SSBO>(sizeof(int) * offsetTable.size(), offsetTable.data());
+
+	std::cout << "SSBO sizes: " <<
+		"hashTable " << sizeof(float) * hashTable.size() / 1000 << " KB, " <<
+		"hashPosSSBO " << sizeof(int) * hashPosTag.size() / 1000 << " KB, " <<
+		"offsetTableSSBO " << sizeof(int) * offsetTable.size() / 1000 << " KB" << std::endl;
+}
+
+void KerrApp::makeGrid() {
+	newGrid_ = std::make_shared<Grid>(properties_);
+	gridChange_ = true;
+}
+
+
+void KerrApp::joinGridThread() {
+	if (gridThread_) gridThread_->join();
+	gridThread_ = nullptr;
 }
 
 void KerrApp::uploadCameraVectors() {
@@ -263,9 +377,20 @@ void KerrApp::renderShaderTab() {
 	if (ImGui::Button("Reload Shaders"))
 		reloadShaders();
 	ImGui::Separator();
-	ImGui::Checkbox("Compute Shader", &compute_);
+
+	ImGui::Text("RenderMode");
+	static int m = 0;
+	if (ImGui::RadioButton("SKY", &m, 0)) {
+		mode_ = RenderMode::SKY;
+	}
+	if (ImGui::RadioButton("COMPUTE", &m, 1)) {
+		mode_ = RenderMode::COMPUTE;
+	}
+	if (ImGui::RadioButton("MAKEGRID", &m, 2)) {
+		mode_ = RenderMode::MAKEGRID;
+	}
 	
-	if (compute_) {
+	if (mode_ == RenderMode::COMPUTE) {
 		static int checkerSize = 10;
 		if (ImGui::SliderInt("Checker Size", &checkerSize, 1, 100))
 			computeShader_->setUniform("checkerSize", checkerSize);
@@ -318,7 +443,6 @@ void KerrApp::renderSkyTab() {
 	}
 }
 
-
 void KerrApp::renderGridTab() {
 	ImGui::Text("Grid Settings");
 	ImGui::Separator();
@@ -326,7 +450,7 @@ void KerrApp::renderGridTab() {
 	ImGui::Text("Grid Properties");
 	imgui_helpers::sliderDouble("Black Hole Spin", properties_.blackHole_a_, 0.001, 0.999);
 	imgui_helpers::sliderDouble("Cam Rad", properties_.cam_rad_, 3.0, 20.0);
-	imgui_helpers::sliderDouble("Cam Theta", properties_.cam_the_, 0.0, PI1_2);
+	imgui_helpers::sliderDouble("Cam Theta", properties_.cam_the_, 0.0, PI);
 	imgui_helpers::sliderDouble("Cam Phi", properties_.cam_phi_, 0.0, PI2);
 	imgui_helpers::sliderDouble("Cam Speed", properties_.cam_vel_, 0.0, 0.9);
 
@@ -336,14 +460,16 @@ void KerrApp::renderGridTab() {
 	ImGui::Separator();
 
 	if (ImGui::Button("Make Grid (Load or Compute)")) {
-		grid_ = std::make_shared<Grid>(properties_);
-		gridChange_ = true;
+		joinGridThread();
+		gridThread_ = std::make_shared<std::thread>(&KerrApp::makeGrid, this);
 	}
 
 	static int printLvl = 0;
 	if (ImGui::Button("Print Grid")) {
-		if (grid_)
+		if (grid_) {
+			std::cout << "grid dims: M=" << grid_->M_ << ", N=" << grid_->N_ << std::endl;
 			grid_->printGridCam(printLvl);
+		}
 		else
 			std::cerr << "[Kerr] can't print grid: not initialized" << std::endl;
 	}
