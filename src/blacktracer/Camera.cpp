@@ -7,8 +7,10 @@
 * ------------------------------------------------------------------------------------
 */
 
-Camera::Camera(double theCam, double phiCam, double radfactor, double speedCam)
+Camera::Camera(std::shared_ptr<Metric> metric, double theCam, double phiCam, double radfactor, double speedCam)
 {
+	metric_ = metric;
+	
 	theta = theCam;
 	phi = phiCam;
 	r = radfactor;
@@ -20,6 +22,7 @@ Camera::Camera(double theCam, double phiCam, double radfactor, double speedCam)
 	initforms();
 }
 
+/*
 Camera::Camera(double theCam, double phiCam, double radfactor, double _br, double _btheta, double _bphi)
 {
 	theta = theCam;
@@ -30,17 +33,18 @@ Camera::Camera(double theCam, double phiCam, double radfactor, double _br, doubl
 	btheta = _btheta;
 	br = _br;
 
-	speed = Metric::getInstance().calcSpeed(r, theta);
+	speed = metric_->calcSpeed(r, theta);
 	initforms();
 }
+*/
 
 void Camera::initforms()
 {
-	alpha = Metric::getInstance()._alpha(this->r, this->theta);
-	w = Metric::getInstance()._w(this->r, this->theta);
-	wbar = Metric::getInstance()._wbar(this->r, this->theta);
-	Delta = Metric::getInstance()._Delta(this->r);
-	ro = Metric::getInstance()._ro(this->r, this->theta);
+	alpha = metric_->_alpha(this->r, this->theta);
+	w = metric_->_w(this->r, this->theta);
+	wbar = metric_->_wbar(this->r, this->theta);
+	Delta = metric_->_Delta(this->r);
+	ro = metric_->_ro(this->r, this->theta);
 }
 
 std::vector<float> Camera::getParamArray()
