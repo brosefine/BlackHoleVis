@@ -58,6 +58,7 @@ private:
 	bool compute_;
 	std::shared_ptr<ComputeShader> computeShader_;
 	std::shared_ptr<ComputeShader> makeGridShader_;
+	std::shared_ptr<ComputeShader> interpolateShader_;
 	glm::ivec3 testWorkGroups_;
 	glm::ivec3 makeGridWorkGroups_;
 

@@ -157,6 +157,7 @@ void KerrApp::renderContent()
 			makeGridShader_->setUniform("GM", grid_->M_);
 			makeGridShader_->setUniform("GN", grid_->N_);
 			makeGridShader_->setUniform("GN1", grid_->N_);
+			makeGridShader_->setUniform("print", true);
 
 			glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
 			makeNewGrid_ = false;
@@ -185,6 +186,7 @@ void KerrApp::initShaders() {
 	testShader_ = std::make_shared<Shader>("kerr/sky.vs", "kerr/sky.fs");
 	computeShader_ = std::make_shared<ComputeShader>("kerr/compute.comp");
 	makeGridShader_ = std::make_shared<ComputeShader>("kerr/makeGrid.comp");
+	interpolateShader_ = std::make_shared<ComputeShader>("kerr/pixInterpolation.comp");
 
 	reloadShaders();
 }
@@ -193,6 +195,7 @@ void KerrApp::reloadShaders()
 {
 	computeShader_->reload();
 	makeGridShader_->reload();
+	interpolateShader_->reload();
 	testShader_->reload();
 	testShader_->setBlockBinding("camera", CAMBINDING);
 }
@@ -388,6 +391,7 @@ void KerrApp::renderShaderTab() {
 	}
 	if (ImGui::RadioButton("MAKEGRID", &m, 2)) {
 		mode_ = RenderMode::MAKEGRID;
+		makeNewGrid_ = true;
 	}
 	
 	if (mode_ == RenderMode::COMPUTE) {
@@ -455,7 +459,7 @@ void KerrApp::renderGridTab() {
 	imgui_helpers::sliderDouble("Cam Speed", properties_.cam_vel_, 0.0, 0.9);
 
 	ImGui::SliderInt("Grid Start Level", &properties_.grid_strtLvl_, 1, 10);
-	ImGui::SliderInt("Grid Max Level", &properties_.grid_maxLvl_, properties_.grid_strtLvl_+1, 100);
+	ImGui::SliderInt("Grid Max Level", &properties_.grid_maxLvl_, properties_.grid_strtLvl_+1, 20);
 
 	ImGui::Separator();
 

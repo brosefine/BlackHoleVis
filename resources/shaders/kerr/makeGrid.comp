@@ -37,10 +37,12 @@ uniform int GN; // input grid height
 uniform int GN1; // output grid height (!= GN if sym == 1)
 uniform bool sym = false; // if grid is symmetric, input grid is only half the size
 
-const float pi = 3.14159265359;
-const float I_pi = 1.0/pi;
-const float pi2 = 2*pi;
-const float I_pi2 = 1.0/pi2;
+uniform bool print = false; // true if grid is rendered afterwards
+
+const float PI = 3.14159265359;
+const float I_PI = 1.0/PI;
+const float PI2 = 2*PI;
+const float I_PI2 = 1.0/PI2;
 
 
 ivec2 hash1(ivec2 key, int ow) {
@@ -86,12 +88,18 @@ void main() {
         return;
 	
 	vec2 lookup = hashLookup(coords.yx);
-	vec4 pixel = vec4(lookup.x * I_pi, lookup.y * I_pi2, 0.0, 1.0);
-	if(lookup.x == -2 && lookup.y == -2)
-		pixel.rgb = vec3(1.0);
-	else if (lookup.x == -1 && lookup.y == -1)
-		pixel.rgb = vec3(0.0);
 	
+	vec4 pixel;
+	if(print) {
+		pixel = vec4(lookup.x * I_PI, lookup.y * I_PI2, 0.0, 1.0);
+		if(all(equal(lookup, vec2(-2))))
+			pixel.rgb = vec3(1.0);
+		else if (all(equal(lookup, vec2(-1))))
+			pixel.rgb = vec3(0.0);
+	} else {
+		pixel = vec4(lookup.x, lookup.y, 0.0, 1.0);
+	} 
+
 	//grid[out_gridID * GM * GN1 + coords.x * GM + coords.y] = lookup;
     imageStore(gpuGrid, coords, pixel);
 	
