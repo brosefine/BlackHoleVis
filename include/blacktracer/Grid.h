@@ -52,7 +52,7 @@ class Grid
 	template < class Archive >
 	void serialize(Archive& ar)
 	{
-		ar(MAXLEVEL, N, M, hasher);
+		ar(MAXLEVEL_, N_, M_, hasher);
 	}
 
 #pragma endregion
@@ -90,29 +90,18 @@ class Grid
 
 public:
 
-	// create grid and save in outGrid
-	// loads from file if possible, else creates new grid
-	// returns true if read from file
-	static bool makeGrid(std::shared_ptr<Grid>& outGrid, GridProperties props);
-	static bool loadFromFile(std::shared_ptr<Grid>& outGrid, std::string filename);
-	static bool loadFromFile(std::shared_ptr<Grid>& outGrid, GridProperties props);
-	static bool saveToFile(std::shared_ptr<Grid> inGrid);
-	
-	static std::string getFileNameFromConfig(GridProperties const& props);
-
-	std::string getFileNameFromConfig() const;
-
 	/// <summary>
 	/// 1 if rotation axis != camera axis, 0 otherwise
 	/// </summary>
-	int equafactor;
+	int equafactor_;
 
 	/// <summary>
 	/// N = max vertical rays, M = max horizontal rays.
 	/// </summary>
-	int MAXLEVEL, N, M, STARTN, STARTM, STARTLVL;
+	int MAXLEVEL_, N_, M_, STARTN_, STARTM_, STARTLVL_;
 
-	bool print = false;
+	bool print_ = false;
+
 
 	/// <summary>
 	/// Mapping from camera sky position to celestial angle.
@@ -130,7 +119,6 @@ public:
 	/// </summary>
 	std::unordered_map <uint64_t, int, hashing_func2> blockLevels;
 
-
 	/// <summary>
 	/// Initializes an empty new instance of the <see cref="Grid"/> class.
 	/// </summary>
@@ -146,7 +134,17 @@ public:
 	/// <param name="angle">If the camera is not on the symmetry axis.</param>
 	/// <param name="camera">The camera.</param>
 	/// <param name="bh">The black hole.</param>
-	Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk /*= false*/);
+	//Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk /*= false*/);
+	
+	// create grid and save in outGrid
+	// loads from file if possible, else creates new grid
+	// returns true if read from file
+	static bool makeGrid(std::shared_ptr<Grid>& outGrid, GridProperties props);
+	static bool loadFromFile(std::shared_ptr<Grid>& outGrid, std::string filename);
+	static bool loadFromFile(std::shared_ptr<Grid>& outGrid, GridProperties props);
+	static bool saveToFile(std::shared_ptr<Grid> inGrid);
+	static std::string getFileNameFromConfig(GridProperties const& props);
+	std::string getFileNameFromConfig() const;
 
 	void saveAsGpuHash();
 
@@ -163,11 +161,13 @@ public:
 private:
 	/** ------------------------------ VARIABLES ------------------------------ **/
 
-	bool disk;
+	bool calcDisk_;
 	GridProperties props_;
-	// Camera & Blackhole
-	std::shared_ptr<Camera> cam;
-	std::shared_ptr<BlackHole> black;
+	std::shared_ptr<Metric> metric_;
+	std::shared_ptr<Camera> cam_;
+	double blackHoleA_;
+
+	//std::shared_ptr<BlackHole> black;
 
 	// Set of blocks to be checked for division
 	std::unordered_set<uint64_t, hashing_func2> checkblocks;

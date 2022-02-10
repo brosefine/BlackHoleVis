@@ -74,7 +74,8 @@ std::string Grid::getFileNameFromConfig() const {
 	return getFileNameFromConfig(props_);
 }
 
-Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk /*= false*/)
+/*
+Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::shared_ptr<Camera> camera, std::shared_ptr<BlackHole> bh, bool testDisk)
 {
 	disk = testDisk;
 	MAXLEVEL = maxLevelPrec;
@@ -86,43 +87,48 @@ Grid::Grid(const int maxLevelPrec, const int startLevel, const bool angle, std::
 	init();
 	
 };
+*/
 
 Grid::Grid(GridProperties props)
-	: equafactor(1)	// ignore symmetry for now
-	, MAXLEVEL(props.grid_maxLvl_)
-	, STARTLVL(props.grid_strtLvl_)
-	, disk(false) // ... and disk as well
+	: equafactor_(1)	// ignore symmetry for now
+	, MAXLEVEL_(props.grid_maxLvl_)
+	, STARTLVL_(props.grid_strtLvl_)
+	, calcDisk_(false) // ... and disk as well
+	, metric_(std::make_shared<Metric>(props.blackHole_a_))
+	, blackHoleA_(props.blackHole_a_)
 {
-	cam = std::make_shared<Camera>(
+	
+	cam_ = std::make_shared<Camera>(metric_,
 		props.cam_the_, props.cam_phi_,
 		props.cam_rad_, props.cam_vel_
 	);
 
-	black = std::make_shared<BlackHole>(props.blackHole_a_);
+	//black = std::make_shared<BlackHole>(props.blackHole_a_);
+
 
 	init();
 };
 
 void Grid::init() {
-	N = (uint32_t)round(pow(2, MAXLEVEL) / (2 - equafactor) + 1);
-	STARTN = (uint32_t)round(pow(2, STARTLVL) / (2 - equafactor) + 1);
-	M = (2 - equafactor) * 2 * (N - 1);
-	STARTM = (2 - equafactor) * 2 * (STARTN - 1);
-	steps = std::vector<int>(M * N);
+	N_ = (uint32_t)round(pow(2, MAXLEVEL_) / (2 - equafactor_) + 1);
+	STARTN_ = (uint32_t)round(pow(2, STARTLVL_) / (2 - equafactor_) + 1);
+	M_ = (2 - equafactor_) * 2 * (N_ - 1);
+	STARTM_ = (2 - equafactor_) * 2 * (STARTN_ - 1);
+	steps = std::vector<int>(M_ * N_);
 	raytrace();
 	//printGridCam(5);
 
 	for (auto block : blockLevels) {
 		fixTvertices(block);
 	}
-	if (STARTLVL != MAXLEVEL) saveAsGpuHash();
+	if (STARTLVL_ != MAXLEVEL_) saveAsGpuHash();
 }
 
 void Grid::saveAsGpuHash()
 {
 	if (hasher.n > 0) return;
 
-	if (print) std::cout << "Computing Perfect Hash.." << std::endl;
+	if (print_) std::cout << "Computing Perfect Hash.." << std::endl;
 
 	std::vector<glm::ivec2> elements;
 	std::vector<glm::vec2> data;
@@ -134,7 +140,7 @@ void Grid::saveAsGpuHash()
 	}
 	hasher = PSHOffsetTable(elements, data);
 
-	if (print) std::cout << "Completed Perfect Hash" << std::endl;
+	if (print_) std::cout << "Completed Perfect Hash" << std::endl;
 }
 
 bool Grid::pointInPolygon(glm::dvec2& point, std::vector<glm::dvec2>& thphivals, int sgn)
@@ -153,15 +159,15 @@ bool Grid::pointInPolygon(glm::dvec2& point, std::vector<glm::dvec2>& thphivals,
 void Grid::fixTvertices(std::pair<uint64_t, int> block)
 {
 	int level = block.second;
-	if (level == MAXLEVEL) return;
+	if (level == MAXLEVEL_) return;
 	uint64_t ij = block.first;
 	if (CamToCel[ij]_phi < 0) return;
 
-	int gap = pow(2, MAXLEVEL - level);
+	int gap = pow(2, MAXLEVEL_ - level);
 	uint32_t i = i_32;
 	uint32_t j = j_32;
 	uint32_t k = i + gap;
-	uint32_t l = (j + gap) % M;
+	uint32_t l = (j + gap) % M_;
 
 	checkAdjacentBlock(ij, k_j, level, 1, gap);
 	checkAdjacentBlock(ij, i_l, level, 0, gap);
@@ -177,20 +183,20 @@ void Grid::checkAdjacentBlock(uint64_t ij, uint64_t ij2, int level, int udlr, in
 	if (it == CamToCel.end())
 		return;
 	else {
-		uint32_t jprev = (j_32 - (1 - udlr) * gap + M) % M;
-		uint32_t jnext = (j_32 + (1 - udlr) * 2 * gap) % M;
+		uint32_t jprev = (j_32 - (1 - udlr) * gap + M_) % M_;
+		uint32_t jnext = (j_32 + (1 - udlr) * 2 * gap) % M_;
 		uint32_t iprev = i_32 - udlr * gap;
 		uint32_t inext = i_32 + 2 * udlr * gap;
 
 		bool half = false;
 
 		if (i_32 == 0) {
-			jprev = (j_32 + M / 2) % M;
+			jprev = (j_32 + M_ / 2) % M_;
 			iprev = gap;
 		}
-		else if (inext > N - 1) {
+		else if (inext > N_ - 1) {
 			inext = i_32;
-			if (equafactor) jnext = (j_32 + M / 2) % M;
+			if (equafactor_) jnext = (j_32 + M_ / 2) % M_;
 			else half = true;
 		}
 		uint64_t ijprev = (uint64_t)iprev << 32 | jprev;
@@ -202,16 +208,16 @@ void Grid::checkAdjacentBlock(uint64_t ij, uint64_t ij2, int level, int udlr, in
 			if (CamToCel[ijprev] != glm::dvec2(-1, -1) && CamToCel[ijnext] != glm::dvec2(-1, -1)) {
 				succes = true;
 				if (half) check[3].x = PI - check[3].x;
-				if (Metric::getInstance().check2PIcross(check, 5.)) Metric::getInstance().correct2PIcross(check, 5.);
+				if (metric_->check2PIcross(check, 5.)) metric_->correct2PIcross(check, 5.);
 				CamToCel[i_j] = hermite(0.5, check[0], check[1], check[2], check[3], 0., 0.);
 			}
 		}
 		if (!succes) {
 			std::vector<glm::dvec2> check = { CamToCel[ij], CamToCel[ij2] };
-			if (Metric::getInstance().check2PIcross(check, 5.)) Metric::getInstance().correct2PIcross(check, 5.);
+			if (metric_->check2PIcross(check, 5.)) metric_->correct2PIcross(check, 5.);
 			CamToCel[i_j] = 1. / 2. * (check[1] + check[0]);
 		}
-		if (level + 1 == MAXLEVEL) return;
+		if (level + 1 == MAXLEVEL_) return;
 		checkAdjacentBlock(ij, i_j, level + 1, udlr, gap / 2);
 		checkAdjacentBlock(i_j, ij2, level + 1, udlr, gap / 2);
 	}
@@ -243,7 +249,7 @@ glm::dvec2 const Grid::hermite(double aValue, glm::dvec2 const& aX0, glm::dvec2 
 
 void Grid::printGridCam(int level)
 {
-	if (level > MAXLEVEL) {
+	if (level > MAXLEVEL_) {
 		std::cerr << "[Grid]: invalid level at printGridCam" << std::endl;
 		return;
 	}
@@ -256,9 +262,9 @@ void Grid::printGridCam(int level)
 	std::cout.precision(2);
 	std::cout << std::endl;
 
-	int gap = (int)pow(2, MAXLEVEL - level);
-	for (uint32_t i = 0; i < N; i += gap) {
-		for (uint32_t j = 0; j < M; j += gap) {
+	int gap = (int)pow(2, MAXLEVEL_ - level);
+	for (uint32_t i = 0; i < N_; i += gap) {
+		for (uint32_t j = 0; j < M_; j += gap) {
 			double val = CamToCel[i_j]_theta;
 			if (val > 1e-10)
 				std::cout << std::setw(4) << val / PI;
@@ -269,8 +275,8 @@ void Grid::printGridCam(int level)
 	}
 
 	std::cout << std::endl;
-	for (uint32_t i = 0; i < N; i += gap) {
-		for (uint32_t j = 0; j < M; j += gap) {
+	for (uint32_t i = 0; i < N_; i += gap) {
+		for (uint32_t j = 0; j < M_; j += gap) {
 			double val = CamToCel[i_j]_phi;
 			if (val > 1e-10)
 				std::cout << std::setw(4) << val / PI;
@@ -282,9 +288,9 @@ void Grid::printGridCam(int level)
 	std::cout << std::endl;
 
 	std::cout << std::endl;
-	for (uint32_t i = 0; i < N; i += gap) {
-		for (uint32_t j = 0; j < M; j += gap) {
-			double val = steps[i * M + j];
+	for (uint32_t i = 0; i < N_; i += gap) {
+		for (uint32_t j = 0; j < M_; j += gap) {
+			double val = steps[i * M_ + j];
 			std::cout << std::setw(4) << val;
 		}
 		std::cout << std::endl;
@@ -296,7 +302,7 @@ void Grid::printGridCam(int level)
 	int countnotnull = 0;
 	std::ofstream myfile;
 	myfile.open("steps.txt");
-	for (int i = 0; i < N * M; i++) {
+	for (int i = 0; i < N_ * M_; i++) {
 		sum += steps[i];
 		if (steps[i] > 0) {
 			sumnotnull += steps[i];
@@ -308,7 +314,7 @@ void Grid::printGridCam(int level)
 	std::cout << "steeeeps" << sum << std::endl;
 	std::cout << "steeeepsnotnull" << sumnotnull << std::endl;
 
-	std::cout << "ave" << (float)sum / (float)(M * (N + 1)) << std::endl;
+	std::cout << "ave" << (float)sum / (float)(M_ * (N_ + 1)) << std::endl;
 	std::cout << "avenotnull" << (float)sumnotnull / (float)(countnotnull) << std::endl;
 
 	//for (uint32_t i = 0; i < N; i += gap) {
@@ -325,44 +331,44 @@ void Grid::printGridCam(int level)
 
 void Grid::raytrace()
 {
-	int gap = (int)pow(2, MAXLEVEL - STARTLVL);
-	int s = (1 + equafactor);
+	int gap = (int)pow(2, MAXLEVEL_ - STARTLVL_);
+	int s = (1 + equafactor_);
 
 	std::vector<uint64_t> ijstart(s);
 
 	ijstart[0] = 0;
-	if (equafactor) ijstart[1] = (uint64_t)(N - 1) << 32;
+	if (equafactor_) ijstart[1] = (uint64_t)(N_ - 1) << 32;
 
-	if (print) std::cout << "Computing Level " << STARTLVL << "..." << std::endl;
+	if (print_) std::cout << "Computing Level " << STARTLVL_ << "..." << std::endl;
 	callKernel(ijstart);
 
-	for (uint32_t j = 0; j < M; j += gap) {
+	for (uint32_t j = 0; j < M_; j += gap) {
 		uint32_t i, l, k;
 		i = l = k = 0;
 		CamToCel[i_j] = CamToCel[k_l];
-		steps[i * M + j] = steps[0];
+		steps[i * M_ + j] = steps[0];
 		checkblocks.insert(i_j);
-		if (equafactor) {
-			i = k = N - 1;
+		if (equafactor_) {
+			i = k = N_ - 1;
 			CamToCel[i_j] = CamToCel[k_l];
-			steps[i * M + j] = steps[0];
+			steps[i * M_ + j] = steps[0];
 
 		}
 	}
 
 	integrateFirst(gap);
-	adaptiveBlockIntegration(STARTLVL);
+	adaptiveBlockIntegration(STARTLVL_);
 }
 
 void Grid::integrateFirst(const int gap)
 {
 	std::vector<uint64_t> toIntIJ;
 
-	for (uint32_t i = gap; i < N - equafactor; i += gap) {
-		for (uint32_t j = 0; j < M; j += gap) {
+	for (uint32_t i = gap; i < N_ - equafactor_; i += gap) {
+		for (uint32_t j = 0; j < M_; j += gap) {
 			toIntIJ.push_back(i_j);
-			if (i == N - 1);// && !equafactor);
-			else if (MAXLEVEL == STARTLVL) blockLevels[i_j] = STARTLVL;
+			if (i == N_ - 1);// && !equafactor);
+			else if (MAXLEVEL_ == STARTLVL_) blockLevels[i_j] = STARTLVL_;
 			else checkblocks.insert(i_j);
 		}
 	}
@@ -375,7 +381,7 @@ void Grid::fillGridCam(const std::vector<uint64_t>& ijvals, const size_t s, std:
 	for (int k = 0; k < s; k++) {
 		CamToCel[ijvals[k]] = glm::dvec2(thetavals[k], phivals[k]);
 		uint64_t ij = ijvals[k];
-		steps[i_32 * M + j_32] = step[k];
+		steps[i_32 * M_ + j_32] = step[k];
 		//if (disk) CamToAD[ijvals[k]] = glm::dvec2(hitr[k], hitphi[k]);
 	}
 }
@@ -387,8 +393,8 @@ void Grid::callKernel(std::vector<uint64_t>& ijvec)
 	std::vector<int> step(s);
 	for (int q = 0; q < s; q++) {
 		uint64_t ij = ijvec[q];
-		theta[q] = (double)i_32 / (N - 1) * PI / (2 - equafactor);
-		phi[q] = (double)j_32 / M * PI2;
+		theta[q] = (double)i_32 / (N_ - 1) * PI / (2 - equafactor_);
+		phi[q] = (double)j_32 / M_ * PI2;
 	}
 
 	auto start_time = std::chrono::high_resolution_clock::now();
@@ -405,7 +411,7 @@ void Grid::callKernel(std::vector<uint64_t>& ijvec)
 bool Grid::refineCheck(const uint32_t i, const uint32_t j, const int gap, const int level)
 {
 	uint32_t k = i + gap;
-	uint32_t l = (j + gap) % M;
+	uint32_t l = (j + gap) % M_;
 	/*
 	if (disk) {
 		double a = CamToAD[i_j].x;
@@ -453,9 +459,9 @@ void Grid::fillVector(std::vector<uint64_t>& toIntIJ, uint32_t i, uint32_t j)
 
 void Grid::adaptiveBlockIntegration(int level)
 {
-	while (level < MAXLEVEL) {
-		if (level < 5 && print) printGridCam(level);
-		if (print) std::cout << "Computing level " << level + 1 << "..." << std::endl;
+	while (level < MAXLEVEL_) {
+		if (level < 5 && print_) printGridCam(level);
+		if (print_) std::cout << "Computing level " << level + 1 << "..." << std::endl;
 
 		if (checkblocks.size() == 0) return;
 
@@ -464,19 +470,19 @@ void Grid::adaptiveBlockIntegration(int level)
 
 		for (auto ij : checkblocks) {
 
-			uint32_t gap = (uint32_t)pow(2, MAXLEVEL - level);
+			uint32_t gap = (uint32_t)pow(2, MAXLEVEL_ - level);
 			uint32_t i = i_32;
 			uint32_t j = j_32;
 			uint32_t k = i + gap / 2;
 			uint32_t l = j + gap / 2;
-			j = j % M;
+			j = j % M_;
 
 			if (refineCheck(i, j, gap, level)) {
 				fillVector(toIntIJ, k, j);
 				fillVector(toIntIJ, k, l);
 				fillVector(toIntIJ, i, l);
 				fillVector(toIntIJ, i + gap, l);
-				fillVector(toIntIJ, k, (j + gap) % M);
+				fillVector(toIntIJ, k, (j + gap) % M_);
 				todo.insert(i_j);
 				todo.insert(k_j);
 				todo.insert(k_l);
@@ -495,10 +501,10 @@ void Grid::adaptiveBlockIntegration(int level)
 
 void Grid::integration_wrapper(std::vector<double>& theta, std::vector<double>& phi, const int n, std::vector<int>& step)
 {
-	double thetaS = cam->theta;
-	double phiS = cam->phi;
-	double rS = cam->r;
-	double sp = cam->speed;
+	double thetaS = cam_->theta;
+	double phiS = cam_->phi;
+	double rS = cam_->r;
+	double sp = cam_->speed;
 
 #pragma loop(hint_parallel(8))
 #pragma loop(ivdep)
@@ -512,29 +518,29 @@ void Grid::integration_wrapper(std::vector<double>& theta, std::vector<double>& 
 		double xFido = -sqrtf(1 - sp * sp) * xCam / (1 - sp * yCam);
 		double zFido = -sqrtf(1 - sp * sp) * zCam / (1 - sp * yCam);
 
-		double k = sqrt(1 - cam->btheta * cam->btheta);
-		double rFido = xFido * cam->bphi / k + cam->br * yFido + cam->br * cam->btheta / k * zFido;
-		double thetaFido = cam->btheta * yFido - k * zFido;
-		double phiFido = -xFido * cam->br / k + cam->bphi * yFido + cam->bphi * cam->btheta / k * zFido;
+		double k = sqrt(1 - cam_->btheta * cam_->btheta);
+		double rFido = xFido * cam_->bphi / k + cam_->br * yFido + cam_->br * cam_->btheta / k * zFido;
+		double thetaFido = cam_->btheta * yFido - k * zFido;
+		double phiFido = -xFido * cam_->br / k + cam_->bphi * yFido + cam_->bphi * cam_->btheta / k * zFido;
 		//double rFido = xFido;
 		//double thetaFido = -zFido;
 		//double phiFido = yFido;
 
-		double eF = 1. / (cam->alpha + cam->w * cam->wbar * phiFido);
+		double eF = 1. / (cam_->alpha + cam_->w * cam_->wbar * phiFido);
 
-		double pR = eF * cam->ro * rFido / sqrtf(cam->Delta);
-		double pTheta = eF * cam->ro * thetaFido;
-		double pPhi = eF * cam->wbar * phiFido;
+		double pR = eF * cam_->ro * rFido / sqrtf(cam_->Delta);
+		double pTheta = eF * cam_->ro * thetaFido;
+		double pPhi = eF * cam_->wbar * phiFido;
 
 		double b = pPhi;
-		double q = pTheta * pTheta + cos(thetaS) * cos(thetaS) * (b * b / (sin(thetaS) * sin(thetaS)) - Metric::getInstance().asq());
+		double q = pTheta * pTheta + cos(thetaS) * cos(thetaS) * (b * b / (sin(thetaS) * sin(thetaS)) - metric_->asq());
 
 		theta[i] = -1;
 		phi[i] = -1;
 		step[i] = 0;
 
-		if (Metric::getInstance().checkCelest(pR, rS, thetaS, b, q)) {
-			Metric::getInstance().rkckIntegrate1(rS, thetaS, phiS, pR, b, q, pTheta, theta[i], phi[i], step[i]);
+		if (metric_->checkCelest(pR, rS, thetaS, b, q)) {
+			metric_->rkckIntegrate1(rS, thetaS, phiS, pR, b, q, pTheta, theta[i], phi[i], step[i]);
 		}
 	}
 }

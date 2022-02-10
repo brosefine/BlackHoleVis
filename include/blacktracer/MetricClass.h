@@ -37,14 +37,11 @@
 #define ADAPTIVE 5.0
 
 
-// Simple Singleton Example by Martin York
-// https://stackoverflow.com/a/1008289
 class Metric {
 public:
-	static Metric& getInstance() {
-		static Metric instance;
-		return instance;
-	}
+	Metric() : a_(0.0), asq_(0.0) {}
+	Metric(double afactor) : a_(afactor), asq_(afactor*afactor) {}
+
 
 	double a() { return a_; }
 	double asq() { return asq_; }
@@ -69,13 +66,7 @@ public:
 	};
 
 	double _Sigma(double r, double theta) {
-		//         ~1~         2                3                  4
-		//return sqrt(sq(sq(r) + PAsq) - PAsq*_Delta(r) * sq(sin(theta)));
-		double v2 = sq(sq(r) + asq_);
-		double v3 = asq_ * _Delta(r);
-		double v4 = sq(sin(theta));
-		double result = sqrt(v2 - v3 * v4);
-		return result;
+		return sqrt(sq(sq(r) + asq_) - asq_*_Delta(r) * sq(sin(theta)));
 	};
 
 	double _w(double r, double theta) {
@@ -95,13 +86,7 @@ public:
 	};
 
 	double _alpha(double r, double theta) {
-		//          1                     2             3
-		//return _ro(r, theta) * sqrt(_Delta(r)) / _Sigma(r, theta);
-		double v1 = _ro(r, theta);
-		double v2 = sqrt(_Delta(r));
-		double v3 = _Sigma(r, theta);
-		double result = v1 * v2 / v3;
-		return result;
+		return _ro(r, theta) * sqrt(_Delta(r)) / _Sigma(r, theta);
 	};
 
 	double _P(double r, double b) {
@@ -109,14 +94,7 @@ public:
 	}
 
 	double _R(double r, double theta, double b, double q) {
-		//           1             2         3           
-		//return sq(_P(r, b)) - _Delta(r)*(sq((b - PA)) + q);
-		double v1 = sq(_P(r, b));
-		double v2 = _Delta(r);
-		double v3 = (sq((b - a_)) + q);
-		double result = v1 - (v2 * v3);
-		//std::cout << "v1=" << v1 << " v2=" << v2 << " v3=" << v3 << " _R: " << result << std::endl;
-		return result;
+		return sq(_P(r, b)) - _Delta(r)*(sq((b - a_)) + q);
 	};
 
 	double _BigTheta(double r, double theta, double b, double q) {
@@ -429,7 +407,6 @@ public:
 	void operator=(Metric const&) = delete;
 
 private:
-	Metric(): a_(0.0), asq_(0.0) {}
 
 	double a_;
 	double asq_;

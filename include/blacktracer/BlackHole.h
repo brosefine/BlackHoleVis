@@ -8,18 +8,22 @@
 */
 
 #include <blacktracer/MetricClass.h>
+#include <memory>
 
 class BlackHole
 {
 public:
 	double a;
-	BlackHole(double afactor) {
-		setA(afactor);
+	std::shared_ptr<Metric> metric_;
+	BlackHole(std::shared_ptr<Metric> metric, double afactor) 
+		: metric_(metric)
+		, a(afactor){
+		metric_->setAngVel(a);
 	};
 
 	void setA(double afactor) {
 		a = afactor;
-		Metric::getInstance().setAngVel(afactor);
+		metric_->setAngVel(a);
 	}
 
 	double getAngVel(double mass) {

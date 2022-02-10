@@ -10,6 +10,7 @@
 #include <blacktracer/MetricClass.h>
 
 #include <vector>
+#include <memory>
 
 class Camera
 {
@@ -21,12 +22,14 @@ public:
 
 	double alpha, w, wbar, Delta, ro;
 
+	std::shared_ptr<Metric> metric_;
+
+
 	Camera(){};
 
+	Camera(std::shared_ptr<Metric> metric, double theCam, double phiCam, double radfactor, double speedCam);;
 
-	Camera(double theCam, double phiCam, double radfactor, double speedCam);;
-
-	Camera(double theCam, double phiCam, double radfactor, double _br, double _btheta, double _bphi);;
+	//Camera(double theCam, double phiCam, double radfactor, double _br, double _btheta, double _bphi);;
 
 	void initforms();;
 
