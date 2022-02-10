@@ -297,7 +297,10 @@ void KerrApp::initMakeGridSSBO(){
 }
 
 void KerrApp::makeGrid() {
-	newGrid_ = std::make_shared<Grid>(properties_);
+	Grid::saveToFile(grid_);
+	std::shared_ptr<Grid> tmpGrid = std::make_shared<Grid>();
+	Grid::makeGrid(tmpGrid, properties_);
+	newGrid_ = tmpGrid;
 	gridChange_ = true;
 }
 

@@ -52,7 +52,7 @@ class Grid
 	template < class Archive >
 	void serialize(Archive& ar)
 	{
-		ar(MAXLEVEL_, N_, M_, hasher);
+		ar(MAXLEVEL_, N_, M_, hasher, props_);
 	}
 
 #pragma endregion

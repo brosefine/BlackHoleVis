@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <filesystem>
 #include <format>
 
 #include <cereal/archives/binary.hpp>
@@ -55,15 +56,20 @@ bool Grid::loadFromFile(std::shared_ptr<Grid>& outGrid, GridProperties props)
 bool Grid::saveToFile(std::shared_ptr<Grid> inGrid) {
 
 	std::string filename = ROOT_DIR "resources/grids/" + inGrid->getFileNameFromConfig();
+	if (std::filesystem::exists(filename)) {
+		std::cout << "[GRID] not writing: already exists." << std::endl;
+		return false;
+	}
 	std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 	cereal::BinaryOutputArchive oarch(ofs);
 	oarch(*inGrid);
+	std::cout << "[GRID] wrote grid to file." << std::endl;
 	return true;
 }
 
 std::string Grid::getFileNameFromConfig(GridProperties const& props) {
 	return std::format(
-		"rayTraceLvl-strt-{}-max-{}_pos-r-{:.2f}-the-{:.2f}-phi-{:.2f}_vel-{:.2f}_spin-{}.grid",
+		"rayTraceLvl-strt-{}-max-{}_pos-r-{:.2f}-the-{:.2f}-phi-{:.2f}_vel-{:.2f}_spin-{:.2f}.grid",
 		props.grid_strtLvl_, props.grid_maxLvl_,
 		props.cam_rad_, props.cam_the_, props.cam_phi_, props.cam_vel_,
 		props.blackHole_a_
@@ -96,6 +102,7 @@ Grid::Grid(GridProperties props)
 	, calcDisk_(false) // ... and disk as well
 	, metric_(std::make_shared<Metric>(props.blackHole_a_))
 	, blackHoleA_(props.blackHole_a_)
+	, props_(props)
 {
 	
 	cam_ = std::make_shared<Camera>(metric_,
