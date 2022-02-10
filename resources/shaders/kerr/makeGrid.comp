@@ -1,6 +1,13 @@
+/* ------------------------------------------------------------------------------------
+* Source Code adapted from A.Verbraeck's Blacktracer Black-Hole Visualization
+* https://github.com/annemiekie/blacktracer
+* https://doi.org/10.1109/TVCG.2020.3030452
+* ------------------------------------------------------------------------------------
+*/
+
 layout(local_size_x = 32, local_size_y = 32) in;
 
-layout(rgba32f, binding = 0) uniform image2D img_output;
+layout(rgba32f, binding = 0) uniform image2D gpuGrid;
 layout(std430, binding = 1) buffer hashTable
 {
 	vec2[] hashData;
@@ -73,7 +80,7 @@ vec2 hashLookup(ivec2 key) {
 
 void main() {
     ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
-    vec2 texSize = imageSize(img_output); // x = GM, y = GN
+    vec2 texSize = imageSize(gpuGrid); // x = GM, y = GN
 	
 	if(any(greaterThan(coords, texSize)))
         return;
@@ -86,7 +93,7 @@ void main() {
 		pixel.rgb = vec3(0.0);
 	
 	//grid[out_gridID * GM * GN1 + coords.x * GM + coords.y] = lookup;
-    imageStore(img_output, coords, pixel);
+    imageStore(gpuGrid, coords, pixel);
 	
 	/*
 	if (sym) {
