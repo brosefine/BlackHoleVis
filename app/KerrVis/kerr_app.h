@@ -22,7 +22,8 @@ class KerrApp : public GLApp{
 	enum class RenderMode {
 		SKY,
 		COMPUTE,
-		MAKEGRID
+		MAKEGRID,
+		INTERPOLATE
 	};
 
 public:
@@ -46,6 +47,7 @@ private:
 	std::shared_ptr<CubeMap> currentCubeMap_;
 	std::shared_ptr<FBOTexture> fboTexture_;
 	std::shared_ptr<FBOTexture> gpuGrid_;
+	std::shared_ptr<FBOTexture> interpolatedGrid_;
 	int fboScale_;
 
 	std::shared_ptr<SSBO> testSSBO_;
@@ -61,6 +63,7 @@ private:
 	std::shared_ptr<ComputeShader> interpolateShader_;
 	glm::ivec3 testWorkGroups_;
 	glm::ivec3 makeGridWorkGroups_;
+	glm::ivec3 interpolateWorkGroups_;
 
 	Quad quad_;
 	std::shared_ptr<ShaderBase> sQuadShader_;

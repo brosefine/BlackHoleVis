@@ -572,12 +572,17 @@ void main() {
 	// vec2 the_phi_out = interpolatePix(theta, phi, M, N, 0, GmaxLvl, grid, GM, GN, gapsave, coords.y, coords.x);
 	vec2 the_phi_out = interpolatePix(vec2(theta, phi), 0, coords.yx);
 	
-	vec4 pixel = vec4(the_phi_out.x, the_phi_out.y, 0.0, 1.0);
 	
+	vec4 pixel;
 	if(print) {
 
 		if (all(equal(the_phi_out, neg1)))
 			pixel.rgba = vec4(0.0);
+		else
+			pixel = vec4(the_phi_out.x * I_PI, the_phi_out.y * I_PI2, 0.0, 1.0);
+	} else {
+
+		pixel = vec4(the_phi_out.x, the_phi_out.y, 0.0, 1.0);
 	}
 	
     imageStore(deflectionMap, coords, pixel);

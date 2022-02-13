@@ -58,6 +58,7 @@ KerrApp::KerrApp(int width, int height)
 	, cam_({ 0.f, 0.f, -10.f })
 	, fboTexture_(std::make_shared<FBOTexture>(width, height))
 	, gpuGrid_(std::make_shared<FBOTexture>(1, 1))
+	, interpolatedGrid_(std::make_shared<FBOTexture>(1, 1))
 	, fboScale_(1)
 	, compute_(false)
 	, gridChange_(false)
@@ -75,10 +76,11 @@ KerrApp::KerrApp(int width, int height)
 	resizeTextures();
 	initTestSSBO();
 
-	// init first grid because first execution
+	// init first grid twice because first execution
 	// always fails for some reason
 	GridProperties tmpProps;
 	tmpProps.grid_maxLvl_ = 1;
+	grid_ = std::make_shared<Grid>(tmpProps);
 	grid_ = std::make_shared<Grid>(tmpProps);
 	resizeGridTextures();
 	initMakeGridSSBO();
@@ -164,6 +166,40 @@ void KerrApp::renderContent()
 		}
 
 		fbo = gpuGrid_;
+		break;
+	case KerrApp::RenderMode::INTERPOLATE:
+		if (makeNewGrid_) {
+
+			makeGridShader_->use();
+			gpuGrid_->bindImageTex(0, GL_WRITE_ONLY);
+			hashTableSSBO_->bindBase(1);
+			hashPosSSBO_->bindBase(2);
+			offsetTableSSBO_->bindBase(3);
+			tableSizeSSBO_->bindBase(4);
+
+			makeGridShader_->setUniform("GM", grid_->M_);
+			makeGridShader_->setUniform("GN", grid_->N_);
+			makeGridShader_->setUniform("GN1", grid_->N_);
+			makeGridShader_->setUniform("print", false);
+
+			glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
+
+			interpolateShader_->use();
+			interpolatedGrid_->bindImageTex(0, GL_WRITE_ONLY);
+			gpuGrid_->bindImageTex(1, GL_READ_ONLY);
+
+			interpolateShader_->setUniform("Gr", 1);
+			interpolateShader_->setUniform("GM", grid_->M_);
+			interpolateShader_->setUniform("GN", grid_->N_);
+			interpolateShader_->setUniform("GmaxLvl", grid_->MAXLEVEL_);
+			interpolateShader_->setUniform("print", true);
+
+			glDispatchCompute(interpolateWorkGroups_.x, interpolateWorkGroups_.y, 1);
+
+			makeNewGrid_ = false;
+		}
+
+		fbo = interpolatedGrid_;
 		break;
 	default:
 		break;
@@ -257,10 +293,14 @@ void KerrApp::resizeTextures() {
 
 void KerrApp::resizeGridTextures(){
 	gpuGrid_->resize(grid_->M_, grid_->N_);
+	interpolatedGrid_->resize(grid_->M_, grid_->N_);
 
 	glGetProgramiv(makeGridShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(makeGridWorkGroups_));
 	makeGridWorkGroups_.x = std::ceil(gpuGrid_->getWidth() / (float)makeGridWorkGroups_.x);
 	makeGridWorkGroups_.y = std::ceil(gpuGrid_->getHeight() / (float)makeGridWorkGroups_.y);
+	glGetProgramiv(interpolateShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(interpolateWorkGroups_));
+	interpolateWorkGroups_.x = std::ceil(interpolatedGrid_->getWidth() / (float)interpolateWorkGroups_.x);
+	interpolateWorkGroups_.y = std::ceil(interpolatedGrid_->getHeight() / (float)interpolateWorkGroups_.y);
 }
 
 void KerrApp::initTestSSBO() {
@@ -394,6 +434,10 @@ void KerrApp::renderShaderTab() {
 	}
 	if (ImGui::RadioButton("MAKEGRID", &m, 2)) {
 		mode_ = RenderMode::MAKEGRID;
+		makeNewGrid_ = true;
+	}
+	if (ImGui::RadioButton("INTERPOLATE GRID", &m, 3)) {
+		mode_ = RenderMode::INTERPOLATE;
 		makeNewGrid_ = true;
 	}
 	
