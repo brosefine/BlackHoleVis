@@ -81,7 +81,6 @@ KerrApp::KerrApp(int width, int height)
 	GridProperties tmpProps;
 	tmpProps.grid_maxLvl_ = 1;
 	grid_ = std::make_shared<Grid>(tmpProps);
-	grid_ = std::make_shared<Grid>(tmpProps);
 	resizeGridTextures();
 	initMakeGridSSBO();
 	makeNewGrid_ = true;
@@ -149,19 +148,7 @@ void KerrApp::renderContent()
 
 		if (makeNewGrid_) {
 
-			makeGridShader_->use();
-			gpuGrid_->bindImageTex(0, GL_WRITE_ONLY);
-			hashTableSSBO_->bindBase(1);
-			hashPosSSBO_->bindBase(2);
-			offsetTableSSBO_->bindBase(3);
-			tableSizeSSBO_->bindBase(4);
-
-			makeGridShader_->setUniform("GM", grid_->M_);
-			makeGridShader_->setUniform("GN", grid_->N_);
-			makeGridShader_->setUniform("GN1", grid_->N_);
-			makeGridShader_->setUniform("print", true);
-
-			glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
+			gpuMakeGrid(true);
 			makeNewGrid_ = false;
 		}
 
@@ -170,36 +157,35 @@ void KerrApp::renderContent()
 	case KerrApp::RenderMode::INTERPOLATE:
 		if (makeNewGrid_) {
 
-			makeGridShader_->use();
-			gpuGrid_->bindImageTex(0, GL_WRITE_ONLY);
-			hashTableSSBO_->bindBase(1);
-			hashPosSSBO_->bindBase(2);
-			offsetTableSSBO_->bindBase(3);
-			tableSizeSSBO_->bindBase(4);
-
-			makeGridShader_->setUniform("GM", grid_->M_);
-			makeGridShader_->setUniform("GN", grid_->N_);
-			makeGridShader_->setUniform("GN1", grid_->N_);
-			makeGridShader_->setUniform("print", false);
-
-			glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
-
-			interpolateShader_->use();
-			interpolatedGrid_->bindImageTex(0, GL_WRITE_ONLY);
-			gpuGrid_->bindImageTex(1, GL_READ_ONLY);
-
-			interpolateShader_->setUniform("Gr", 1);
-			interpolateShader_->setUniform("GM", grid_->M_);
-			interpolateShader_->setUniform("GN", grid_->N_);
-			interpolateShader_->setUniform("GmaxLvl", grid_->MAXLEVEL_);
-			interpolateShader_->setUniform("print", true);
-
-			glDispatchCompute(interpolateWorkGroups_.x, interpolateWorkGroups_.y, 1);
+			gpuMakeGrid(false);
+			gpuInterpolate(true);
 
 			makeNewGrid_ = false;
 		}
 
 		fbo = interpolatedGrid_;
+		break;
+	case KerrApp::RenderMode::RENDER:
+		if (makeNewGrid_) {
+			gpuMakeGrid(false);
+			gpuInterpolate(false);
+
+			makeNewGrid_ = false;
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, fboTexture_->getFboId());
+		glViewport(0, 0, fboTexture_->getWidth(), fboTexture_->getHeight());
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glActiveTexture(GL_TEXTURE0);
+		currentCubeMap_->bind();
+
+		glActiveTexture(GL_TEXTURE1);
+		interpolatedGrid_->bind();
+
+		renderShader_->getShader()->use();
+		quad_.draw(GL_TRIANGLES);
+
 		break;
 	default:
 		break;
@@ -223,7 +209,7 @@ void KerrApp::initShaders() {
 	computeShader_ = std::make_shared<ComputeShader>("kerr/compute.comp");
 	makeGridShader_ = std::make_shared<ComputeShader>("kerr/makeGrid.comp");
 	interpolateShader_ = std::make_shared<ComputeShader>("kerr/pixInterpolation.comp");
-
+	renderShader_ = std::make_shared<BlackHoleShaderGui>();
 	reloadShaders();
 }
 
@@ -290,7 +276,6 @@ void KerrApp::resizeTextures() {
 	testWorkGroups_.y = std::ceil(fboTexture_->getHeight() / (float)testWorkGroups_.y);
 }
 
-
 void KerrApp::resizeGridTextures(){
 	gpuGrid_->resize(grid_->M_, grid_->N_);
 	interpolatedGrid_->resize(grid_->M_, grid_->N_);
@@ -301,6 +286,14 @@ void KerrApp::resizeGridTextures(){
 	glGetProgramiv(interpolateShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(interpolateWorkGroups_));
 	interpolateWorkGroups_.x = std::ceil(interpolatedGrid_->getWidth() / (float)interpolateWorkGroups_.x);
 	interpolateWorkGroups_.y = std::ceil(interpolatedGrid_->getHeight() / (float)interpolateWorkGroups_.y);
+
+	std::vector<std::pair<GLenum, GLint>> texParameters{
+		{GL_TEXTURE_WRAP_S, GL_REPEAT},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_MIN_FILTER, GL_NEAREST},
+		{GL_TEXTURE_MAG_FILTER, GL_NEAREST}
+	};
+	interpolatedGrid_->setParam(texParameters);
 }
 
 void KerrApp::initTestSSBO() {
@@ -311,7 +304,6 @@ void KerrApp::initTestSSBO() {
 	//testSSBO_->subData(2*sizeof(int), sizeof(float) * data.size(), data.data());
 
 }
-
 
 void KerrApp::initMakeGridSSBO(){
 	// Table sizes
@@ -344,23 +336,59 @@ void KerrApp::makeGrid() {
 	gridChange_ = true;
 }
 
-
 void KerrApp::joinGridThread() {
 	if (gridThread_) gridThread_->join();
 	gridThread_ = nullptr;
 }
 
 void KerrApp::uploadCameraVectors() {
-	if (compute_) return;
 	glm::mat3 baseVectors = cam_.getBase3();
-	testShader_->setUniform("cam_right", baseVectors[0]);
-	testShader_->setUniform("cam_up", baseVectors[1]);
-	testShader_->setUniform("cam_front", baseVectors[2]);
+	switch (mode_) {
+	case KerrApp::RenderMode::SKY:
+		testShader_->setUniform("cam_right", baseVectors[0]);
+		testShader_->setUniform("cam_up", baseVectors[1]);
+		testShader_->setUniform("cam_front", baseVectors[2]);
+		break;
+	case KerrApp::RenderMode::RENDER:
+		renderShader_->getShader()->setUniform("cam_tau", (glm::vec3(0.f)));
+		renderShader_->getShader()->setUniform("cam_right", baseVectors[0]);
+		renderShader_->getShader()->setUniform("cam_up", baseVectors[1]);
+		renderShader_->getShader()->setUniform("cam_front", baseVectors[2]);
+		break;
+	default:
+		break;
+	}
+
 }
 
+void KerrApp::gpuMakeGrid(bool print){
+	makeGridShader_->use();
+	gpuGrid_->bindImageTex(0, GL_WRITE_ONLY);
+	hashTableSSBO_->bindBase(1);
+	hashPosSSBO_->bindBase(2);
+	offsetTableSSBO_->bindBase(3);
+	tableSizeSSBO_->bindBase(4);
 
-void KerrApp::calculateGrid() {
+	makeGridShader_->setUniform("GM", grid_->M_);
+	makeGridShader_->setUniform("GN", grid_->N_);
+	makeGridShader_->setUniform("GN1", grid_->N_);
+	makeGridShader_->setUniform("print", print);
 
+	glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
+}
+
+void KerrApp::gpuInterpolate(bool print){
+	interpolateShader_->use();
+	interpolatedGrid_->bindImageTex(0, GL_WRITE_ONLY);
+	gpuGrid_->bindImageTex(1, GL_READ_ONLY);
+
+	interpolateShader_->setUniform("Gr", 1);
+	interpolateShader_->setUniform("GM", grid_->M_);
+	interpolateShader_->setUniform("GN", grid_->N_);
+	interpolateShader_->setUniform("GmaxLvl", grid_->MAXLEVEL_);
+	interpolateShader_->setUniform("print", print);
+
+	glDispatchCompute(interpolateWorkGroups_.x, interpolateWorkGroups_.y, 1);
 }
 
 void KerrApp::renderGui() {
@@ -440,11 +468,19 @@ void KerrApp::renderShaderTab() {
 		mode_ = RenderMode::INTERPOLATE;
 		makeNewGrid_ = true;
 	}
+	if (ImGui::RadioButton("RENDER", &m, 4)) {
+		mode_ = RenderMode::RENDER;
+		makeNewGrid_ = true;
+	}
 	
 	if (mode_ == RenderMode::COMPUTE) {
 		static int checkerSize = 10;
 		if (ImGui::SliderInt("Checker Size", &checkerSize, 1, 100))
 			computeShader_->setUniform("checkerSize", checkerSize);
+	}
+
+	if (mode_ == RenderMode::RENDER) {
+		renderShader_->show();
 	}
 }
 

@@ -5,7 +5,8 @@ project(KerrVis LANGUAGES CXX)
 file(GLOB APP_FILES
         ${CMAKE_SOURCE_DIR}/app/KerrVis/kerr_app.cpp
         ${CMAKE_SOURCE_DIR}/app/KerrVis/kerr_main.cpp
-        ${CMAKE_SOURCE_DIR}/app/KerrVis/kerr_app.h)
+        ${CMAKE_SOURCE_DIR}/app/KerrVis/kerr_app.h
+        ${CMAKE_SOURCE_DIR}/app/KerrVis/guiElements.h)
 
 
 

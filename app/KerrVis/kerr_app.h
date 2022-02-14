@@ -16,6 +16,7 @@
 #include <rendering/buffers.h>
 #include <rendering/mesh.h>
 #include <gui/gui.h>
+#include "guiElements.h"
 
 
 class KerrApp : public GLApp{
@@ -23,7 +24,8 @@ class KerrApp : public GLApp{
 		SKY,
 		COMPUTE,
 		MAKEGRID,
-		INTERPOLATE
+		INTERPOLATE,
+		RENDER
 	};
 
 public:
@@ -61,6 +63,7 @@ private:
 	std::shared_ptr<ComputeShader> computeShader_;
 	std::shared_ptr<ComputeShader> makeGridShader_;
 	std::shared_ptr<ComputeShader> interpolateShader_;
+	std::shared_ptr<BlackHoleShaderGui> renderShader_;
 	glm::ivec3 testWorkGroups_;
 	glm::ivec3 makeGridWorkGroups_;
 	glm::ivec3 interpolateWorkGroups_;
@@ -101,7 +104,8 @@ private:
 
 	void uploadCameraVectors();
 
-	void calculateGrid();
+	void gpuMakeGrid(bool print);
+	void gpuInterpolate(bool print);
 
 	void renderShaderTab();
 	void renderCameraTab();
