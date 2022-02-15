@@ -133,22 +133,26 @@ vec3 StarColor(vec3 dir, float lensing_amplification_factor,
 
 vec3 pixelColor(vec3 dir) {
     
+    dir = vec3(dir.x, dir.z, dir.y);
     // get phi, theta from dir
-    float phi = (atan(dir.y,dir.x) - 0.5*pi )/ (2*pi);
-    float theta = (abs(atan(sqrt(dir.x*dir.x+dir.y*dir.y)/dir.z))) * 2 / pi;
+    float phi = 1.0 - mod(atan(dir.y,dir.x) + 1.5*pi, 2*pi)/ (2*pi);
+    float theta = mod(atan(sqrt(dir.x*dir.x+dir.y*dir.y)/dir.z), pi) / pi;
     vec2 new_phith = texture(deflection_texture, vec2(phi, theta)).xy;
 
     return vec3(new_phith, 0);
+
 
     vec3 color = vec3(0);
     if (all(greaterThanEqual(new_phith, vec2(0.0)))) {
         
         vec3 d_prime;
         d_prime.x = sin(new_phith.x) * sin(new_phith.y);
-        d_prime.y = cos(new_phith.y);
-        d_prime.z = cos(new_phith.x) * sin(new_phith.y);
+        d_prime.y = cos(new_phith.x) * sin(new_phith.y);
+        d_prime.z = cos(new_phith.y);
+        d_prime = normalize(-cam_tau + d_prime.x * cam_right + d_prime.z * cam_up + d_prime.y * cam_front);
 
         if(!gaiaMap) d_prime = vec3(d_prime.x, d_prime.z, -d_prime.y);
+        // return abs(d_prime);
         color += texture(cubeMap, d_prime).rgb;
         if(gaiaMap) color *= 6.78494e-5;
      
@@ -223,7 +227,7 @@ void main()
     dir = normalize(rotateVector(rotQuat, dir));
 
     #else
-    float phi = (1.0 - TexCoords.x) * 2.0 * pi;
+    float phi = (TexCoords.x) * 2.0 * pi;
     float theta = (1.0 - TexCoords.y) * pi;
     vec3 dir;
     dir.x = sin(phi) * sin(theta);
@@ -231,10 +235,11 @@ void main()
     dir.z = cos(phi) * sin(theta);
     #endif    
 
-    dir = normalize(-cam_tau + dir.x * cam_right + dir.y * cam_up - dir.z * cam_front);
-    dir = vec3(dir.x, -dir.z, dir.y);
+    // FragColor = vec4(texture(deflection_texture, TexCoords).rgb, 1);
+    FragColor = vec4(abs(dir), 1);
+    // return;
     vec3 color;
-    color = pixelColor(dir);
+    color = pixelColor(normalize(dir));
     FragColor = vec4(color, 1.0); 
 
 }
