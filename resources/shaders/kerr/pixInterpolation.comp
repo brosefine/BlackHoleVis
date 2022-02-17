@@ -566,7 +566,7 @@ void main() {
 
 	vec2 normalized_coords = coords / (texSize-vec2(1.0));
 
-	float theta = (normalized_coords.y) * PI;
+	float theta = (1.0 - normalized_coords.y) * PI;
 	float phi = (normalized_coords.x) * PI2;
 	
 	// vec2 the_phi_out = interpolatePix(theta, phi, M, N, 0, GmaxLvl, grid, GM, GN, gapsave, coords.y, coords.x);

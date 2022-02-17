@@ -18,7 +18,7 @@ public:
 		shader_ = std::make_shared<Shader>(
 			std::vector<std::string>{ "kerr/render.vert" }, 
 			std::vector<std::string>{"kerr/render.frag"},
-			std::vector<std::string>{"PINHOLE", "STARS", "DOME"});
+			std::vector<std::string>{"PINHOLE", "STARS", "DOME", "MWPANORAMA"});
 		preprocessorFlags_ = shader_->getFlags();
 		shader_->use();
 		shader_->setBlockBinding("camera", CAMBINDING);

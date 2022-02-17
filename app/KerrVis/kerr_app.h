@@ -47,6 +47,7 @@ private:
 	SchwarzschildCamera cam_;
 	std::vector<std::pair<std::string, std::shared_ptr<CubeMap>>> cubemaps_;
 	std::shared_ptr<CubeMap> currentCubeMap_;
+	std::shared_ptr<Texture2D> mwPanorama_;
 	std::shared_ptr<FBOTexture> fboTexture_;
 	std::shared_ptr<FBOTexture> gpuGrid_;
 	std::shared_ptr<FBOTexture> interpolatedGrid_;

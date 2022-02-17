@@ -73,6 +73,7 @@ KerrApp::KerrApp(int width, int height)
 	cam_.use(window_.getWidth(), window_.getHeight(), false);
 	initShaders();
 	initCubeMaps();
+	initTextures();
 	resizeTextures();
 	initTestSSBO();
 
@@ -183,6 +184,9 @@ void KerrApp::renderContent()
 		glActiveTexture(GL_TEXTURE1);
 		interpolatedGrid_->bind();
 
+		glActiveTexture(GL_TEXTURE2);
+		mwPanorama_->bind();
+
 		renderShader_->getShader()->use();
 		quad_.draw(GL_TRIANGLES);
 
@@ -267,6 +271,18 @@ void KerrApp::initCubeMaps() {
 	currentCubeMap_ = cubemaps_.at(0).second;
 }
 
+void KerrApp::initTextures() {
+	mwPanorama_ = std::make_shared<Texture2D>("milkyway_eso0932a.jpg");
+
+	std::vector<std::pair<GLenum, GLint>> texParametersi{
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+	};
+	mwPanorama_->generateMipMap();
+	mwPanorama_->setParam(texParametersi);
+	mwPanorama_->setParam(GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
+}
+
 void KerrApp::resizeTextures() {
 	glm::vec2 dim{ window_.getWidth(), window_.getHeight() };
 	fboTexture_->resize(fboScale_ * dim.x, fboScale_ * dim.y);
@@ -290,8 +306,8 @@ void KerrApp::resizeGridTextures(){
 	std::vector<std::pair<GLenum, GLint>> texParameters{
 		{GL_TEXTURE_WRAP_S, GL_REPEAT},
 		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
-		{GL_TEXTURE_MIN_FILTER, GL_NEAREST},
-		{GL_TEXTURE_MAG_FILTER, GL_NEAREST}
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
 	};
 	interpolatedGrid_->setParam(texParameters);
 }
@@ -329,6 +345,7 @@ void KerrApp::initMakeGridSSBO(){
 }
 
 void KerrApp::makeGrid() {
+
 	Grid::saveToFile(grid_);
 	std::shared_ptr<Grid> tmpGrid = std::make_shared<Grid>();
 	Grid::makeGrid(tmpGrid, properties_);
@@ -547,6 +564,7 @@ void KerrApp::renderGridTab() {
 	ImGui::Separator();
 
 	if (ImGui::Button("Make Grid (Load or Compute)")) {
+		makeNewGrid_ = false;
 		joinGridThread();
 		gridThread_ = std::make_shared<std::thread>(&KerrApp::makeGrid, this);
 	}
