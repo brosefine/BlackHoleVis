@@ -63,10 +63,12 @@ KerrApp::KerrApp(int width, int height)
 	, compute_(false)
 	, gridChange_(false)
 	, makeNewGrid_(false)
+	, aberration_(false)
+	, direction_(1.f, 0.f, 0.f)
+	, speed_(0.5f)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
-	, showShaders_(false)
-	, showCamera_(false)
+	, modePerformance_(false)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
@@ -85,7 +87,7 @@ KerrApp::KerrApp(int width, int height)
 	resizeGridTextures();
 	initMakeGridSSBO();
 	makeNewGrid_ = true;
-
+	initPerformanceQueries();
 }
 
 void KerrApp::renderContent() 
@@ -94,6 +96,8 @@ void KerrApp::renderContent()
 	dt_ = now - t0_;
 	t0_ = now;
 	tPassed_ += dt_;
+
+
 
 	if (gridChange_) {
 		grid_ = newGrid_;
@@ -147,29 +151,31 @@ void KerrApp::renderContent()
 
 	case KerrApp::RenderMode::MAKEGRID:
 
-		if (makeNewGrid_) {
+		if (makeNewGrid_ || modePerformance_) {
 
 			gpuMakeGrid(true);
+			std::swap(queryFrontBuffer_, queryBackBuffer_);
 			makeNewGrid_ = false;
 		}
 
 		fbo = gpuGrid_;
 		break;
 	case KerrApp::RenderMode::INTERPOLATE:
-		if (makeNewGrid_) {
+		if (makeNewGrid_ || modePerformance_) {
 
 			gpuMakeGrid(false);
 			gpuInterpolate(true);
-
+			std::swap(queryFrontBuffer_, queryBackBuffer_);
 			makeNewGrid_ = false;
 		}
 
 		fbo = interpolatedGrid_;
 		break;
 	case KerrApp::RenderMode::RENDER:
-		if (makeNewGrid_) {
+		if (makeNewGrid_ || modePerformance_) {
 			gpuMakeGrid(false);
 			gpuInterpolate(false);
+			std::swap(queryFrontBuffer_, queryBackBuffer_);
 
 			makeNewGrid_ = false;
 		}
@@ -180,12 +186,15 @@ void KerrApp::renderContent()
 
 		glActiveTexture(GL_TEXTURE0);
 		currentCubeMap_->bind();
-
+		renderShader_->getShader()->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
 		glActiveTexture(GL_TEXTURE1);
 		interpolatedGrid_->bind();
-
 		glActiveTexture(GL_TEXTURE2);
 		mwPanorama_->bind();
+		glActiveTexture(GL_TEXTURE3);
+		starTexture_->bind();
+		glActiveTexture(GL_TEXTURE4);
+		starTexture2_->bind();
 
 		renderShader_->getShader()->use();
 		quad_.draw(GL_TRIANGLES);
@@ -199,7 +208,7 @@ void KerrApp::renderContent()
 	glViewport(0, 0, window_.getWidth(), window_.getHeight());
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	sQuadShader_->use();
+	sQuadShader_->getShader()->use();
 
 	glActiveTexture(GL_TEXTURE0);
 	fbo->bind();
@@ -208,7 +217,7 @@ void KerrApp::renderContent()
 }
 
 void KerrApp::initShaders() {
-	sQuadShader_ = std::make_shared<Shader>("squad.vs", "squad.fs");
+	sQuadShader_ = std::make_shared<QuadShaderGui>();
 	testShader_ = std::make_shared<Shader>("kerr/sky.vs", "kerr/sky.fs");
 	computeShader_ = std::make_shared<ComputeShader>("kerr/compute.comp");
 	makeGridShader_ = std::make_shared<ComputeShader>("kerr/makeGrid.comp");
@@ -224,6 +233,7 @@ void KerrApp::reloadShaders()
 	interpolateShader_->reload();
 	testShader_->reload();
 	testShader_->setBlockBinding("camera", CAMBINDING);
+	makeNewGrid_ = true;
 }
 
 void KerrApp::initCubeMaps() {
@@ -269,6 +279,9 @@ void KerrApp::initCubeMaps() {
 		map->setParam(GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
 	}
 	currentCubeMap_ = cubemaps_.at(0).second;
+	loadStarTextures();
+	cubemaps_.push_back({ "Gaia Sky" , galaxyTexture_ });
+
 }
 
 void KerrApp::initTextures() {
@@ -281,6 +294,122 @@ void KerrApp::initTextures() {
 	mwPanorama_->generateMipMap();
 	mwPanorama_->setParam(texParametersi);
 	mwPanorama_->setParam(GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
+
+}
+
+void KerrApp::loadStarTextures() {
+	int textureSize = 2048;
+
+#pragma region galaxy texture
+	galaxyTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	galaxyTexture_->bind();
+	std::vector<std::pair<GLenum, GLint>> texParametersi{
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+	galaxyTexture_->setParam(texParametersi);
+	glTextureStorage2D(galaxyTexture_->getTexId(), 12, GL_RGB9_E5,
+		textureSize, textureSize);
+#pragma endregion
+
+#pragma region star texture 1
+	starTexture_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	starTexture_->bind();
+	texParametersi = {
+		{GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST},
+		{GL_TEXTURE_MAG_FILTER, GL_NEAREST},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+	starTexture_->setParam(texParametersi);
+	glTextureStorage2D(starTexture_->getTexId(), 12, GL_RGB9_E5,
+		textureSize, textureSize);
+	starTexture_->unbind();
+#pragma endregion
+
+#pragma region star texture 2
+	starTexture2_ = std::make_shared<CubeMap>(textureSize, textureSize);
+	starTexture2_->bind();
+	texParametersi = {
+		{GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR},
+		{GL_TEXTURE_MAG_FILTER, GL_LINEAR},
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE}
+	};
+
+	starTexture2_->setParam(texParametersi);
+	starTexture2_->setParam(GL_TEXTURE_MAX_ANISOTROPY, 4.0f);
+	// star texture 2 is used for higher LOD levels (> max_star_lod)
+	// and therefore smaller
+	int textureSize2 = textureSize / (1 << (MAX_STAR_LOD + 1));
+	glTextureStorage2D(starTexture2_->getTexId(), 11 - MAX_STAR_LOD, GL_RGB9_E5,
+		textureSize2, textureSize2);
+	starTexture2_->unbind();
+#pragma endregion
+
+	std::string baseDir = TEX_DIR"ebruneton/gaia_sky_map/";
+	std::vector<std::string> faces{
+		"pos-x", "neg-x",
+		"pos-y", "neg-y",
+		"pos-z", "neg-z"
+	};
+
+	Timer tim;
+	tim.start("Created star textures in ");
+	// loop over the mipmap levels
+	// loops up until level 4 because levels 4 and higher
+	// are stored in a single file
+	for (int level = 0; level <= 4; ++level) {
+		// loop over cubemap faces
+		for (int face = 0; face < 6; ++face) {
+			// calculate size of texture at this level
+			int faceSize = textureSize / (1 << level);
+			int tileSize = std::min(256, faceSize);
+			// if size is larger than maximum tile size
+			int numTiles = faceSize / tileSize;
+
+			// iterate over all tiles
+			for (int tj = 0; tj < numTiles; ++tj) {
+				for (int ti = 0; ti < numTiles; ++ti) {
+					GLenum target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + face;
+					std::string path = std::format("{}{}-{}-{}-{}.dat",
+						baseDir, faces.at(face), level, ti, tj);
+					loadStarTile(level, ti, tj, face, faceSize, tileSize, target, path);
+					//std::cout << "Loaded " << path << std::endl;
+				}
+			}
+		}
+	}
+	tim.end();
+	tim.printLast();
+}
+
+void KerrApp::loadStarTile(int level, int ti, int tj, int face, int faceSize, int tileSize, GLenum target, std::string path) {
+	std::vector<unsigned int> tileData = readFile<unsigned int>(path);
+	int start = 0;
+	int currentLevel = level;
+	// loop is only necessary because multiple levels are stored in level-4 tiles
+	while (start < tileData.size()) {
+		glTextureSubImage3D(galaxyTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+			GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		start += tileSize * tileSize;
+		if (currentLevel <= MAX_STAR_LOD) {
+			glTextureSubImage3D(starTexture_->getTexId(), currentLevel, ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+				GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		}
+		else {
+			glTextureSubImage3D(starTexture2_->getTexId(), currentLevel - (MAX_STAR_LOD + 1), ti * tileSize, tj * tileSize, face, tileSize, tileSize, 1,
+				GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, &tileData.data()[start]);
+		}
+		start += tileSize * tileSize;
+		currentLevel++;
+		tileSize /= 2;
+	}
 }
 
 void KerrApp::resizeTextures() {
@@ -302,14 +431,15 @@ void KerrApp::resizeGridTextures(){
 	glGetProgramiv(interpolateShader_->getID(), GL_COMPUTE_WORK_GROUP_SIZE, glm::value_ptr(interpolateWorkGroups_));
 	interpolateWorkGroups_.x = std::ceil(interpolatedGrid_->getWidth() / (float)interpolateWorkGroups_.x);
 	interpolateWorkGroups_.y = std::ceil(interpolatedGrid_->getHeight() / (float)interpolateWorkGroups_.y);
-
+	
 	std::vector<std::pair<GLenum, GLint>> texParameters{
-		{GL_TEXTURE_WRAP_S, GL_REPEAT},
-		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
-		{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
-		{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE}
 	};
 	interpolatedGrid_->setParam(texParameters);
+	gpuGrid_->setParam(texParameters);
+	gpuGrid_->setParam(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gpuGrid_->setParam(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
 void KerrApp::initTestSSBO() {
@@ -367,10 +497,35 @@ void KerrApp::uploadCameraVectors() {
 		testShader_->setUniform("cam_front", baseVectors[2]);
 		break;
 	case KerrApp::RenderMode::RENDER:
-		renderShader_->getShader()->setUniform("cam_tau", (glm::vec3(0.f)));
-		renderShader_->getShader()->setUniform("cam_right", baseVectors[0]);
-		renderShader_->getShader()->setUniform("cam_up", baseVectors[1]);
-		renderShader_->getShader()->setUniform("cam_front", baseVectors[2]);
+
+			renderShader_->getShader()->setUniform("cam_tau", (glm::vec3(0.f)));
+			renderShader_->getShader()->setUniform("cam_right", baseVectors[0]);
+			renderShader_->getShader()->setUniform("cam_up", baseVectors[1]);
+			renderShader_->getShader()->setUniform("cam_front", baseVectors[2]);
+		if (!aberration_) {
+			renderShader_->getShader()->setUniform("boosted_tau", (glm::vec3(0.f)));
+			renderShader_->getShader()->setUniform("boosted_right", glm::vec3(1.f, 0.f, 0.f));
+			renderShader_->getShader()->setUniform("boosted_up", glm::vec3(0.f, 0.f, 1.f));
+			renderShader_->getShader()->setUniform("boosted_front", glm::vec3(0.f, 1.f, 0.f));
+			return;
+		}
+		
+		glm::mat4 e_static(
+			glm::vec4(1.f, 0.f, 0.f, 0.f),	// tau
+			glm::vec4(0.f, 1.f, 0.f, 0.f),	// right
+			glm::vec4(0.f, 0.f, 0.f, 1.f),	// up
+			glm::vec4(0.f, 0.f, 1.f, 0.f)	// front
+		);
+		glm::mat4 lorentz = cam_.getBoostFromVel(glm::normalize(direction_), speed_);
+		glm::vec4 e_tau = e_static * lorentz[0];
+		glm::vec4 e_right = e_static * lorentz[1];
+		glm::vec4 e_up = e_static * lorentz[2];
+		glm::vec4 e_front = e_static * lorentz[3];
+		renderShader_->getShader()->setUniform("boosted_tau", (glm::vec3(e_tau.y, e_tau.z, e_tau.w)));
+		renderShader_->getShader()->setUniform("boosted_right", (glm::vec3(e_right.y, e_right.z, e_right.w)));
+		renderShader_->getShader()->setUniform("boosted_up", (glm::vec3(e_up.y, e_up.z, e_up.w)));
+		renderShader_->getShader()->setUniform("boosted_front", (glm::vec3(e_front.y, e_front.z, e_front.w)));
+
 		break;
 	default:
 		break;
@@ -391,7 +546,16 @@ void KerrApp::gpuMakeGrid(bool print){
 	makeGridShader_->setUniform("GN1", grid_->N_);
 	makeGridShader_->setUniform("print", print);
 
+#ifdef COMPUTE_PERFORMANCE
+	glBeginQuery(GL_TIME_ELAPSED, queryIDs_[queryBackBuffer_][MAKEGRID_QUERY]);
+#endif
+
 	glDispatchCompute(makeGridWorkGroups_.x, makeGridWorkGroups_.y, 1);
+
+#ifdef COMPUTE_PERFORMANCE
+	glEndQuery(GL_TIME_ELAPSED);
+	makeGridTime_ = getPerformanceQuery(MAKEGRID_QUERY) * 1e-6;
+#endif
 }
 
 void KerrApp::gpuInterpolate(bool print){
@@ -405,13 +569,28 @@ void KerrApp::gpuInterpolate(bool print){
 	interpolateShader_->setUniform("GmaxLvl", grid_->MAXLEVEL_);
 	interpolateShader_->setUniform("print", print);
 
+#ifdef COMPUTE_PERFORMANCE
+	glBeginQuery(GL_TIME_ELAPSED, queryIDs_[queryBackBuffer_][INTERPOLATE_QUERY]);
+#endif
+
 	glDispatchCompute(interpolateWorkGroups_.x, interpolateWorkGroups_.y, 1);
+
+#ifdef COMPUTE_PERFORMANCE
+	glEndQuery(GL_TIME_ELAPSED);
+	interpolateTime_ = getPerformanceQuery(INTERPOLATE_QUERY) * 1e-6;
+#endif
 }
 
 void KerrApp::renderGui() {
 
 	if (showFps_)
 		renderFPSWindow();
+
+#ifdef COMPUTE_PERFORMANCE
+	static bool showPerf_ = false;
+	if (showPerf_)
+		renderPerfWindow();
+#endif // COMPUTE_PERFORMANCE
 
 	ImGui::Begin("Application Options");
 	if (ImGui::BeginTabBar("Options")) {
@@ -442,6 +621,9 @@ void KerrApp::renderGui() {
 				glfwSwapInterval((int)vSync_);
 
 			ImGui::Checkbox("Show FPS", &showFps_);
+#ifdef COMPUTE_PERFORMANCE
+			ImGui::Checkbox("Show Compute Performance", &showPerf_);
+#endif // COMPUTE_PERFORMANCE
 			ImGui::Spacing();
 			if (ImGui::Button("Debug Print"))
 				printDebug();
@@ -459,6 +641,10 @@ void KerrApp::renderGui() {
 			renderGridTab();
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Sky Settings")) {
+			renderSkyTab();
+			ImGui::EndTabItem();
+		}
 	}
 	ImGui::EndTabBar();
 	ImGui::End();
@@ -469,7 +655,33 @@ void KerrApp::renderShaderTab() {
 		reloadShaders();
 	ImGui::Separator();
 
+	static int defl_mode = 0; // 0 = nearest, 1 = linear
+	ImGui::Text("Deflection Map Mode"); ImGui::SameLine();
+	if (ImGui::RadioButton("GL_NEAREST", &defl_mode, 0) && interpolatedGrid_) {
+		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_MIN_FILTER, GL_NEAREST},
+			{GL_TEXTURE_MAG_FILTER, GL_NEAREST}
+		};
+		interpolatedGrid_->setParam(texParameters);
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton("GL_LINEAR", &defl_mode, 1) && interpolatedGrid_) {
+		std::vector<std::pair<GLenum, GLint>> texParameters{
+			{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+			{GL_TEXTURE_MAG_FILTER, GL_LINEAR}
+		};
+		interpolatedGrid_->setParam(texParameters);
+	}
+
+	ImGui::Separator();
 	ImGui::Text("RenderMode");
+	ImGui::Checkbox("Interpolate Grid each frame", &modePerformance_);
+	static bool linear = false;
+	if (ImGui::Checkbox("Linear Grid interpolation", &linear)) {
+		interpolateShader_->setUniform("linear_interpolate", linear);
+		makeNewGrid_ = true;
+	}
+
 	static int m = 0;
 	if (ImGui::RadioButton("SKY", &m, 0)) {
 		mode_ = RenderMode::SKY;
@@ -499,6 +711,9 @@ void KerrApp::renderShaderTab() {
 	if (mode_ == RenderMode::RENDER) {
 		renderShader_->show();
 	}
+
+	ImGui::Separator();
+	sQuadShader_->show();
 }
 
 void KerrApp::renderSkyTab() {
@@ -578,15 +793,75 @@ void KerrApp::renderGridTab() {
 		else
 			std::cerr << "[Kerr] can't print grid: not initialized" << std::endl;
 	}
-	ImGui::SameLine(); ImGui::SliderInt("Print level: ", &printLvl, 0, 8);
+	ImGui::SameLine(); ImGui::SliderInt("Print level", &printLvl, 0, 8);
+
+	ImGui::Separator();
+}
+
+void KerrApp::renderPerfWindow()
+{
+	double weight = 0.05;
+	static double makeGridSum = 0, makeGridWeight = 0;
+	static double interpolateSum = 0, interpolateWeight = 0;
+
+	makeGridSum = (1.0 - weight) * makeGridSum + weight * makeGridTime_;
+	makeGridWeight = (1.0 - weight) * makeGridWeight + weight;
+	interpolateSum = (1.0 - weight) * interpolateSum + weight * interpolateTime_;
+	interpolateWeight = (1.0 - weight) * interpolateWeight + weight;
+
+	static std::string makeGridText = "", interpolateText = "";
+	if (ImGui::Button("Get last compute time")) {
+
+		makeGridText = std::format("makeGrid took {:.3f} ms", makeGridTime_).c_str();
+		interpolateText = std::format("interpolate  took {:.3f} ms", interpolateTime_).c_str();
+	}
+	ImGui::Text(makeGridText.c_str());
+	ImGui::Text(interpolateText.c_str());
+
+	static bool showPlot = false;
+	ImGui::Checkbox("Show Plot", &showPlot);
+	if (showPlot) {
+
+		static ScrollingBuffer rdata1, rdata2;
+		static float t = 0;
+		t += ImGui::GetIO().DeltaTime;
+		rdata1.AddPoint(t, makeGridSum / makeGridWeight);
+		rdata2.AddPoint(t, interpolateSum / interpolateWeight);
+
+		static float history = 10.0f;
+		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+		static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;
+
+		ImGui::BulletText("Make Grid");
+
+		ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
+		//ImPlot::SetNextPlotLimitsY(0, 0.1, ImGuiCond_Always);
+		if (ImPlot::BeginPlot("##GridRolling1", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
+			ImPlot::PlotLine("dt", &rdata1.Data[0].x, &rdata1.Data[0].y, rdata1.Data.size(), 0, 2 * sizeof(float));
+			ImPlot::EndPlot();
+		}
+
+		ImGui::BulletText("Interpolate");
+
+		ImPlot::SetNextPlotLimitsX(t - history, t, ImGuiCond_Always);
+		//ImPlot::SetNextPlotLimitsY(0, 200, ImGuiCond_Always);
+		if (ImPlot::BeginPlot("##GridRolling2", NULL, NULL, ImVec2(-1, 150), 0, flags, flags)) {
+			ImPlot::PlotLine("FPS", &rdata2.Data[0].x, &rdata2.Data[0].y, rdata2.Data.size(), 0, 2 * sizeof(float));
+			ImPlot::EndPlot();
+		}
+	}
 }
 
 void KerrApp::renderCameraTab() {
 
 	ImGui::Text("Camera Settings");
+	ImGui::Checkbox("Aberration", &aberration_);
+	ImGui::SliderFloat3("Direction", glm::value_ptr(direction_), -1.f, 1.0f);
+	ImGui::SliderFloat("Speed", &speed_, 0.f, 0.999f);
+
+	ImGui::Separator();
 
 	static bool friction = true;
-	ImGui::SameLine();
 	if (ImGui::Checkbox("Friction", &friction))
 		cam_.setFriction(friction);
 
@@ -602,9 +877,25 @@ void KerrApp::renderCameraTab() {
 
 	if (ImGui::Button("Point to Black Hole"))
 		cam_.setViewDirXYZ(-camPos);
-	
+
 	if (xChange || yChange || zChange)
 		cam_.setPosXYZ(camPos);
+}
+
+
+void KerrApp::initPerformanceQueries()
+{
+	glGenQueries(PERF_QUERY_COUNT, queryIDs_[queryBackBuffer_]);
+	glGenQueries(PERF_QUERY_COUNT, queryIDs_[queryFrontBuffer_]);
+	//glQueryCounter(queryIDs_[queryFrontBuffer_][1], GL_TIMESTAMP);
+}
+
+unsigned int KerrApp::getPerformanceQuery(int count)
+{
+	if (count >= PERF_QUERY_COUNT) return 0;
+	GLuint64 result;
+	glGetQueryObjectui64v(queryIDs_[queryFrontBuffer_][count], GL_QUERY_RESULT, &result);
+	return result;
 }
 
 void KerrApp::dumpState(std::string const& file) {
@@ -627,7 +918,7 @@ void KerrApp::dumpState(std::string const& file) {
 
 void KerrApp::readState(std::string const& file) {
 	if (!std::filesystem::exists(ROOT_DIR "saves/kerr/" + file)) {
-		std::cerr << "[BHVApp] file " << ROOT_DIR "saves/kerr/" + file << " not found" << std::endl;
+		std::cerr << "[KerrApp] file " << ROOT_DIR "saves/kerr/" + file << " not found" << std::endl;
 		return;
 	}
 	std::ifstream inFile(ROOT_DIR "saves/kerr/" + file);
@@ -638,7 +929,7 @@ void KerrApp::readState(std::string const& file) {
 	
 	boost::json::value v = boost::json::parse(json);
 	if (v.kind() != boost::json::kind::object) {
-		std::cerr << "[BHVApp] Error parsing configuration file" << std::endl;
+		std::cerr << "[KerrApp] Error parsing configuration file" << std::endl;
 		return;
 	}
 

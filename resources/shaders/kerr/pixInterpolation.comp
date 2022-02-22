@@ -32,6 +32,7 @@ uniform int GN; // grid+deflection height
 uniform int GmaxLvl;
 
 uniform bool print = false; // true if grid is rendered afterwards
+uniform bool linear_interpolate = false;
 
 const float PI = 3.14159265359;
 const float I_PI = 1.0/PI;
@@ -39,6 +40,12 @@ const float PI2 = 2*PI;
 const float I_PI2 = 1.0/PI2;
 
 const vec2 neg1 = vec2(-1);
+
+vec2 loadfromGrid(ivec2 coords) {
+	ivec2 texSize = ivec2(imageSize(gpuGrid));
+	coords = clamp(coords, ivec2(0), texSize);
+	return imageLoad(gpuGrid,coords).xy;
+}
 
 vec2 intersection(const float ax, const float ay, const float bx, const float by, const float cx, const float cy, const float dx, const float dy) {
 	// Line AB represented as a1x + b1y = c1 
@@ -63,7 +70,7 @@ vec2 intersection(const float ax, const float ay, const float bx, const float by
 
 // Checks and corrects phi values for 2-pi crossings.
 bool piCheckTot(vec2[4] tp, float factor, int size) {
-	float factor1 = PI2*(1.f - factor);
+	float factor1 = PI2*(1.0 - factor);
 	bool check = false;
 	for (int q = 0; q < size; q++) {
 		if (tp[q].y > factor1) {
@@ -85,7 +92,7 @@ bool piCheckTot(vec2[4] tp, float factor, int size) {
 
 // Checks and corrects phi values for 2-pi crossings.
 bool piCheckTot(vec2[2] tp, float factor, int size) {
-	float factor1 = PI2*(1.f - factor);
+	float factor1 = PI2*(1.0 - factor);
 	bool check = false;
 	for (int q = 0; q < size; q++) {
 		if (tp[q].y > factor1) {
@@ -107,7 +114,7 @@ bool piCheckTot(vec2[2] tp, float factor, int size) {
 
 // Checks and corrects phi values for 2-pi crossings.
 bool piCheckTot(vec2[12] tp, float factor, int size) {
-	float factor1 = PI2*(1.f - factor);
+	float factor1 = PI2*(1.0 - factor);
 	bool check = false;
 	for (int q = 0; q < size; q++) {
 		if (tp[q].y > factor1) {
@@ -130,7 +137,7 @@ bool piCheckTot(vec2[12] tp, float factor, int size) {
 
 // Checks and corrects phi values for 2-pi crossings.
 bool piCheck(float[4] p, float factor) {
-	float factor1 = PI2*(1.f - factor);
+	float factor1 = PI2*(1.0 - factor);
 	bool check = false;
 
 	for (int q = 0; q < 4; q++) {
@@ -154,12 +161,12 @@ bool piCheck(float[4] p, float factor) {
 
 void wrapToPi(inout vec2 thphi) {
 	thphi.x = mod(thphi.x, PI2);
-	while (thphi.x < 0.f) thphi.x += PI2;
+	while (thphi.x < 0.0) thphi.x += PI2;
 	if (thphi.x > PI) {
-		thphi.x -= 2.f * (thphi.x - PI);
+		thphi.x -= 2.0 * (thphi.x - PI);
 		thphi.y += PI;
 	}
-	while (thphi.y < 0.f) thphi.y += PI2;
+	while (thphi.y < 0.0) thphi.y += PI2;
 	thphi.y = mod(thphi.y, PI2);
 }
 
@@ -168,7 +175,7 @@ vec2 interpolateLinear(float percDown, float percRight, vec2[12] cornersCel) {
 	float phi[4] = { cornersCel[0].y, cornersCel[1].y, cornersCel[2].y, cornersCel[3].y };
 	float theta[4] = { cornersCel[0].x, cornersCel[1].x, cornersCel[2].x, cornersCel[3].x };
 
-	piCheck(phi, 0.2);
+	piCheck(phi, 0.1);
 
 	float leftT = theta[0] + percDown * (theta[2] - theta[0]);
 	float leftP = phi[0] + percDown * (phi[2] - phi[0]);
@@ -192,8 +199,8 @@ vec2 hermite(float aValue, vec2 aX0, vec2 aX1, vec2 aX2, vec2 aX3,
 	const float v2 = v*v;
 	const float v3 = v*v2;
 
-	const float aa = (1.f + aBias)*(1.f - aTension) / 2.f;
-	const float bb = (1.f - aBias)*(1.f - aTension) / 2.f;
+	const float aa = (1.0 + aBias)*(1.0 - aTension) / 2.0;
+	const float bb = (1.0 - aBias)*(1.0 - aTension) / 2.0;
 
 	const float m0T = aa * (aX1.x - aX0.x) + bb * (aX2.x - aX1.x);
 	const float m0P = aa * (aX1.y - aX0.y) + bb * (aX2.y - aX1.y);
@@ -201,10 +208,10 @@ vec2 hermite(float aValue, vec2 aX0, vec2 aX1, vec2 aX2, vec2 aX3,
 	const float m1T = aa * (aX2.x - aX1.x) + bb * (aX3.x - aX2.x);
 	const float m1P = aa * (aX2.y - aX1.y) + bb * (aX3.y - aX2.y);
 
-	const float u0 = 2.f *v3 - 3.f*v2 + 1.f;
-	const float u1 = v3 - 2.f*v2 + v;
+	const float u0 = 2.0 *v3 - 3.0*v2 + 1.0;
+	const float u1 = v3 - 2.0*v2 + v;
 	const float u2 = v3 - v2;
-	const float u3 = -2.f*v3 + 3.f*v2;
+	const float u3 = -2.0*v3 + 3.0*v2;
 
 	return vec2( 
 		u0*aX1.x + u1*m0T + u2*m1T + u3*aX2.x, 
@@ -215,13 +222,13 @@ vec2 hermite(float aValue, vec2 aX0, vec2 aX1, vec2 aX2, vec2 aX3,
 vec2 findPointSecond(const int i, const int j, const int gridID, 
 							   const int offver, const int offhor, const int gap) {
 
-	vec2 gridpt = imageLoad(gpuGrid, ivec2(j,i)).xy;
+	vec2 gridpt = loadfromGrid(ivec2(j,i)).xy;
 	
 	if (gridpt.x != -2 && gridpt.y != -2) return gridpt; // in grid?
 
 	int j2 = (j + offhor*gap + GM) % GM;
 	int i2 = i + offver*gap;
-	vec2 ij2 = imageLoad(gpuGrid, ivec2(j2,i2)).xy;
+	vec2 ij2 = loadfromGrid(ivec2(j2,i2)).xy;
 
 	if (ij2.x == -1 && ij2.y == -1) { // black hole?
 
@@ -232,7 +239,7 @@ vec2 findPointSecond(const int i, const int j, const int gridID,
 		int j0 = (j - offhor * gap + GM) % GM;
 		int i0 = (i - offver * gap);
 
-		vec2 ij0 = imageLoad(gpuGrid, ivec2(j0,i0)).xy;
+		vec2 ij0 = loadfromGrid(ivec2(j0,i0)).xy;
 
 		if (ij0.x < 0) return neg1;	// black hole?
 
@@ -255,8 +262,8 @@ vec2 findPointSecond(const int i, const int j, const int gridID,
 				jnext = (j0 + GM / 2) % GM;
 			}
 		}
-		vec2 ijprev = imageLoad(gpuGrid, ivec2(jprev,iprev)).xy;
-		vec2 ijnext = imageLoad(gpuGrid, ivec2(jnext,inext)).xy;
+		vec2 ijprev = loadfromGrid(ivec2(jprev,iprev)).xy;
+		vec2 ijnext = loadfromGrid(ivec2(jnext,inext)).xy;
 
 		if (ijprev.x > -2 && ijnext.x >-2) { // in grid?
 
@@ -265,7 +272,7 @@ vec2 findPointSecond(const int i, const int j, const int gridID,
 			if (pt[0].x != -1 && pt[3].x != -1) { // not black hole?
 				
 				piCheckTot(pt, 0.2, 4);
-				return hermite(0.5, pt[0], pt[1], pt[2], pt[3], 0.f, 0.f);
+				return hermite(0.5, pt[0], pt[1], pt[2], pt[3], 0.0, 0.0);
 			}
 		}
 
@@ -323,8 +330,8 @@ vec2 interpolateHermiteSecond(const ivec2 ij, const int gap, const float percDow
 
 	piCheckTot(cornersCel, 0.2f, 12);
 
-	vec2 interpolateUp = hermite(percRight, cornersCel[4], cornersCel[0], cornersCel[1], cornersCel[5], 0.f, 0.f);
-	vec2 interpolateDown = hermite(percRight, cornersCel[6], cornersCel[2], cornersCel[3], cornersCel[7], 0.f, 0.f);
+	vec2 interpolateUp = hermite(percRight, cornersCel[4], cornersCel[0], cornersCel[1], cornersCel[5], 0.0, 0.0);
+	vec2 interpolateDown = hermite(percRight, cornersCel[6], cornersCel[2], cornersCel[3], cornersCel[7], 0.0, 0.0);
 
 	// linear interpolation of spline points on horizontal grid edges below + above our grid cell
 	vec2 interpolateUpUp = { cornersCel[8].x + (cornersCel[9].x - cornersCel[8].x) * percRight,
@@ -332,19 +339,19 @@ vec2 interpolateHermiteSecond(const ivec2 ij, const int gap, const float percDow
 	vec2 interpolateDownDown = { cornersCel[10].x + (cornersCel[11].x - cornersCel[10].x) * percRight,
 		cornersCel[10].y + (cornersCel[11].y - cornersCel[10].y) * percRight };
 	//HERMITE FINITE
-	return hermite(percDown, interpolateUpUp, interpolateUp, interpolateDown, interpolateDownDown, 0.f, 0.f);
+	return hermite(percDown, interpolateUpUp, interpolateUp, interpolateDown, interpolateDownDown, 0.0, 0.0);
 }
 
 vec2 findPointFirst(const int i, const int j, const int gridID, 
 							   const int offver, const int offhor, const int gap) {
 
-	vec2 gridpt = imageLoad(gpuGrid, ivec2(j,i)).xy;
+	vec2 gridpt = loadfromGrid(ivec2(j,i)).xy;
 	
 	if (gridpt.x != -2 && gridpt.y != -2) return gridpt; // in grid?
 
 	int j2 = (j + offhor*gap + GM) % GM;
 	int i2 = i + offver*gap;
-	vec2 ij2 = imageLoad(gpuGrid, ivec2(j2,i2)).xy;
+	vec2 ij2 = loadfromGrid(ivec2(j2,i2)).xy;
 
 	if (ij2.x == -1 && ij2.y == -1) { // black hole?
 
@@ -355,7 +362,7 @@ vec2 findPointFirst(const int i, const int j, const int gridID,
 		int j0 = (j - offhor * gap + GM) % GM;
 		int i0 = (i - offver * gap);
 
-		vec2 ij0 = imageLoad(gpuGrid, ivec2(j0,i0)).xy;
+		vec2 ij0 = loadfromGrid(ivec2(j0,i0)).xy;
 
 		if (ij0.x < 0) return neg1;	// black hole?
 
@@ -378,8 +385,8 @@ vec2 findPointFirst(const int i, const int j, const int gridID,
 				jnext = (j0 + GM / 2) % GM;
 			}
 		}
-		vec2 ijprev = imageLoad(gpuGrid, ivec2(jprev,iprev)).xy;
-		vec2 ijnext = imageLoad(gpuGrid, ivec2(jnext,inext)).xy;
+		vec2 ijprev = loadfromGrid(ivec2(jprev,iprev)).xy;
+		vec2 ijnext = loadfromGrid(ivec2(jnext,inext)).xy;
 
 		if (ijprev.x > -2 && ijnext.x >-2) { // in grid?
 
@@ -388,7 +395,7 @@ vec2 findPointFirst(const int i, const int j, const int gridID,
 			if (pt[0].x != -1 && pt[3].x != -1) { // not black hole?
 				
 				piCheckTot(pt, 0.2, 4);
-				return hermite(0.5, pt[0], pt[1], pt[2], pt[3], 0.f, 0.f);
+				return hermite(0.5, pt[0], pt[1], pt[2], pt[3], 0.0, 0.0);
 			}
 		}
 
@@ -402,14 +409,14 @@ vec2 findPointFirst(const int i, const int j, const int gridID,
 
 		if (i - gap < 0) return neg1; // recursion depth check
 
-		int j0 = (j + gap) % GM;
-		int j1 = (j - gap + GM) % GM;
+		int j0 = int(mod(j + gap, GM));
+		int j1 = int(mod(j - gap + GM, GM));
 
 		vec2 cornersCel2[12] = { 
-			imageLoad(gpuGrid, ivec2(j0, (i+gap))).xy,
-			imageLoad(gpuGrid, ivec2(j0, (i-gap))).xy,
-			imageLoad(gpuGrid, ivec2(j1, (i-gap))).xy,
-			imageLoad(gpuGrid, ivec2(j1, (i+gap))).xy,
+			loadfromGrid(ivec2(j0, (i+gap))).xy,
+			loadfromGrid(ivec2(j0, (i-gap))).xy,
+			loadfromGrid(ivec2(j1, (i-gap))).xy,
+			loadfromGrid(ivec2(j1, (i+gap))).xy,
 			neg1, neg1, neg1, neg1, neg1, neg1, neg1, neg1 };
 
 		for (int q = 0; q < 4; q++) { // black hole?
@@ -424,24 +431,24 @@ vec2 interpolateHermiteFirst(const ivec2 ij, const int gap, const float percDown
 										const int gridID, vec2[12] cornersCel) {
 
 	// compute coordinates of neighbour points on grid for hermite interpolation
-	ivec2 kl = ivec2(ij.x + gap, (ij.y + gap) % GM);
+	ivec2 kl = ivec2(ij.x + gap, mod(ij.y + gap, GM));
 	int imin1 = ij.x - gap;
 	int kplus1 = kl.x + gap;
-	int jmin1 = (ij.y - gap + GM) % GM;
-	int lplus1 = (kl.y + gap) % GM;
+	int jmin1 = int(mod(ij.y - gap + GM, GM));
+	int lplus1 = int(mod(kl.y + gap, GM));
 	int jx = ij.y;
 	int jy = ij.y;
 	int lx = kl.y;
 	int ly = kl.y;
 
 	if (ij.x == 0) {
-		jx = (ij.y + GM / 2) % GM;
-		lx = (jx + gap) % GM;
+		jx = int(mod(ij.y + GM / 2, GM));
+		lx = int(mod(jx + gap, GM));
 		imin1 = kl.x;
 	}
 	else if (kl.x == GN - 1) {
-		jy = (ij.y + GM / 2) % GM;
-		ly = (jy + gap) % GM;
+		jy = int(mod(ij.y + GM / 2, GM));
+		ly = int(mod(jy + gap, GM));
 		kplus1 = ij.x;
 	}
 
@@ -460,10 +467,10 @@ vec2 interpolateHermiteFirst(const ivec2 ij, const int gap, const float percDown
 		if (cornersCel[q].x == -1) return interpolateLinear(percDown, percRight, cornersCel);
 	}
 
-	piCheckTot(cornersCel, 0.2f, 12);
+	piCheckTot(cornersCel, 0.2, 12);
 
-	vec2 interpolateUp = hermite(percRight, cornersCel[4], cornersCel[0], cornersCel[1], cornersCel[5], 0.f, 0.f);
-	vec2 interpolateDown = hermite(percRight, cornersCel[6], cornersCel[2], cornersCel[3], cornersCel[7], 0.f, 0.f);
+	vec2 interpolateUp = hermite(percRight, cornersCel[4], cornersCel[0], cornersCel[1], cornersCel[5], 0.0, 0.0);
+	vec2 interpolateDown = hermite(percRight, cornersCel[6], cornersCel[2], cornersCel[3], cornersCel[7], 0.0, 0.0);
 
 	// linear interpolation of spline points on horizontal grid edges below + above our grid cell
 	vec2 interpolateUpUp = { cornersCel[8].x + (cornersCel[9].x - cornersCel[8].x) * percRight,
@@ -471,7 +478,7 @@ vec2 interpolateHermiteFirst(const ivec2 ij, const int gap, const float percDown
 	vec2 interpolateDownDown = { cornersCel[10].x + (cornersCel[11].x - cornersCel[10].x) * percRight,
 		cornersCel[10].y + (cornersCel[11].y - cornersCel[10].y) * percRight };
 	//HERMITE FINITE
-	return hermite(percDown, interpolateUpUp, interpolateUp, interpolateDown, interpolateDownDown, 0.f, 0.f);
+	return hermite(percDown, interpolateUpUp, interpolateUp, interpolateDown, interpolateDownDown, 0.0, 0.0);
 }
 
 
@@ -484,17 +491,17 @@ vec2 interpolateSpline(const ivec2 ij, const ivec2 kl, const vec2 thphi, const i
 	float phiRight = cornersCam.w;
 
 	vec2 cornersCel[12] = { 
-		imageLoad(gpuGrid, ivec2(ij.yx)).xy,		//ji
-		imageLoad(gpuGrid, ivec2(kl.y,ij.x)).xy,	//li
-		imageLoad(gpuGrid, ivec2(ij.y,kl.x)).xy,	//jk
-		imageLoad(gpuGrid, ivec2(kl.yx)).xy, 		//lk
+		loadfromGrid(ivec2(ij.yx)).xy,		//ji
+		loadfromGrid(ivec2(kl.y,ij.x)).xy,	//li
+		loadfromGrid(ivec2(ij.y,kl.x)).xy,	//jk
+		loadfromGrid(ivec2(kl.yx)).xy, 		//lk
 		neg1, neg1, neg1, neg1, neg1, neg1, neg1, neg1 };
 
 	// check if pixel corner aligns with grid corner
 	if (thetaUp == thphi.x) {
 		if (phiLeft == thphi.y)	return cornersCel[0];
 		if (phiRight == thphi.y)	return cornersCel[1];
-		if (ij.x == 0.f) return cornersCel[0];
+		if (ij.x == 0.0) return cornersCel[0];
 
 	}
 	else if (thetaDown == thphi.x) {
@@ -509,8 +516,10 @@ vec2 interpolateSpline(const ivec2 ij, const ivec2 kl, const vec2 thphi, const i
 	float percDown = (thphi.x - thetaUp) / (thetaDown - thetaUp);
 	float percRight = (thphi.y - phiLeft) / (phiRight - phiLeft);
 
+	if (linear_interpolate || (thphi.y < 0.1 || abs(thphi.y - PI2) < 0.1))
+		return interpolateLinear(percDown, percRight, cornersCel);
+	
 	return interpolateHermiteFirst(ij, gap, percDown, percRight, gridID, cornersCel);
-	//return interpolateLinear(i, j, percDown, percRight, cornersCel);
 }
 
 // iterate through grid until highest level of block containing thphi is found
@@ -520,10 +529,10 @@ void findBlock(const vec2 thphi, const int gridID, inout ivec2 ij, inout int gap
 		int ngap = gap / 2;
 		int k = ij.x + ngap;
 		int l = ij.y + ngap;
-		if (gap <= 1 || imageLoad(gpuGrid, ivec2(l,k)).x == -2.f) return;
+		if (gap <= 1 || loadfromGrid(ivec2(l,k)).x == -2.0) return;
 		else {
-			float thHalf = PI2*k / (1.f * GM);
-			float phHalf = PI2*l / (1.f * GM);
+			float thHalf = PI2*k / (1.0 * GM);
+			float phHalf = PI2*l / (1.0 * GM);
 			if (thHalf <= thphi.x) ij.x = k;
 			if (phHalf <= thphi.y) ij.y = l;
 			gap = ngap;
@@ -546,9 +555,8 @@ vec2 interpolatePix(const vec2 thphi, const int gridID, const ivec2 coords_ij) {
 	ivec2 kl = ij + ivec2(gap);
 	
 	//gapsave[i * M1 + j] = gap;
-
-	vec4 cornersCam = vec4(ij,kl) * PI2 / (1.f * GM);
-	kl.y = kl.y % GM;
+	vec4 cornersCam = vec4(ij,kl) * PI2 / (1.0 * GM);
+	kl.y = int(mod(kl.y, GM));
 	
 	vec2 thphiInter = interpolateSpline(ij, kl, thphi, gap, gridID, cornersCam);
 
@@ -561,7 +569,7 @@ void main() {
 	ivec2 coords = ivec2(gl_GlobalInvocationID.xy); // x = j, y = i
     vec2 texSize = imageSize(deflectionMap); // x = GM, y = GN
 	
-	if(any(greaterThan(coords, texSize)))
+	if(any(greaterThanEqual(coords, texSize)))
         return;
 
 	vec2 normalized_coords = coords / (texSize-vec2(1.0));
@@ -599,8 +607,8 @@ void main() {
 			angle = mod(angle + PI2, PI2);
 			int angleSlot = angle / PI2 * angleNum;
 
-			vec2 bhBorderNew = { (1.f - alpha) * bhBorder[2 * angleSlot + 2].x + alpha * bhBorder[2 * angleSlot + 3].x,
-								   (1.f - alpha) * bhBorder[2 * angleSlot + 2].y + alpha * bhBorder[2 * angleSlot + 3].y };
+			vec2 bhBorderNew = { (1.0 - alpha) * bhBorder[2 * angleSlot + 2].x + alpha * bhBorder[2 * angleSlot + 3].x,
+								   (1.0 - alpha) * bhBorder[2 * angleSlot + 2].y + alpha * bhBorder[2 * angleSlot + 3].y };
 
 			if (centerdist <= (bhBorderNew.x - center.x) * (bhBorderNew.x - center.x) + (bhBorderNew.y - center.y) * (bhBorderNew.y - center.y)) {
 				thphi[i * M1 + j] = { -1, -1 };
@@ -610,8 +618,8 @@ void main() {
 			float tStoB = (center.x - stretchRad * sinf(angle) - bhBorderNew.x);
 			float pStoB = (center.y + stretchRad * cosf(angle) - bhBorderNew.y);
 
-			float thetaPerc = fabsf(tStoB) < 1E-5 ? 0 : 1.f - (theta - bhBorderNew.x) / tStoB;
-			float phiPerc = fabsf(pStoB) < 1E-5 ? 0 : 1.f - (phi - bhBorderNew.y) / pStoB;
+			float thetaPerc = fabsf(tStoB) < 1E-5 ? 0 : 1.0 - (theta - bhBorderNew.x) / tStoB;
+			float phiPerc = fabsf(pStoB) < 1E-5 ? 0 : 1.0 - (phi - bhBorderNew.y) / pStoB;
 			float thetaA = theta - thetaPerc * (bhBorderNew.x - bhBorder[2 * angleSlot + 2].x);
 			float phiA = phi - phiPerc * (bhBorderNew.y - bhBorder[2 * angleSlot + 2].y);
 			float thetaB = theta - thetaPerc * (bhBorderNew.x - bhBorder[2 * angleSlot + 3].x);
@@ -632,7 +640,7 @@ void main() {
 			if (A.y < .2f * PI2 && B.y > .8f * PI2) A.y += PI2;
 			if (B.y < .2f * PI2 && A.y > .8f * PI2) B.y += PI2;
 
-			thphi[i * M1 + j] = { (1.f - alpha) * A.x + alpha * B.x, mod((1.f - alpha) * A.y + alpha * B.y, PI2) };
+			thphi[i * M1 + j] = { (1.0 - alpha) * A.x + alpha * B.x, mod((1.0 - alpha) * A.y + alpha * B.y, PI2) };
 		}
 	}
 	else {

@@ -56,6 +56,13 @@ uniform vec3 cam_up;
 uniform vec3 cam_front;
 uniform vec3 cam_right;
 
+uniform vec3 boosted_tau = vec3(0);
+uniform vec3 boosted_up = vec3(0, 0, 1);
+uniform vec3 boosted_front = vec3(0, 1, 0);
+uniform vec3 boosted_right = vec3(1, 0, 0);
+
+uniform float star_exposure = 1.0;
+
 uniform bool gaiaMap = false;
 
 const float MAX_FOOTPRINT_LOD = 6.0;
@@ -63,6 +70,10 @@ const int STARS_CUBE_MAP_SIZE = 2048;
 const float MAX_FOOTPRINT_SIZE = 4.0;
 
 const float pi = 3.14159265359;
+const float pi2 = 2.0 * pi;
+const float pi_1_2 = 0.5 * pi;
+const float i_pi = 1.0 / pi;
+const float i_pi2 = 1.0 / pi2;
 
 #ifdef STARS
 vec3 StarColor(vec3 dir, float lensing_amplification_factor,
@@ -132,21 +143,55 @@ vec3 StarColor(vec3 dir, float lensing_amplification_factor,
 }
 #endif
 
+// factor = 0 -> a, factor = 1 -> b
+vec2 interpolateThPhi(vec2 a, vec2 b, float factor) {
+  if (all(lessThan(a, vec2(0))))
+    return b;
+  if (all(lessThan(b, vec2(0))))
+    return a;
+
+  return mix(a, b, factor);
+}
+
 vec3 pixelColor(vec3 dir) {
     
     // get phi, theta from dir
-    float phi = 1.0 - mod(atan(dir.y,dir.x) + 1.5*pi, 2*pi)/ (2*pi);
-    float theta = mod(atan(sqrt(dir.x*dir.x+dir.y*dir.y)/dir.z), pi) / pi;
+    float phi = 1.0 - mod(atan(dir.y,dir.x) + 1.5*pi, pi2)/ (pi2);
+    float theta = 1.0 - mod(atan(sqrt(dir.x*dir.x+dir.y*dir.y)/dir.z), pi) * i_pi;
 
-    // exact value
-    ivec2 coords = ivec2(vec2(phi, theta) * textureSize(deflection_texture, 0));
-    vec2 thphi = texelFetch(deflection_texture, coords, 0).xy;
+    vec2 new_thphi = texture(deflection_texture, vec2(phi, theta)).xy;
+
+    // custom linear sampling which ignores black hole pixels
+    // p10 --- p11
+    //  | p     |
+    // p00 --- p01
+    #ifdef LINEARSAMPLE
+    if (all(greaterThanEqual(new_thphi, vec2(0)))) {
+
+      // texel size
+      vec2 txlSize = 1.0 / vec2(textureSize(deflection_texture, 0));
+      vec2 p = vec2(phi, theta) * textureSize(deflection_texture, 0);
+      vec2 p_lowerleft = floor(p - vec2(0.5)) + 0.5;
+      vec2 coords_00 = p_lowerleft * txlSize;
+      vec2 p_00 = texture(deflection_texture, coords_00).xy;
+      vec2 p_01 = texture(deflection_texture, coords_00 + vec2(txlSize.x, 0)).xy;
+      vec2 p_10 = texture(deflection_texture, coords_00 + vec2(0, txlSize.y)).xy;
+      vec2 p_11 = texture(deflection_texture, coords_00 + txlSize).xy;
+
+      vec2 p_dist = p - p_lowerleft;
+      vec2 p_00_01 = interpolateThPhi(p_00, p_01, p_dist.x);
+      vec2 p_10_11 = interpolateThPhi(p_10, p_11, p_dist.x);
+      new_thphi = interpolateThPhi(p_00_01, p_10_11, p_dist.y);
+
+    }
+    #endif // LINEARSAMPLE
+
 
     vec3 color = vec3(0);
-    if (all(greaterThanEqual(thphi, vec2(0.0)))) {
-
-    // interpolated thphi (gl_nearest)
-    vec2 new_thphi = texture(deflection_texture, vec2(phi, theta)).xy;
+    if (all(greaterThanEqual(new_thphi, vec2(0.0)))) {
+  #ifdef DEFLECTIONMAP
+    color = vec3(new_thphi.x * i_pi, new_thphi.y * i_pi2, 0);
+  #else // DEFLECTIONMAP
 
     #ifndef MWPANORAMA
         vec3 d_prime;
@@ -155,8 +200,7 @@ vec3 pixelColor(vec3 dir) {
         d_prime.z = cos(new_thphi.x);
         d_prime = normalize(-cam_tau + d_prime.x * cam_right + d_prime.z * cam_up - d_prime.y * cam_front);
 
-        // if(!gaiaMap) d_prime = vec3(d_prime.x, d_prime.z, -d_prime.y);
-        // return abs(d_prime);
+        if(gaiaMap) d_prime = vec3(d_prime.x, -d_prime.z, d_prime.y);
         color += texture(cubeMap, d_prime).rgb;
         if(gaiaMap) color *= 6.78494e-5;
      
@@ -173,14 +217,15 @@ vec3 pixelColor(vec3 dir) {
         float pixel_area = max(omega * (1024.0 * 1024.0), 1.0);
 
         //color += texture(star_textureFull, d_prime).rgb * lensing_amplification_factor/pixel_area;
-        color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0);
-        #endif
-    #else
-        vec2 mw_coords = new_thphi / vec2(pi, 2*pi);
+        color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0) * star_exposure;
+        #endif // STARS
+    #else // MWPANORAMA
+        vec2 mw_coords = new_thphi / vec2(pi, pi2);
         color = texture(mw_panorama, mw_coords.yx).rgb;
 
-    #endif
+    #endif // MWPANORAMA
 
+    #endif // DEFLECTIONMAP
     }
 
     return color;
@@ -212,6 +257,9 @@ vec3 rotateVector( vec4 quat, vec3 vec ) {
 
 void main()
 {    
+    FragColor = vec4(texture(deflection_texture, TexCoords).xy, 0, 1);
+    // return;
+
     #if defined(PINHOLE)
     vec3 dir = normalize(viewDir);
     dir = vec3(-dir.x, dir.z, dir.y);
@@ -224,8 +272,8 @@ void main()
         return;
     }
 
-    float theta = (length(fragCoord)) * pi / 2.0;
-    float phi = atan(fragCoord.y, fragCoord.x) - pi/2.0;
+    float theta = (length(fragCoord)) * pi_1_2;
+    float phi = atan(fragCoord.y, fragCoord.x) - pi_1_2;
     vec3 dir;
     dir.x = sin(phi) * sin(theta);
     dir.z = cos(theta);
@@ -237,13 +285,15 @@ void main()
     dir = normalize(rotateVector(rotQuat, dir));
 
     #else
-    float phi = (TexCoords.x) * 2.0 * pi;
+    float phi = (TexCoords.x) * pi2;
     float theta = (1.0 - TexCoords.y) * pi;
     vec3 dir;
     dir.x = sin(phi) * sin(theta);
     dir.y = cos(phi) * sin(theta);
     dir.z = cos(theta);
     #endif    
+
+    dir = normalize(-boosted_tau + dir.x * boosted_right + dir.z * boosted_up + dir.y * boosted_front);
 
     vec3 color;
     // color = texture(deflection_texture, TexCoords).rgb;
