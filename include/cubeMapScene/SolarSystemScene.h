@@ -10,9 +10,25 @@ class SolarSystemScene : public CubeMapScene {
 public:
 
 	enum class Objects {
+		MERCURY,
+		VENUS,
 		EARTH,
 		MOON, 
-		MARS
+		MARS,
+		JUPITER,
+		SATURN,
+		URANUS,
+		NEPTUNE
+	};
+
+	struct PlanetProperties {
+		float dist_;
+		float size_;
+		float rotSpeed_;
+		float orbitSpeed_;
+		float inclination_;
+		float axisTilt_;
+		glm::vec3 color_;
 	};
 
 	SolarSystemScene();
@@ -27,20 +43,21 @@ private:
 	std::shared_ptr<Mesh> sphereMesh_;
 	std::shared_ptr<CubeMap> skyTexture_;
 	std::map<Objects, std::shared_ptr<Texture2D>> meshTextures_;
-	std::map<Objects, glm::vec3> meshColors_;
+	std::map<Objects, PlanetProperties> planets_;
 	std::map<Objects, glm::mat4> modelMatrices_;
 
 	std::shared_ptr<ShaderBase> meshShader_;
 	std::shared_ptr<ShaderBase> skyShader_;
 
 	float rotationSpeedScale_;
-	glm::vec2 rotationTilt_;
-	float sceneScale_;
+	float distScale_;
+	float sizeScale_;
+	float maxSize_;
 
 	void loadTextures();
 	void loadShaders();
 	void initModelTransforms();
-	void initColors();
+	void initPlanets();
 	void updateModelTransforms(float dt);
 	void reloadShaders();
 	std::string objToString(Objects obj);

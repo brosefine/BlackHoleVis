@@ -3,9 +3,7 @@
 - textures and images:
 	- skybox generated with [space-3d](https://github.com/wwwtyro/space-3d) licensed under ```the Unlicense License```
 	- milkyway panorama by [ESO/S.Brunier](https://www.eso.org/public/germany/images/eso0932a/) licensed under ```CC BY 4.0```
-	- planet textures:
-			- [Earthmap.jpg](https://de.wikipedia.org/wiki/Datei:Earthmap1000x500.jpg)
-			- [mars.jpg](https://commons.wikimedia.org/wiki/File:Solarsystemscope_texture_2k_mars.jpg) licensed under ```CC BY 4.0```
+	- planet textures from [Solar System Scope](https://www.solarsystemscope.com/textures/) licensed under ```CC BY 4.0```
 
 - data and shader files
 	- resources/shaders/ebruneton/* by [E.Bruneton](https://github.com/ebruneton/black_hole_shader) licensed under ```BSD-3-Clause License```

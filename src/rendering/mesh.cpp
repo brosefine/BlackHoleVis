@@ -85,11 +85,12 @@ Mesh::Mesh(std::string filename)
 					return;
 				}
 
-				
+				/*
 				if (indexMap.contains(idx.vertex_index)) {
 					indices_.push_back(indexMap.at(idx.vertex_index));
 					continue;
 				}
+				*/
 				// add vertices only once
 
 				meshVert.position.x = attributes.vertices[3 * size_t(idx.vertex_index) + 0];
