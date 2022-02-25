@@ -8,9 +8,14 @@
 
 
 void GuiElement::renderRefreshMenu() {
-	ImGui::Checkbox("Always refresh", &alwaysUpdate_);
+	ImGui::Checkbox(appendID("Always refresh").c_str(), &alwaysUpdate_);
 	ImGui::SameLine();
-	if (alwaysUpdate_ || ImGui::Button("Apply")) changed_ = true;
+	if (alwaysUpdate_ || ImGui::Button(appendID("Apply").c_str())) changed_ = true;
+}
+
+
+std::string GuiElement::appendID(std::string label) {
+	return (label + "##" + name_);
 }
 
 #pragma endregion
@@ -64,5 +69,7 @@ void ShaderGui::update() {
 	uploadUniforms();
 	changed_ = false;
 }
+
+
 
 #pragma endregion

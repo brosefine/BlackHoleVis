@@ -77,4 +77,14 @@ namespace jhelper {
 		return true;
 	}
 
+	bool getValue(boost::json::object const& obj, std::string const& key, double& target)	{
+		if (!obj.contains(key) || obj.at(key).kind() != boost::json::kind::double_) {
+			std::cerr << "[JSON] key " << key << " not read" << std::endl;
+			return false;
+		}
+
+		target = obj.at(key).get_double();
+		return true;
+	}
+
 } // jhelper

@@ -64,7 +64,7 @@ bool ShaderBase::checkLinkErrors(int shader) {
 		glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &maxLen);
 		std::vector<char> log;
 		log.reserve(maxLen);
-		glGetShaderInfoLog(shader, maxLen, NULL, log.data());
+		glGetProgramInfoLog(shader, maxLen, NULL, log.data());
 
 		std::cout << "[Error][Shader] Linking error: \n" << log.data() << std::endl;
 

@@ -1,0 +1,114 @@
+/* ------------------------------------------------------------------------------------
+* Source Code adapted from A.Verbraeck's Blacktracer Black-Hole Visualization
+* https://github.com/annemiekie/blacktracer
+* https://doi.org/10.1109/TVCG.2020.3030452
+* ------------------------------------------------------------------------------------
+*/
+
+layout(local_size_x = 32, local_size_y = 32) in;
+
+layout(rgba32f, binding = 0) uniform image2D gpuGrid;
+layout(std430, binding = 1) buffer hashTable
+{
+	vec2[] hashData;
+};
+
+layout(std430, binding = 2) buffer hashPosTable
+{
+	ivec2[] hashPosData;
+};
+
+layout(std430, binding = 3) buffer offsetTable
+{
+	ivec2[] offsetData;
+};
+
+
+layout(std430, binding = 4) buffer tableSizeTable
+{
+	ivec2[] tableSizeData;
+};
+
+
+uniform int in_gridID = 0; // input grid index
+uniform int out_gridID = 0; // output grid index
+uniform int GM; // grid width (in = out)
+uniform int GN; // input grid height
+uniform int GN1; // output grid height (!= GN if sym == 1)
+uniform bool sym = false; // if grid is symmetric, input grid is only half the size
+
+uniform bool print = false; // true if grid is rendered afterwards
+
+const float PI = 3.14159265359;
+const float I_PI = 1.0/PI;
+const float PI2 = 2*PI;
+const float I_PI2 = 1.0/PI2;
+
+
+ivec2 hash1(ivec2 key, int ow) {
+	return ivec2((key.x + ow) % ow, (key.y + ow) % ow);
+}
+
+ivec2 hash0(ivec2 key, int hw) {
+	return ivec2((key.x + hw) % hw, (key.y + hw) % hw);
+}
+
+vec2 hashLookup(ivec2 key) {
+
+	int ow = tableSizeData[in_gridID].y;
+	int hw = tableSizeData[in_gridID].x;
+	int ostart = 0;
+	int hstart = 0;
+	// not needed for 1 grid
+	/*
+	for (int q = 0; q < in_gridID; q++) {
+		hstart += tableSizeData[q].x * tableSizeData[q].x;
+		ostart += tableSizeData[q].y * tableSizeData[q].y;
+	}
+	*/
+
+	ivec2 index = hash1(key, ow);
+
+	ivec2 add = { hash0(key, hw).x + offsetData[ostart + index.x*ow + index.y].x,
+				 hash0(key, hw).y + offsetData[ostart + index.x*ow + index.y].y };
+	ivec2 hindex = hash0(add, hw);
+
+	if (hashPosData[hstart + hindex.x*hw + hindex.y].x != key.x || hashPosData[hstart + hindex.x*hw + hindex.y].y != key.y) 
+		return vec2(-2.f, -2.f);
+	else 
+		return hashData[hstart + hindex.x*hw + hindex.y].xy;
+}
+
+
+void main() {
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    vec2 texSize = imageSize(gpuGrid); // x = GM, y = GN
+	
+	if(any(greaterThan(coords, texSize)))
+        return;
+	
+	vec2 lookup = hashLookup(coords.yx);
+	
+	vec4 pixel;
+	if(print) {
+		pixel = vec4(lookup.x * I_PI, lookup.y * I_PI2, 0.0, 1.0);
+		if(all(equal(lookup, vec2(-2))))
+			pixel.rgb = vec3(1.0);
+		else if (all(equal(lookup, vec2(-1))))
+			pixel.rgb = vec3(0.0);
+	} else {
+		pixel = vec4(lookup.x, lookup.y, 0.0, 1.0);
+	} 
+
+	//grid[out_gridID * GM * GN1 + coords.x * GM + coords.y] = lookup;
+    imageStore(gpuGrid, coords, pixel);
+	
+	/*
+	if (sym) {
+		if (lookup.x != -1 && lookup.x != -2) lookup.x = PI - lookup.x;
+		int x = GN1 - coords.x - 1;
+		grid[out_gridID * GM * GN1 + x * GM + coords.y] = lookup;
+	}
+	*/
+	
+}

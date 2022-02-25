@@ -38,6 +38,7 @@ protected:
 	virtual void render() = 0;
 
 	void renderRefreshMenu();
+	std::string appendID(std::string label);
 };
 
 class ShaderGui : public GuiElement {
@@ -56,5 +57,4 @@ protected:
 	virtual void bindUBOs();
 	virtual void update() override;
 	virtual void uploadUniforms() {};
-
 };

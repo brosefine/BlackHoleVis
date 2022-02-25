@@ -12,6 +12,7 @@ _deps
 build
 saves
 data
+resources/grids
 
 .vs
 *.sln
