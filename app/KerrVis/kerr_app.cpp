@@ -66,6 +66,7 @@ KerrApp::KerrApp(int width, int height)
 	, aberration_(false)
 	, direction_(1.f, 0.f, 0.f)
 	, speed_(0.5f)
+	, renderEnvironment_(false)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
 	, modePerformance_(false)
@@ -97,8 +98,6 @@ void KerrApp::renderContent()
 	t0_ = now;
 	tPassed_ += dt_;
 
-
-
 	if (gridChange_) {
 		grid_ = newGrid_;
 		newGrid_ = nullptr;
@@ -111,6 +110,11 @@ void KerrApp::renderContent()
 	}
 
 	cam_.processInput(window_.getPtr(), dt_);
+
+	if (renderEnvironment_) {
+		currentEnvironmentScene_->render(cam_.getPositionXYZ(), dt_);
+		cam_.use(window_.getWidth(), window_.getHeight(), false);
+	}
 
 	uploadCameraVectors();
 	if (window_.hasChanged()) {
@@ -134,7 +138,8 @@ void KerrApp::renderContent()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0);
-		currentCubeMap_->bind();
+		if (renderEnvironment_) currentEnvironmentScene_->bindEnv();
+		else currentCubeMap_->bind();
 
 		testShader_->use();
 		quad_.draw(GL_TRIANGLES);
@@ -185,8 +190,14 @@ void KerrApp::renderContent()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0);
-		currentCubeMap_->bind();
-		renderShader_->getShader()->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
+		if (renderEnvironment_) {
+			renderShader_->getShader()->setUniform("gaiaMap", false);
+			currentEnvironmentScene_->bindEnv();
+		}
+		else {
+			renderShader_->getShader()->setUniform("gaiaMap", currentCubeMap_ == galaxyTexture_);
+			currentCubeMap_->bind();
+		}
 		glActiveTexture(GL_TEXTURE1);
 		interpolatedGrid_->bind();
 		glActiveTexture(GL_TEXTURE2);
@@ -281,6 +292,11 @@ void KerrApp::initCubeMaps() {
 	currentCubeMap_ = cubemaps_.at(0).second;
 	loadStarTextures();
 	cubemaps_.push_back({ "Gaia Sky" , galaxyTexture_ });
+
+	// init scenes
+	environmentScenes_.insert({ "Solar System", std::make_shared<SolarSystemScene>(2048) });
+	environmentScenes_.insert({ "Checker Sphere", std::make_shared<CheckerSphereScene>(2048) });
+	currentEnvironmentScene_ = environmentScenes_["Solar System"];
 
 }
 
@@ -645,6 +661,10 @@ void KerrApp::renderGui() {
 			renderSkyTab();
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Scene Settings")) {
+			renderSceneTab();
+			ImGui::EndTabItem();
+		}
 	}
 	ImGui::EndTabBar();
 	ImGui::End();
@@ -796,6 +816,27 @@ void KerrApp::renderGridTab() {
 	ImGui::SameLine(); ImGui::SliderInt("Print level", &printLvl, 0, 8);
 
 	ImGui::Separator();
+}
+
+
+void KerrApp::renderSceneTab()
+{
+	ImGui::Checkbox("Render Environment Scene", &renderEnvironment_);
+	if (renderEnvironment_) {
+
+		if (ImGui::BeginListBox("")) {
+
+			for (auto const& [name, scene] : environmentScenes_) {
+				if (ImGui::Selectable(name.c_str(), false)) {
+					currentEnvironmentScene_ = scene;
+				}
+			}
+			ImGui::EndListBox();
+		}
+		ImGui::Separator();
+		if (currentEnvironmentScene_)
+			currentEnvironmentScene_->renderGui();
+	}
 }
 
 void KerrApp::renderPerfWindow()

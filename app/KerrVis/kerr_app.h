@@ -15,6 +15,8 @@
 #include <rendering/texture.h>
 #include <rendering/buffers.h>
 #include <rendering/mesh.h>
+#include <cubeMapScene/SolarSystemScene.h>
+#include <cubeMapScene/CheckerSphereScene.h>
 #include <gui/gui.h>
 #include "guiElements.h"
 
@@ -94,6 +96,10 @@ private:
 	glm::vec3 direction_;
 	float speed_;
 
+	bool renderEnvironment_;
+	std::map<std::string, std::shared_ptr<CubeMapScene>> environmentScenes_;
+	std::shared_ptr<CubeMapScene> currentEnvironmentScene_;
+
 	// timing variables for render loop
 	double t0_, dt_;
 	float tPassed_;
@@ -131,6 +137,7 @@ private:
 	void renderCameraTab();
 	void renderSkyTab();
 	void renderGridTab();
+	void renderSceneTab();
 	void renderPerfWindow();
 
 	void initPerformanceQueries();
