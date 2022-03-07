@@ -147,4 +147,5 @@ private:
 	void readState(std::string const& file);
 	void printDebug();
 
+	bool gridDone_;
 };

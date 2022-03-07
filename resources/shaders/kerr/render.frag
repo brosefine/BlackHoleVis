@@ -150,6 +150,12 @@ vec2 interpolateThPhi(vec2 a, vec2 b, float factor) {
   if (all(lessThan(b, vec2(0))))
     return a;
 
+  if (abs(a.y-b.y) > 0.49 * pi2) {
+    if (a.y < b.y)
+      a.y = pi2;
+    else
+      b.y = pi2;
+  }
   return mix(a, b, factor);
 }
 
@@ -166,7 +172,7 @@ vec3 pixelColor(vec3 dir) {
     //  | p     |
     // p00 --- p01
     #ifdef LINEARSAMPLE
-    if (all(greaterThanEqual(new_thphi, vec2(0)))) {
+    if (!all(equal(new_thphi, vec2(-1.0)))) {
 
       // texel size
       vec2 txlSize = 1.0 / vec2(textureSize(deflection_texture, 0));
@@ -188,14 +194,15 @@ vec3 pixelColor(vec3 dir) {
 
 
     vec3 color = vec3(0);
-    if (all(greaterThanEqual(new_thphi, vec2(0.0)))) {
+    if (!all(equal(new_thphi, vec2(-1.0)))) {
+      new_thphi = mod(new_thphi, vec2(pi, pi2));
   #ifdef DEFLECTIONMAP
     color = vec3(new_thphi.x * i_pi, new_thphi.y * i_pi2, 0);
   #else // DEFLECTIONMAP
 
     #ifndef MWPANORAMA
         vec3 d_prime;
-        d_prime.x = sin(new_thphi.y) * sin(new_thphi.x);
+        d_prime.x = -sin(new_thphi.y) * sin(new_thphi.x);
         d_prime.y = cos(new_thphi.y) * sin(new_thphi.x);
         d_prime.z = cos(new_thphi.x);
         d_prime = normalize(-cam_tau + d_prime.x * cam_right + d_prime.z * cam_up - d_prime.y * cam_front);

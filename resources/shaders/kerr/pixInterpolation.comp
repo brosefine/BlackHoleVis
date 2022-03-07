@@ -292,7 +292,7 @@ vec2 interpolateHermiteSecond(const ivec2 ij, const int gap, const float percDow
 										const int gridID, vec2[12] cornersCel) {
 
 	// compute coordinates of neighbour points on grid for hermite interpolation
-	ivec2 kl = ivec2(ij.x + gap, (ij.y + gap) % GM);
+	ivec2 kl = ivec2(ij.x + gap, mod(ij.y + gap, GM));
 	int imin1 = ij.x - gap;
 	int kplus1 = kl.x + gap;
 	int jmin1 = (ij.y - gap + GM) % GM;
@@ -516,7 +516,7 @@ vec2 interpolateSpline(const ivec2 ij, const ivec2 kl, const vec2 thphi, const i
 	float percDown = (thphi.x - thetaUp) / (thetaDown - thetaUp);
 	float percRight = (thphi.y - phiLeft) / (phiRight - phiLeft);
 
-	if (linear_interpolate || (thphi.y < 0.1 || abs(thphi.y - PI2) < 0.1))
+	if (linear_interpolate)// || (thphi.y < 0.1 || abs(thphi.y - PI2) < 0.1))
 		return interpolateLinear(percDown, percRight, cornersCel);
 	
 	return interpolateHermiteFirst(ij, gap, percDown, percRight, gridID, cornersCel);

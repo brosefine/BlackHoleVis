@@ -70,6 +70,7 @@ KerrApp::KerrApp(int width, int height)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
 	, modePerformance_(false)
+	, gridDone_(false)
 {
 	showGui_ = true;
 	cam_.update(window_.getWidth(), window_.getHeight());
@@ -102,11 +103,12 @@ void KerrApp::renderContent()
 		grid_ = newGrid_;
 		newGrid_ = nullptr;
 		std::cout << "Grid changed!" << std::endl;
-		gridChange_ = false;
 		joinGridThread();
 		resizeGridTextures();
 		initMakeGridSSBO();
+		gridChange_ = false;
 		makeNewGrid_ = true;
+		gridDone_ = true;
 	}
 
 	cam_.processInput(window_.getPtr(), dt_);
@@ -494,7 +496,11 @@ void KerrApp::makeGrid() {
 
 	Grid::saveToFile(grid_);
 	std::shared_ptr<Grid> tmpGrid = std::make_shared<Grid>();
+	Timer tim;
+	tim.start("Grid Computation");
 	Grid::makeGrid(tmpGrid, properties_);
+	tim.end();
+	tim.printLast();
 	newGrid_ = tmpGrid;
 	gridChange_ = true;
 }
@@ -800,9 +806,15 @@ void KerrApp::renderGridTab() {
 
 	if (ImGui::Button("Make Grid (Load or Compute)")) {
 		makeNewGrid_ = false;
+		gridDone_ = false;
 		joinGridThread();
 		gridThread_ = std::make_shared<std::thread>(&KerrApp::makeGrid, this);
 	}
+	if (gridDone_) {
+		ImGui::SameLine();
+		ImGui::Text("Grid Computation Finished!");
+	}
+	
 
 	static int printLvl = 0;
 	if (ImGui::Button("Print Grid")) {
@@ -817,7 +829,6 @@ void KerrApp::renderGridTab() {
 
 	ImGui::Separator();
 }
-
 
 void KerrApp::renderSceneTab()
 {
