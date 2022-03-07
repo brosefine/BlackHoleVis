@@ -69,7 +69,6 @@ BHVApp::BHVApp(int width, int height)
 	, fboScale_(1)
 	, bloom_(false)
 	, bloomEffect_(width, height, 9)
-	, sQuadShader_("squad.vs", "squad.fs")
 	, renderEnvironment_(false)
 	, t0_(0.f), dt_(0.f), tPassed_(0.f)
 	, vSync_(true)
@@ -168,7 +167,7 @@ void BHVApp::renderContent()
 	glViewport(0, 0, window_.getWidth(), window_.getHeight());
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	sQuadShader_.use();
+	sQuadShader_->getShader()->use();
 
 	fboTexture_->generateMipMap();
 	glActiveTexture(GL_TEXTURE0);
@@ -178,6 +177,7 @@ void BHVApp::renderContent()
 }
 
 void BHVApp::initShaders() {
+	sQuadShader_ = std::make_shared<QuadShaderGui>();
 	shaderElement_ = std::make_shared<BlackHoleShaderGui>();
 	shader_ = shaderElement_->getShader();
 }
@@ -695,8 +695,8 @@ void BHVApp::renderShaderTab() {
 
 	ImGui::Separator();
 	ImGui::Text("Screen Quad Shader");
-	if (ImGui::Button("Reload"))
-		sQuadShader_.reload();
+	sQuadShader_->show();
+
 }
 
 void BHVApp::renderCameraTab() {

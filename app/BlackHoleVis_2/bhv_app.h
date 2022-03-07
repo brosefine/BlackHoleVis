@@ -66,7 +66,7 @@ private:
 	bool bloom_;
 	Bloom bloomEffect_;
 	Quad quad_;
-	Shader sQuadShader_;
+	std::shared_ptr<QuadShaderGui> sQuadShader_;
 	std::shared_ptr<ShaderGui> shaderElement_;
 	std::shared_ptr<ShaderBase> shader_;
 

@@ -56,6 +56,7 @@ layout(binding = 7) uniform samplerCube star_texture2;
 layout(binding = 8) uniform samplerCube star_textureFull;
 layout(binding = 9) uniform sampler2D noise_texture;
 
+uniform float star_exposure = 1.0;
 uniform float scale = 1.0;
 uniform vec3 cam_tau;
 uniform vec3 cam_up;
@@ -467,7 +468,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
         float delta_prime = delta + max(deflection, 0.0);
         vec3 d_prime = cos(delta_prime) * e_x_prime + sin(delta_prime) * e_y_prime;
 
-        if(!gaiaMap) d_prime = vec3(d_prime.x, d_prime.z, -d_prime.y);
+        if(!gaiaMap) d_prime = vec3(d_prime.y, d_prime.z, d_prime.x);
         color += texture(cubeMap, d_prime).rgb;
         if(gaiaMap) color *= 6.78494e-5;
      
@@ -484,7 +485,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
         float pixel_area = max(omega * (1024.0 * 1024.0), 1.0);
 
         //color += texture(star_textureFull, d_prime).rgb * lensing_amplification_factor/pixel_area;
-        color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0);
+        color += StarColor(d_prime, lensing_amplification_factor/pixel_area, 0.0) * star_exposure;
         #endif
 
         #ifdef DOPPLER

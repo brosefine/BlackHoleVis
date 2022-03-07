@@ -17,7 +17,8 @@ public:
 		: maxBrightness_(1000.f)
 		, jetAngle_(0.4f)
 		, jetSize_(3.f, 9.f)
-		, scale_(1.f){
+		, scale_(1.f)
+		, starExposure_(1.f){
 
 		name_ = "Black Hole";
 		shader_ = std::make_shared<Shader>(
@@ -35,9 +36,11 @@ private:
 	float jetAngle_;
 	glm::vec2 jetSize_;
 	float scale_;
+	float starExposure_;
 
 	void render() override {
 		ImGui::Text("I'm the Black Hole Shader");
+		ImGui::SliderFloat("Star Exposure", &starExposure_, 0.f, 1.f);
 		ImGui::SliderFloat("Black Hole Scale", &scale_, 0.f, 10.f);
 		ImGui::SliderFloat("Max Disc Brightness", &maxBrightness_, 1.f, 10000.f);
 		ImGui::SliderFloat("Jet Angle (rad)", &jetAngle_, -1.f, 2.f);
@@ -49,6 +52,7 @@ private:
 	}
 
 	void uploadUniforms() override {
+		shader_->setUniform("star_exposure", starExposure_);
 		shader_->setUniform("scale", scale_);
 		shader_->setUniform("max_brightness", maxBrightness_);
 		shader_->setUniform("jet_angle", jetAngle_);
@@ -130,5 +134,60 @@ private:
 	float opacity_;
 	float temp_;
 	glm::vec2 size_;
+
+};
+
+class QuadShaderGui : public ShaderGui {
+public:
+
+	QuadShaderGui()
+		: gamma_(2.2f)
+		, exposure_(1.f)
+		, bloom_(false)
+		, tonemap_(false) {
+		name_ = "Quad";
+		shader_ = std::make_shared<Shader>("squad.vs", "squad.fs");
+		preprocessorFlags_ = shader_->getFlags();
+		shader_->use();
+		uploadUniforms();
+	}
+
+	void storeConfig(boost::json::object& obj) override {
+		obj["tonemap"] = tonemap_;
+		obj["bloom"] = bloom_;
+		obj["exposure"] = exposure_;
+		obj["gamma"] = gamma_;
+		storePreprocessorFlags(obj);
+	}
+
+	void loadConfig(boost::json::object& obj) override {
+		jhelper::getValue(obj, "tonemap", tonemap_);
+		jhelper::getValue(obj, "bloom", bloom_);
+		jhelper::getValue(obj, "exposure", exposure_);
+		jhelper::getValue(obj, "gamma", gamma_);
+		loadPreprocessorFlags(obj);
+		update();
+	}
+private:
+
+	float gamma_;
+	float exposure_;
+	bool bloom_;
+	bool tonemap_;
+
+	void render() override {
+		ImGui::Text("Post Processing Settings");
+		ImGui::SliderFloat("Exposure", &exposure_, 0.f, 2.f);
+		ImGui::SliderFloat("Gamma", &gamma_, 0.f, 5.f);
+		ImGui::Checkbox("Tone Mapping", &tonemap_);
+		renderRefreshMenu();
+	}
+
+	void uploadUniforms() override {
+		shader_->setUniform("tonemap", tonemap_);
+		shader_->setUniform("exposure", exposure_);
+		shader_->setUniform("gamma", gamma_);
+	}
+
 
 };
