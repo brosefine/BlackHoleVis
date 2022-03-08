@@ -638,6 +638,8 @@ void BHVApp::renderGui() {
 				window_.setWidth(dim.at(0));
 				window_.setHeight(dim.at(1));
 			}
+			if (ImGui::Button("2:1 aspect ratio"))
+				window_.setHeight(window_.getWidth() * 0.5);
 
 			// FBO and window size
 			ImGui::Text("Set Offscreen Resolution");

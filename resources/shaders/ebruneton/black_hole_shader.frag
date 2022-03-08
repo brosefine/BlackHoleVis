@@ -635,6 +635,7 @@ void main()
     dir = normalize(-cam_tau + dir.x * cam_right + dir.y * cam_up - dir.z * cam_front);
     vec3 color;
     if(scale <= 0.0) {
+        dir = vec3(-dir.z, dir.y, dir.x);
         color = texture(cubeMap, dir).rgb;
     } else {
 
