@@ -41,11 +41,17 @@ void GLApp::renderFPSWindow() {
 	ImGui::Begin("FPS");
 	double avgTime = frameTimer_.getAvg();
 	double avgFPS = 1.f / avgTime;
-	ImGui::Text(std::to_string(avgTime).c_str());
+	static double printTime = 0, printFPS = 0;
+	ImGui::Text(std::to_string(printTime*1e3).c_str());
 	ImGui::SameLine();
-	ImGui::Text(" - ");
+	ImGui::Text("ms - ");
 	ImGui::SameLine();
-	ImGui::Text(std::to_string(avgFPS).c_str());
+	ImGui::Text(std::to_string(printFPS).c_str());
+	ImGui::SameLine();
+	if (ImGui::Button("Update")) {
+		printTime = avgTime;
+		printFPS = avgFPS;
+	}
 
 	static bool showPlot = false;
 	ImGui::Checkbox("Show Plot", &showPlot);
