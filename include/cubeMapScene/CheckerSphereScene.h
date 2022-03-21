@@ -17,14 +17,16 @@ private:
 
 	Quad quad_;
 	std::shared_ptr<Mesh> sphereMesh_;
+	std::shared_ptr<Mesh> cubeMesh_;
 	std::shared_ptr<CubeMap> skyTexture_;
 
-	std::shared_ptr<ShaderBase> meshShader_;
+	std::shared_ptr<ShaderBase> sphereShader_;
+	std::shared_ptr<ShaderBase> cubeShader_;
 	std::shared_ptr<ShaderBase> skyShader_;
 
 	glm::vec3 sphereColor_;
-	glm::vec3 spherePos_;
-	float sphereScale_;
+	glm::vec3 spherePos_, cubePos_;
+	float sphereScale_, cubeScale_;
 	bool drawSky_;
 
 	void loadTextures();
