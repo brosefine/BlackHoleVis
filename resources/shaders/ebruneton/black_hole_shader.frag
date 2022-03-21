@@ -36,8 +36,8 @@ layout (std140) uniform accDisk
     vec4 discParams; // density, opacity, temperature, numparticles
     vec4 discSize;   // rmin, rmax, irmin, irmax
 };
-uniform float max_brightness;
 #endif
+uniform float max_brightness;
 
 out vec4 FragColor;
 
@@ -158,8 +158,8 @@ vec2 LookupRayInverseRadius(float e_square, float phi) {
     float tex_v = GetTextureCoordFromUnitRange(phi / GetPhiUbFromEsquare(e_square),
         texDim.y);
     vec2 result = texture(inv_radius_texture, vec2(tex_u, tex_v)).xy;
-    //if(e_square < 1e-3) result.x = sqrt(e_square) * sin(phi);
-    return result * sqrt(e_square);
+    if(e_square < 1e-3) result.x = sqrt(e_square) * sin(phi);
+    return result;// * sqrt(e_square);
 }
 
 vec3 Doppler(vec3 color, float doppler_factor) {
@@ -263,6 +263,7 @@ float RayTrace(float u, float u_dot, float e_square, float delta,
     return ray_deflection;
 }
 
+
 #ifdef DISC
 vec4 DiscColor(vec2 intersect, float timeDelta,
     float doppler) {
@@ -293,7 +294,6 @@ vec4 DiscColor(vec2 intersect, float timeDelta,
         density += smoothstep(1.0, 0.0, length(d))*noise;
     }
 
-    
     float tempScale = (1.0 / max_temp) *
         pow((1.0 - sqrt(3.0 / r_intersect)) / (r_intersect * r_intersect * r_intersect), 0.25);
     float temp = doppler * tempScale * discParams.z;
