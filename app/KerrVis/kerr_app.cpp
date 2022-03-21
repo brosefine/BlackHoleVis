@@ -863,7 +863,7 @@ void KerrApp::renderPerfWindow()
 	interpolateSum = (1.0 - weight) * interpolateSum + weight * interpolateTime_;
 	interpolateWeight = (1.0 - weight) * interpolateWeight + weight;
 
-	static std::string makeGridText = "", interpolateText = "";
+	static std::string  makeGridText = "", interpolateText = "", makeGridTextAvg = "", interpolateTextAvg = "";
 	if (ImGui::Button("Get last compute time")) {
 
 		makeGridText = std::format("makeGrid took {:.3f} ms", makeGridTime_).c_str();
@@ -871,6 +871,13 @@ void KerrApp::renderPerfWindow()
 	}
 	ImGui::Text(makeGridText.c_str());
 	ImGui::Text(interpolateText.c_str());
+	if (ImGui::Button("Get last average compute time")) {
+
+		makeGridTextAvg = std::format("makeGrid took {:.3f} ms", makeGridSum / makeGridWeight).c_str();
+		interpolateTextAvg = std::format("interpolate  took {:.3f} ms", interpolateSum / interpolateWeight).c_str();
+	}
+	ImGui::Text(makeGridTextAvg.c_str());
+	ImGui::Text(interpolateTextAvg.c_str());
 
 	static bool showPlot = false;
 	ImGui::Checkbox("Show Plot", &showPlot);
