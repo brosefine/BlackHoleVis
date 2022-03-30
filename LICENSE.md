@@ -10,8 +10,8 @@
 	- resources/textures/ebruneton/* by [E.Bruneton](https://github.com/ebruneton/black_hole_shader) licensed under ```BSD-3-Clause License```
 
 - adapted source code 
-	- app/include/blacktracer/* by A. Verbraeck's [blacktracer](https://github.com/annemiekie/blacktracer)
-	- app/src/blacktracer/* by A. Verbraeck's [blacktracer](https://github.com/annemiekie/blacktracer)
+	- include/blacktracer/* by A. Verbraeck's [blacktracer](https://github.com/annemiekie/blacktracer)
+	- src/blacktracer/* by A. Verbraeck's [blacktracer](https://github.com/annemiekie/blacktracer)
 
 - all other files in this [repository](https://github.com/brosefine/BlackHoleVis):
 ```
