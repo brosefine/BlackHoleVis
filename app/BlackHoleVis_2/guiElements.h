@@ -14,7 +14,7 @@ class BlackHoleShaderGui : public ShaderGui {
 public:
 
 	BlackHoleShaderGui()
-		: maxBrightness_(1000.f)
+		: maxBrightness_(2.f)
 		, jetAngle_(0.4f)
 		, jetSize_(3.f, 9.f)
 		, scale_(1.f)

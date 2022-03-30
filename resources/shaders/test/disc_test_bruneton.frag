@@ -109,7 +109,9 @@ vec2 LookupRayInverseRadius(float e_square, float phi) {
         texDim.x);
     float tex_v = GetTextureCoordFromUnitRange(phi / GetPhiUbFromEsquare(e_square),
         texDim.y);
-    return texture(inv_radius_texture, vec2(tex_u, tex_v)).xy;
+    vec2 result = texture(inv_radius_texture, vec2(tex_u, tex_v)).xy;
+    if(e_square < 1e-3) result.x = sqrt(e_square) * sin(phi);
+    return result;
 }
 
 void RayTrace(float u, float u_dot, float e_square, float delta, float alpha,
@@ -191,7 +193,7 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks) {
     if (u1 >= 0.0 && u1 < discSize.x && u1 > discSize.y) {
         color = vec3(0.5, 0, 0);
     }
-    if (u0 >= 0.0 && u0 < 1.0/3.0 && u0 > 1.0/12.0) {
+    if (u0 >= 0.0 && u0 < discSize.x && u0 > discSize.y) {
         color = 0.5 * color + vec3(0, 0.5, 0); 
     }
     return color;

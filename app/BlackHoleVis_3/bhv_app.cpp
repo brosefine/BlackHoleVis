@@ -202,7 +202,7 @@ void BHVApp::initTextures() {
 
 #pragma region inverse radius
 	// create inverse radius texture
-	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius_256x256.dat");
+	std::vector<float> invRadiusData = readFile<float>(TEX_DIR"ebruneton/inverse_radius.dat");
 	if (invRadiusData.size() != 0) {
 
 		TextureParams params;
