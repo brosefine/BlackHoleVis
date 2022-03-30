@@ -7,6 +7,8 @@ Application of Kerr [Black Hole visualization](https://github.com/annemiekie/bla
 - SKY: a test shader which renders a cubemap
 - COMPUTE: for testing compute shaders
 - MAKEGRID: upload grid to gpu, expand it, and render to screen
+- INTERPOLATE GRID: render interpolated deflectionn map
+- RENDER: render the Kerr black hole
 
 ## Controls
 - Hold SHIFT and...
@@ -14,3 +16,8 @@ Application of Kerr [Black Hole visualization](https://github.com/annemiekie/bla
 	- Drag w. right mouse button: reduce or increase distance to black hole
 - Hold CTRL and...
 	- Drag w. left mouse button: rotate camera (change view direction but keep position)
+
+## First Steps
+- Navigate to the `Grid Settings` tab
+- Press the `Make Grid` button
+- Select `Render` mode in the `Shader Settings` tab

@@ -5,6 +5,13 @@ A project on black hole visualization
 
 ## Setup
 
+### Milky Way Panorama
+init `resources/textures/ebruneton/gaia_sky_map` containing cubemap data from [E.Bruneton](https://github.com/ebruneton/gaia_sky_map):
+```
+git submodule update
+git submodule init
+```
+
 ### Dependencies
 Dependencies are installed using [vcpkg](https://github.com/Microsoft/vcpkg).
 - glm
