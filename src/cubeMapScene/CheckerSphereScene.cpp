@@ -12,7 +12,7 @@ CheckerSphereScene::CheckerSphereScene()
 	, sphereColor_(0.f)
 	, spherePos_(0.f)
 	, sphereScale_(1.f)
-	, drawSky_(false){}
+	, drawSky_(true){}
 
 CheckerSphereScene::CheckerSphereScene(int size)
 	: CubeMapScene(size)
@@ -21,7 +21,9 @@ CheckerSphereScene::CheckerSphereScene(int size)
 	, sphereColor_(1.f)
 	, spherePos_(5.f, 0.f, 0.f)
 	, sphereScale_(1.f)
-	, drawSky_(false)
+	, cubePos_(-5.f, 0.f, 0.f)
+	, cubeScale_(1.f)
+	, drawSky_(true)
 {
 	loadShaders();
 	loadTextures();

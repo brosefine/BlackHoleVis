@@ -124,7 +124,7 @@ void BHVApp::renderContent()
 
 	glActiveTexture(GL_TEXTURE0);
 	if (renderEnvironment_) {
-		shader_->setUniform("gaiaMap", false);
+		shader_->setUniform("dynEnv", true);
 		currentEnvironmentScene_->bindEnv();
 	}
 	else {

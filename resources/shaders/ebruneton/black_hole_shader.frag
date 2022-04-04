@@ -69,7 +69,8 @@ uniform float jet_angle;
 uniform vec4 jet_size; // x = min, y = max, z = umin, w = umax
 
 uniform bool pinhole = true;
-uniform bool gaiaMap;
+uniform bool gaiaMap = false;
+uniform bool dynEnv = false;
 
 const float MAX_FOOTPRINT_LOD = 6.0;
 const int STARS_CUBE_MAP_SIZE = 2048;
@@ -468,7 +469,8 @@ vec3 pixelColor(vec3 dir, vec3 pos, vec3 etau, vec4 ks, float dt) {
         float delta_prime = delta + max(deflection, 0.0);
         vec3 d_prime = cos(delta_prime) * e_x_prime + sin(delta_prime) * e_y_prime;
 
-        if(!gaiaMap) d_prime = vec3(d_prime.y, d_prime.z, d_prime.x);
+        if(dynEnv) d_prime = vec3(d_prime.x, d_prime.z, -d_prime.y);
+        else if(!gaiaMap) d_prime = vec3(d_prime.y, d_prime.z, d_prime.x);
         color += texture(cubeMap, d_prime).rgb;
         if(gaiaMap) color *= 6.78494e-5;
      
