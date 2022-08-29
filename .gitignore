@@ -13,6 +13,7 @@ build
 saves
 data
 resources/grids
+vcpkg/
 
 .vs
 *.sln

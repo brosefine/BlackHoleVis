@@ -1,0 +1,23 @@
+{
+    "name": "blackholevis",
+    "version": "1.0.0",
+    "dependencies": [
+        "glm",
+        "glfw3",
+        "stb",
+        "glad",
+        "implot",
+        "boost-json",
+        "tinyobjloader",
+        "cereal",
+        {
+            "name" : "imgui",
+            "features" : ["opengl3-binding","glfw-binding"]
+        }
+    ],
+    "overrides": [
+        {"name": "implot", "version": "0.12"},
+        {"name": "boost-json", "version": "1.77.0"}
+    ],
+    "builtin-baseline": "1cea69e191974b8e917360633eaff8f1d87a9a1e"
+}

@@ -1,5 +1,5 @@
 # BlackHoleVis
-A project on black hole visualization
+A project on black hole visualization 
 
 ![](screenshots/screenshot_mix.png)
 
@@ -18,23 +18,21 @@ Dependencies are installed using [vcpkg](https://github.com/Microsoft/vcpkg).
 - glad
 - glfw
 - imgui
-- implot
+- implot (0.12)
 - stb_image
-- boost-json
+- boost-json (1.77.0)
 - tinyobjloader
 - cereal
 
 ### Windows
 - [setup vcpkg](https://vcpkg.io/en/getting-started.html) (```vcpkg integrate install``` not required)
-- install dependencies with vcpkg: 
-	```vcpkg install glm:x64-windows glfw3:x64-windows stb:x64-windows glad:x64-windows imgui[opengl3-binding,glfw-binding]:x64-windows implot:x64-windows boost-json:x64-windows tinyobjloader:x64-windows cereal:x64-windows```
 - open directory in CMake GUI
 - select VS 2019
 - add Entry:
 	- name: ```CMAKE_TOOLCHAIN_FILE```
 	- type: ```PATH```
 	- value: ```[path to vcpkg]/scripts/buildsystems/vcpkg.cmake```
-- Configure & Generate
+- Configure & Generate, vcpkg will install all dependencies listed in `vcpkg.json`
 - Open Project to open solution in VS
 
 ### Linux (TODO)
